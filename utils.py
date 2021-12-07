@@ -7,10 +7,18 @@ from torch_geometric import data as DATA
 import torch
 import matplotlib.pyplot as plt
 
+
 class TestbedDataset(InMemoryDataset):
-    def __init__(self, root='/tmp', dataset='davis', 
-                 xd=None, xt=None, y=None, transform=None,
-                 pre_transform=None,smile_graph=None,saliency_map=False):
+    def __init__(self,
+                 root='/tmp',
+                 dataset='davis',
+                 xd=None,
+                 xt=None,
+                 y=None,
+                 transform=None,
+                 pre_transform=None,
+                 smile_graph=None,
+                 saliency_map=False):
 
         #root is required for save preprocessed data, default is '/tmp'
         super(TestbedDataset, self).__init__(root, transform, pre_transform)
@@ -18,11 +26,13 @@ class TestbedDataset(InMemoryDataset):
         self.dataset = dataset
         self.saliency_map = saliency_map
         if os.path.isfile(self.processed_paths[0]):
-            print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
+            print('Pre-processed data found: {}, loading ...'.format(
+                self.processed_paths[0]))
             self.data, self.slices = torch.load(self.processed_paths[0])
         else:
-            print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
-            self.process(xd, xt, y,smile_graph)
+            print('Pre-processed data {} not found, doing pre-processing...'.format(
+                self.processed_paths[0]))
+            self.process(xd, xt, y, smile_graph)
             self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -50,25 +60,29 @@ class TestbedDataset(InMemoryDataset):
     # XD - list of SMILES, XT: list of encoded target (categorical or one-hot),
     # Y: list of labels (i.e. affinity)
     # Return: PyTorch-Geometric format processed data
-    def process(self, xd, xt, y,smile_graph):
-        assert (len(xd) == len(xt) and len(xt) == len(y)), "The three lists must be the same length!"
+    def process(self, xd, xt, y, smile_graph):
+        assert (len(xd) == len(xt)
+                and len(xt) == len(y)), "The three lists must be the same length!"
         data_list = []
         data_len = len(xd)
         for i in range(data_len):
-            print('Converting SMILES to graph: {}/{}'.format(i+1, data_len))
+            print('Converting SMILES to graph: {}/{}'.format(i + 1, data_len))
             smiles = xd[i]
             target = xt[i]
             labels = y[i]
             # convert SMILES to molecular representation using rdkit
             c_size, features, edge_index = smile_graph[smiles]
             # make the graph ready for PyTorch Geometrics GCN algorithms:
-            GCNData = DATA.Data(x=torch.Tensor(features),
-                                edge_index=torch.LongTensor(edge_index).transpose(1, 0),
-                                y=torch.FloatTensor([labels]))
-            
+            GCNData = DATA.Data(
+                x=torch.Tensor(features),
+                edge_index=torch.LongTensor(edge_index).transpose(1, 0),
+                y=torch.FloatTensor([labels]))
+
             # require_grad of cell-line for saliency map
             if self.saliency_map == True:
-                GCNData.target = torch.tensor([target], dtype=torch.float, requires_grad=True)
+                GCNData.target = torch.tensor([target],
+                                              dtype=torch.float,
+                                              requires_grad=True)
             else:
                 GCNData.target = torch.FloatTensor([target])
 
@@ -89,30 +103,39 @@ class TestbedDataset(InMemoryDataset):
     def getXD(self):
         return self.xd
 
-def rmse(y,f):
+
+def rmse(y, f):
     rmse = sqrt(((y - f)**2).mean(axis=0))
     return rmse
-def mse(y,f):
+
+
+def mse(y, f):
     mse = ((y - f)**2).mean(axis=0)
     return mse
-def pearson(y,f):
-    rp = np.corrcoef(y, f)[0,1]
+
+
+def pearson(y, f):
+    rp = np.corrcoef(y, f)[0, 1]
     return rp
-def spearman(y,f):
+
+
+def spearman(y, f):
     rs = stats.spearmanr(y, f)[0]
     return rs
-def ci(y,f):
+
+
+def ci(y, f):
     ind = np.argsort(y)
     y = y[ind]
     f = f[ind]
-    i = len(y)-1
-    j = i-1
+    i = len(y) - 1
+    j = i - 1
     z = 0.0
     S = 0.0
     while i > 0:
         while j >= 0:
             if y[i] > y[j]:
-                z = z+1
+                z = z + 1
                 u = f[i] - f[j]
                 if u > 0:
                     S = S + 1
@@ -120,9 +143,10 @@ def ci(y,f):
                     S = S + 0.5
             j = j - 1
         i = i - 1
-        j = i-1
-    ci = S/z
+        j = i - 1
+    ci = S / z
     return ci
+
 
 def draw_loss(train_losses, test_losses, title):
     plt.figure()
@@ -134,7 +158,8 @@ def draw_loss(train_losses, test_losses, title):
     plt.ylabel('Loss')
     plt.legend()
     # save image
-    plt.savefig(title+".png")  # should before show method
+    plt.savefig(title + ".png")  # should before show method
+
 
 def draw_pearson(pearsons, title):
     plt.figure()
@@ -145,4 +170,4 @@ def draw_pearson(pearsons, title):
     plt.ylabel('Pearson')
     plt.legend()
     # save image
-    plt.savefig(title+".png")  # should before show method
+    plt.savefig(title + ".png")  # should before show method

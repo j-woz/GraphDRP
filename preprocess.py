@@ -6,7 +6,7 @@ import numbers
 import h5py
 import math
 import pandas as pd
-import json,pickle
+import json, pickle
 from collections import OrderedDict
 from rdkit import Chem
 from rdkit.Chem import MolFromSmiles
@@ -18,6 +18,7 @@ import sys
 import matplotlib.pyplot as plt
 import argparse
 
+
 def is_not_float(string_list):
     try:
         for string in string_list:
@@ -26,12 +27,14 @@ def is_not_float(string_list):
     except:
         return True
 
+
 """
 The following 4 function is used to preprocess the drug data. We download the drug list manually, and download the SMILES format using pubchempy. Since this part is time consuming, I write the cids and SMILES into a csv file. 
 """
 
 folder = "data/"
 #folder = ""
+
 
 def load_drug_list():
     filename = folder + "Druglist.csv"
@@ -43,6 +46,7 @@ def load_drug_list():
         drugs.append(line[0])
     drugs = list(set(drugs))
     return drugs
+
 
 def write_drug_cid():
     drugs = load_drug_list()
@@ -69,6 +73,7 @@ def write_drug_cid():
     wr = csv.writer(outputfile)
     wr.writerow(unknow_drug)
 
+
 def cid_from_other_source():
     """
     some drug can not be found in pychem, so I try to find some cid manually.
@@ -81,12 +86,16 @@ def cid_from_other_source():
     for item in reader:
         name = item[1]
         cid = item[4]
-        if not name in cid_dict: 
+        if not name in cid_dict:
             cid_dict[name] = str(cid)
 
     unknow_drug = open(folder + "unknow_drug_by_pychem.csv").readline().split(",")
-    drug_cid_dict = {k:v for k,v in cid_dict.iteritems() if k in unknow_drug and not is_not_float([v])}
+    drug_cid_dict = {
+        k: v
+        for k, v in cid_dict.iteritems() if k in unknow_drug and not is_not_float([v])
+    }
     return drug_cid_dict
+
 
 def load_cid_dict():
     reader = csv.reader(open(folder + "pychem_cid.csv"))
@@ -99,9 +108,14 @@ def load_cid_dict():
 
 def download_smiles():
     cids_dict = load_cid_dict()
-    cids = [v for k,v in cids_dict.iteritems()]
-    inv_cids_dict = {v:k for k,v in cids_dict.iteritems()}
-    download('CSV', folder + 'drug_smiles.csv', cids, operation='property/CanonicalSMILES,IsomericSMILES', overwrite=True)
+    cids = [v for k, v in cids_dict.iteritems()]
+    inv_cids_dict = {v: k for k, v in cids_dict.iteritems()}
+    download(
+        'CSV',
+        folder + 'drug_smiles.csv',
+        cids,
+        operation='property/CanonicalSMILES,IsomericSMILES',
+        overwrite=True)
     f = open(folder + 'drug_smiles.csv')
     reader = csv.reader(f)
     header = ['name'] + reader.next()
@@ -116,21 +130,31 @@ def download_smiles():
         writer.writerow(item)
     f.close()
 
+
 """
 The following code will convert the SMILES format into onehot format
 """
 
+
 def atom_features(atom):
-    return np.array(one_of_k_encoding_unk(atom.GetSymbol(),['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na','Ca', 'Fe', 'As', 'Al', 'I', 'B', 'V', 'K', 'Tl', 'Yb','Sb', 'Sn', 'Ag', 'Pd', 'Co', 'Se', 'Ti', 'Zn', 'H','Li', 'Ge', 'Cu', 'Au', 'Ni', 'Cd', 'In', 'Mn', 'Zr','Cr', 'Pt', 'Hg', 'Pb', 'Unknown']) +
-                    one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6,7,8,9,10]) +
-                    one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4, 5, 6,7,8,9,10]) +
-                    one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5, 6,7,8,9,10]) +
-                    [atom.GetIsAromatic()])
+    return np.array(
+        one_of_k_encoding_unk(atom.GetSymbol(), [
+            'C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca', 'Fe',
+            'As', 'Al', 'I', 'B', 'V', 'K', 'Tl', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co',
+            'Se', 'Ti', 'Zn', 'H', 'Li', 'Ge', 'Cu', 'Au', 'Ni', 'Cd', 'In', 'Mn', 'Zr',
+            'Cr', 'Pt', 'Hg', 'Pb', 'Unknown'
+        ]) + one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+        one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        + one_of_k_encoding_unk(atom.GetImplicitValence(),
+                                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+        [atom.GetIsAromatic()])
+
 
 def one_of_k_encoding(x, allowable_set):
     if x not in allowable_set:
         raise Exception("input {0} not in allowable set{1}:".format(x, allowable_set))
     return list(map(lambda s: x == s, allowable_set))
+
 
 def one_of_k_encoding_unk(x, allowable_set):
     """Maps inputs not in the allowable set to the last element."""
@@ -138,15 +162,16 @@ def one_of_k_encoding_unk(x, allowable_set):
         x = allowable_set[-1]
     return list(map(lambda s: x == s, allowable_set))
 
+
 def smile_to_graph(smile):
     mol = Chem.MolFromSmiles(smile)
-    
+
     c_size = mol.GetNumAtoms()
-    
+
     features = []
     for atom in mol.GetAtoms():
         feature = atom_features(atom)
-        features.append( feature / sum(feature) )
+        features.append(feature / sum(feature))
 
     edges = []
     for bond in mol.GetBonds():
@@ -155,8 +180,9 @@ def smile_to_graph(smile):
     edge_index = []
     for e1, e2 in g.edges:
         edge_index.append([e1, e2])
-        
+
     return c_size, features, edge_index
+
 
 def load_drug_smile():
     reader = csv.reader(open(folder + "drug_smiles.csv"))
@@ -175,13 +201,14 @@ def load_drug_smile():
             pos = len(drug_dict)
             drug_dict[name] = pos
         drug_smile.append(smile)
-    
+
     smile_graph = {}
     for smile in drug_smile:
         g = smile_to_graph(smile)
         smile_graph[smile] = g
-    
+
     return drug_dict, drug_smile, smile_graph
+
 
 def save_cell_mut_matrix():
     f = open(folder + "PANCANCER_Genetic_feature.csv")
@@ -210,7 +237,7 @@ def save_cell_mut_matrix():
             cell_dict[cell_id] = row
         if is_mutated == 1:
             matrix_list.append((row, col))
-    
+
     cell_feature = np.zeros((len(cell_dict), len(mut_dict)))
 
     for item in matrix_list:
@@ -218,13 +245,15 @@ def save_cell_mut_matrix():
 
     with open('mut_dict', 'wb') as fp:
         pickle.dump(mut_dict, fp)
-    
+
     return cell_dict, cell_feature
 
 
 """
 This part is used to extract the drug - cell interaction strength. it contains IC50, AUC, Max conc, RMSE, Z_score
 """
+
+
 def save_mix_drug_cell_matrix():
     f = open(folder + "PANCANCER_IC.csv")
     reader = csv.reader(f)
@@ -258,7 +287,7 @@ def save_mix_drug_cell_matrix():
             bExist[drug_dict[drug], cell_dict[cell]] = 1
             lst_drug.append(drug)
             lst_cell.append(cell)
-        
+
     with open('drug_dict', 'wb') as fp:
         pickle.dump(drug_dict, fp)
 
@@ -269,7 +298,7 @@ def save_mix_drug_cell_matrix():
 
     with open('list_drug_mix_test', 'wb') as fp:
         pickle.dump(lst_drug[size1:], fp)
-        
+
     with open('list_cell_mix_test', 'wb') as fp:
         pickle.dump(lst_cell[size1:], fp)
 
@@ -288,9 +317,27 @@ def save_mix_drug_cell_matrix():
     dataset = 'GDSC'
     print('preparing ', dataset + '_train.pt in pytorch format!')
 
-    train_data = TestbedDataset(root='data', dataset=dataset+'_train_mix', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='data', dataset=dataset+'_val_mix', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='data', dataset=dataset+'_test_mix', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
+    train_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_train_mix',
+        xd=xd_train,
+        xt=xc_train,
+        y=y_train,
+        smile_graph=smile_graph)
+    val_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_val_mix',
+        xd=xd_val,
+        xt=xc_val,
+        y=y_val,
+        smile_graph=smile_graph)
+    test_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_test_mix',
+        xd=xd_test,
+        xt=xc_test,
+        y=y_test,
+        smile_graph=smile_graph)
 
 
 def save_blind_drug_matrix():
@@ -330,11 +377,11 @@ def save_blind_drug_matrix():
         cell = item[3]
         ic50 = item[8]
         ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
-        
+
         temp_data.append((drug, cell, ic50))
 
     random.shuffle(temp_data)
-    
+
     for data in temp_data:
         drug, cell, ic50 = data
         if drug in drug_dict and cell in cell_dict:
@@ -342,7 +389,7 @@ def save_blind_drug_matrix():
                 dict_drug_cell[drug].append((cell, ic50))
             else:
                 dict_drug_cell[drug] = [(cell, ic50)]
-            
+
             bExist[drug_dict[drug], cell_dict[cell]] = 1
 
     lstDrugTest = []
@@ -350,7 +397,7 @@ def save_blind_drug_matrix():
     size = int(len(dict_drug_cell) * 0.8)
     size1 = int(len(dict_drug_cell) * 0.9)
     pos = 0
-    for drug,values in dict_drug_cell.items():
+    for drug, values in dict_drug_cell.items():
         pos += 1
         for v in values:
             cell, ic50 = v
@@ -370,18 +417,38 @@ def save_blind_drug_matrix():
 
     with open('drug_bind_test', 'wb') as fp:
         pickle.dump(lstDrugTest, fp)
-    
+
     print(len(y_train), len(y_val), len(y_test))
 
-    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
+    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(
+        xc_train), np.asarray(y_train)
     xd_val, xc_val, y_val = np.asarray(xd_val), np.asarray(xc_val), np.asarray(y_val)
-    xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(y_test)
+    xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(
+        y_test)
 
     dataset = 'GDSC'
     print('preparing ', dataset + '_train.pt in pytorch format!')
-    train_data = TestbedDataset(root='data', dataset=dataset+'_train_blind', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='data', dataset=dataset+'_val_blind', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='data', dataset=dataset+'_test_blind', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
+    train_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_train_blind',
+        xd=xd_train,
+        xt=xc_train,
+        y=y_train,
+        smile_graph=smile_graph)
+    val_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_val_blind',
+        xd=xd_val,
+        xt=xc_val,
+        y=y_val,
+        smile_graph=smile_graph)
+    test_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_test_blind',
+        xd=xd_test,
+        xt=xc_test,
+        y=y_test,
+        smile_graph=smile_graph)
 
 
 def save_blind_cell_matrix():
@@ -421,11 +488,11 @@ def save_blind_cell_matrix():
         cell = item[3]
         ic50 = item[8]
         ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
-        
+
         temp_data.append((drug, cell, ic50))
 
     random.shuffle(temp_data)
-    
+
     for data in temp_data:
         drug, cell, ic50 = data
         if drug in drug_dict and cell in cell_dict:
@@ -433,7 +500,7 @@ def save_blind_cell_matrix():
                 dict_drug_cell[cell].append((drug, ic50))
             else:
                 dict_drug_cell[cell] = [(drug, ic50)]
-            
+
             bExist[drug_dict[drug], cell_dict[cell]] = 1
 
     lstCellTest = []
@@ -441,7 +508,7 @@ def save_blind_cell_matrix():
     size = int(len(dict_drug_cell) * 0.8)
     size1 = int(len(dict_drug_cell) * 0.9)
     pos = 0
-    for cell,values in dict_drug_cell.items():
+    for cell, values in dict_drug_cell.items():
         pos += 1
         for v in values:
             drug, ic50 = v
@@ -461,18 +528,39 @@ def save_blind_cell_matrix():
 
     with open('cell_bind_test', 'wb') as fp:
         pickle.dump(lstCellTest, fp)
-    
+
     print(len(y_train), len(y_val), len(y_test))
 
-    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
+    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(
+        xc_train), np.asarray(y_train)
     xd_val, xc_val, y_val = np.asarray(xd_val), np.asarray(xc_val), np.asarray(y_val)
-    xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(y_test)
+    xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(
+        y_test)
 
     dataset = 'GDSC'
     print('preparing ', dataset + '_train.pt in pytorch format!')
-    train_data = TestbedDataset(root='data', dataset=dataset+'_train_cell_blind', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='data', dataset=dataset+'_val_cell_blind', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='data', dataset=dataset+'_test_cell_blind', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
+    train_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_train_cell_blind',
+        xd=xd_train,
+        xt=xc_train,
+        y=y_train,
+        smile_graph=smile_graph)
+    val_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_val_cell_blind',
+        xd=xd_val,
+        xt=xc_val,
+        y=y_val,
+        smile_graph=smile_graph)
+    test_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_test_cell_blind',
+        xd=xd_test,
+        xt=xc_test,
+        y=y_test,
+        smile_graph=smile_graph)
+
 
 def save_best_individual_drug_cell_matrix():
     f = open(folder + "PANCANCER_IC.csv")
@@ -493,17 +581,17 @@ def save_best_individual_drug_cell_matrix():
     dict_drug_cell = {}
 
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
-    i=0
+    i = 0
     for item in reader:
         drug = item[0]
         cell = item[3]
         ic50 = item[8]
         ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
-        
+
         if drug == "Bortezomib":
             temp_data.append((drug, cell, ic50))
     random.shuffle(temp_data)
-    
+
     for data in temp_data:
         drug, cell, ic50 = data
         if drug in drug_dict and cell in cell_dict:
@@ -511,10 +599,10 @@ def save_best_individual_drug_cell_matrix():
                 dict_drug_cell[drug].append((cell, ic50))
             else:
                 dict_drug_cell[drug] = [(cell, ic50)]
-            
+
             bExist[drug_dict[drug], cell_dict[cell]] = 1
     cells = []
-    for drug,values in dict_drug_cell.items():
+    for drug, values in dict_drug_cell.items():
         for v in values:
             cell, ic50 = v
             xd_train.append(drug_smile[drug_dict[drug]])
@@ -522,16 +610,30 @@ def save_best_individual_drug_cell_matrix():
             y_train.append(ic50)
             cells.append(cell)
 
-    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
+    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(
+        xc_train), np.asarray(y_train)
     with open('cell_blind_sal', 'wb') as fp:
         pickle.dump(cells, fp)
     dataset = 'GDSC'
     print('preparing ', dataset + '_train.pt in pytorch format!')
-    train_data = TestbedDataset(root='data', dataset=dataset+'_bortezomib', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph, saliency_map=True)
+    train_data = TestbedDataset(
+        root='data',
+        dataset=dataset + '_bortezomib',
+        xd=xd_train,
+        xt=xc_train,
+        y=y_train,
+        smile_graph=smile_graph,
+        saliency_map=True)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='prepare dataset to train model')
-    parser.add_argument('--choice', type=int, required=False, default=0, help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
+    parser.add_argument(
+        '--choice',
+        type=int,
+        required=False,
+        default=0,
+        help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
     args = parser.parse_args()
     choice = args.choice
     if choice == 0:
