@@ -108,7 +108,7 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
             val_losses.append(ret[1])
             val_pearsons.append(ret[2])
 
-            if ret[1] < best_mse: # ap: is it early stopping on the mse of train set?
+            if ret[1] < best_mse: # ap: is it early stopping on the mse of train set??
                 torch.save(model.state_dict(), model_file_name)
                 with open(result_file_name, 'w') as f:
                     f.write(','.join(map(str, ret_test)))
@@ -123,6 +123,13 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
                       dataset)
         draw_loss(train_losses, val_losses, loss_fig_name)
         draw_pearson(val_pearsons, pearson_fig_name)
+
+        # ap: Drop raw predictions
+        G_test, P_test = predicting(model, device, test_loader)
+        preds = pd.DataFrame({"True": G_test, "Pred": P_test})
+        preds_file_name = 'preds_' + model_st + '_' + dataset + '.csv'
+        preds.to_csv(preds_file_name, index=False)
+
 
 
 if __name__ == "__main__":
