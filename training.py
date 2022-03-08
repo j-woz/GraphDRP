@@ -13,6 +13,27 @@ import datetime
 import argparse
 
 
+from time import time
+class Timer:
+    """
+    Measure runtime.
+    """
+    def __init__(self):
+        self.start = time()
+
+    def timer_end(self):
+        self.end = time()
+        time_diff = self.end - self.start
+        return time_diff
+
+    def display_timer(self, print_fn=print):
+        time_diff = self.timer_end()
+        if (time_diff)//3600 > 0:
+            print_fn("Runtime: {:.1f} hrs".format( (time_diff)/3600) )
+        else:
+            print_fn("Runtime: {:.1f} mins".format( (time_diff)/60) )
+
+
 # training function at each epoch
 def train(model, device, train_loader, optimizer, epoch, log_interval):
     print('Training on {} samples...'.format(len(train_loader.dataset)))
@@ -51,6 +72,25 @@ def predicting(model, device, loader):
 def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
          cuda_name):
 
+    # ap
+    timer = Timer()
+    if args.set == "mix":
+        set_str = "_mix"
+        val_scheme = "mixed"
+    elif args.set == "cell":
+        set_str = "_cell_blind"
+        val_scheme = "cell_blind"
+    elif args.set == "drug":
+        set_str = "_blind"
+        val_scheme = "drug_blind"
+
+    # ap
+    from pathlib import Path
+    fdir = Path(__file__).resolve().parent
+    outdir = fdir/"results"
+    # outdir = os.path.join(fdir, "results")
+    os.makedirs(outdir, exist_ok=True)
+
     print('Learning rate: ', lr)
     print('Epochs: ', num_epoch)
 
@@ -60,17 +100,23 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     val_losses = []
     val_pearsons = []
     print('\nrunning on ', model_st + '_' + dataset)
-    processed_data_file_train = 'data/processed/' + dataset + '_train_mix' + '.pt' # ap: "mix" is hard-coded
-    processed_data_file_val = 'data/processed/' + dataset + '_val_mix' + '.pt'
-    processed_data_file_test = 'data/processed/' + dataset + '_test_mix' + '.pt'
+    # processed_data_file_train = 'data/processed/' + dataset + '_train_mix' + '.pt' # ap: "mix" is hard-coded
+    # processed_data_file_val = 'data/processed/' + dataset + '_val_mix' + '.pt'
+    # processed_data_file_test = 'data/processed/' + dataset + '_test_mix' + '.pt'
+    processed_data_file_train = 'data/processed/' + dataset + '_train' + set_str + '.pt' # ap: allow to specify mix/cell_blind/drug_blind
+    processed_data_file_val = 'data/processed/' + dataset + '_val' + set_str + '.pt'
+    processed_data_file_test = 'data/processed/' + dataset + '_test' + set_str + '.pt'
     if ((not os.path.isfile(processed_data_file_train))
             or (not os.path.isfile(processed_data_file_val))
             or (not os.path.isfile(processed_data_file_test))):
         print('please run create_data.py to prepare data in pytorch format!')
     else:
-        train_data = TestbedDataset(root='data', dataset=dataset + '_train_mix')
-        val_data = TestbedDataset(root='data', dataset=dataset + '_val_mix')
-        test_data = TestbedDataset(root='data', dataset=dataset + '_test_mix')
+        # train_data = TestbedDataset(root='data', dataset=dataset + '_train_mix')
+        # val_data = TestbedDataset(root='data', dataset=dataset + '_val_mix')
+        # test_data = TestbedDataset(root='data', dataset=dataset + '_test_mix')
+        train_data = TestbedDataset(root='data', dataset=dataset + '_train' + set_str)
+        val_data = TestbedDataset(root='data', dataset=dataset + '_val' + set_str)
+        test_data = TestbedDataset(root='data', dataset=dataset + '_test' + set_str)
 
         # make data PyTorch mini-batch processing ready
         train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -86,13 +132,16 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
         best_mse = 1000
         best_pearson = 1
         best_epoch = -1
-        model_file_name = 'model_' + model_st + '_' + dataset + '.model'
-        result_file_name = 'result_' + model_st + '_' + dataset + '.csv'
-        loss_fig_name = 'model_' + model_st + '_' + dataset + '_loss'
-        pearson_fig_name = 'model_' + model_st + '_' + dataset + '_pearson'
+        # model_file_name = 'model_' + model_st + '_' + dataset + '.model'
+        # result_file_name = 'result_' + model_st + '_' + dataset + '.csv'
+        # loss_fig_name = 'model_' + model_st + '_' + dataset + '_loss'
+        # pearson_fig_name = 'model_' + model_st + '_' + dataset + '_pearson'
+        model_file_name = outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '.model')
+        result_file_name = outdir/('result_' + model_st + '_' + dataset + '_' + val_scheme + '.csv')
+        loss_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_loss'))
+        pearson_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_pearson'))
         for epoch in range(num_epoch):
-            train_loss = train(model, device, train_loader, optimizer, epoch + 1,
-                               log_interval)
+            train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
             G, P = predicting(model, device, val_loader)
             ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
 
@@ -124,12 +173,28 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
         draw_loss(train_losses, val_losses, loss_fig_name)
         draw_pearson(val_pearsons, pearson_fig_name)
 
-        # ap: Drop raw predictions
+        # ap: Add code to creade dir for results
+        # res_dir = fdir/"ap_res"
+        # os.makedirs(res_dir, exist_ok=True)
+
+        # ap: Add to drop raw predictions
         G_test, P_test = predicting(model, device, test_loader)
         preds = pd.DataFrame({"True": G_test, "Pred": P_test})
-        preds_file_name = 'preds_' + model_st + '_' + dataset + '.csv'
-        preds.to_csv(preds_file_name, index=False)
+        preds_file_name = f"preds_{val_scheme}_{model_st}_{dataset}.csv"
+        preds.to_csv(outdir/preds_file_name, index=False)
 
+        # ap: Add code to calc and dump scores
+        # ret = [rmse(G_test, P_test), mse(G_test, P_test), pearson(G_test, P_test), spearman(G_test, P_test)]
+        ccp_scr = pearson(G_test, P_test)
+        rmse_scr = rmse(G_test, P_test)
+        scores = {"ccp": ccp_scr, "rmse": rmse_scr}
+        import json
+        with open(outdir/f"scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
+            json.dump(scores, f, ensure_ascii=False, indent=4)
+
+        timer.display_timer()
+        print(scores)
+        print("Done.")
 
 
 if __name__ == "__main__":
@@ -166,6 +231,7 @@ if __name__ == "__main__":
         '--log_interval', type=int, required=False, default=20, help='Log interval')
     parser.add_argument(
         '--cuda_name', type=str, required=False, default="cuda:0", help='Cuda')
+    parser.add_argument("--set", type=str, choices=["mix", "cell", "drug"], help="Validation scheme.")
 
     args = parser.parse_args()
 

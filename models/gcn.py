@@ -6,7 +6,7 @@ from torch_geometric.nn import GCNConv, global_max_pool as gmp
 
 # GCN based model
 class GCNNet(torch.nn.Module):
-    def __init__(self, n_output=1, n_filters=32, embed_dim=128,num_features_xd=78, num_features_xt=25, output_dim=128, dropout=0.5):
+    def __init__(self, n_output=1, n_filters=32, embed_dim=128, num_features_xd=78, num_features_xt=25, output_dim=128, dropout=0.5):
 
         super(GCNNet, self).__init__()
 
@@ -14,7 +14,7 @@ class GCNNet(torch.nn.Module):
         self.n_output = n_output
         self.conv1 = GCNConv(num_features_xd, num_features_xd)
         self.conv2 = GCNConv(num_features_xd, num_features_xd*2)
-        self.conv3 = GCNConv(num_features_xd*2, num_features_xd * 4)
+        self.conv3 = GCNConv(num_features_xd*2, num_features_xd*4)
         self.fc_g1 = torch.nn.Linear(num_features_xd*4, 1024)
         self.fc_g2 = torch.nn.Linear(1024, output_dim)
         self.relu = nn.ReLU()
@@ -39,7 +39,7 @@ class GCNNet(torch.nn.Module):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         # get protein input
         target = data.target
-        target = target[:,None,:]
+        target = target[:, None, :]
 
         x = self.conv1(x, edge_index)
         x = self.relu(x)

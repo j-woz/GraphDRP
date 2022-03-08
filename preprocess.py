@@ -20,6 +20,9 @@ import argparse
 
 
 def is_not_float(string_list):
+    """ from tCCN
+    https://github.com/Lowpassfilter/tCNNS-Project/blob/master/data/preprocess.py
+    """
     try:
         for string in string_list:
             float(string)
@@ -34,13 +37,19 @@ The following 4 function is used to preprocess the drug data. We download the dr
 
 folder = "data/"
 #folder = ""
-
+folder = "ap_data/" # ap: new
 
 def load_drug_list():
+    """ from tCCN
+    https://github.com/Lowpassfilter/tCNNS-Project/blob/master/data/preprocess.py
+
+    Load the downloaded GDSC drug metadata.
+    """
     filename = folder + "Druglist.csv"
-    csvfile = open(filename, "rb")
+    # csvfile = open(filename, "rb") # ap: comment
+    csvfile = open(filename, "r") # ap: new
     reader = csv.reader(csvfile)
-    next(reader, None)
+    next(reader, None)  # skip first row (header)
     drugs = []
     for line in reader:
         drugs.append(line[0])
@@ -49,10 +58,18 @@ def load_drug_list():
 
 
 def write_drug_cid():
+    """ from tCCN
+    https://github.com/Lowpassfilter/tCNNS-Project/blob/master/data/preprocess.py
+
+    Create 2 csv table:
+    1. pychem_cid.csv: 2-col table with (drug_name, cid) pairs
+    2. unknow_drug_by_pychem.csv: list of drug names that were not found in PubChem
+    """
     drugs = load_drug_list()
     drug_id = []
     datas = []
-    outputfile = open(folder + 'pychem_cid.csv', 'wb')
+    # outputfile = open(folder + 'pychem_cid.csv', 'wb') # ap: comment
+    outputfile = open(folder + 'pychem_cid.csv', 'w') # ap: new
     wr = csv.writer(outputfile)
     unknow_drug = []
     for drug in drugs:
@@ -69,13 +86,17 @@ def write_drug_cid():
         row = [drug, str(cid)]
         wr.writerow(row)
     outputfile.close()
-    outputfile = open(folder + "unknow_drug_by_pychem.csv", 'wb')
+    # outputfile = open(folder + "unknow_drug_by_pychem.csv", 'wb') # ap: comment
+    outputfile = open(folder + "unknow_drug_by_pychem.csv", 'w') # ap: new
     wr = csv.writer(outputfile)
     wr.writerow(unknow_drug)
+    outputfile.close() # ap: new
 
 
 def cid_from_other_source():
-    """
+    """ from tCCN
+    https://github.com/Lowpassfilter/tCNNS-Project/blob/master/data/preprocess.py
+
     some drug can not be found in pychem, so I try to find some cid manually.
     the small_molecule.csv is downloaded from http://lincs.hms.harvard.edu/db/sm/
     """
@@ -98,6 +119,11 @@ def cid_from_other_source():
 
 
 def load_cid_dict():
+    """ from tCCN
+    https://github.com/Lowpassfilter/tCNNS-Project/blob/master/data/preprocess.py
+    
+    Load a csv that contains drug meta with CID (PubChem IDs).
+    """
     reader = csv.reader(open(folder + "pychem_cid.csv"))
     pychem_dict = {}
     for item in reader:
@@ -107,6 +133,11 @@ def load_cid_dict():
 
 
 def download_smiles():
+    """ from tCCN
+    https://github.com/Lowpassfilter/tCNNS-Project/blob/master/data/preprocess.py
+    
+    Download SMILES from PubChem.
+    """
     cids_dict = load_cid_dict()
     cids = [v for k, v in cids_dict.iteritems()]
     inv_cids_dict = {v: k for k, v in cids_dict.iteritems()}
@@ -132,11 +163,24 @@ def download_smiles():
 
 
 """
-The following code will convert the SMILES format into onehot format
+The following code will convert the SMILES format into onehot format (comment from tCNN)
+The following code will convert the SMILES format into graph format (relevant comment)
 """
 
-
 def atom_features(atom):
+    """ (ap) Extract atom features and put into array. """
+    # a1 = one_of_k_encoding_unk(atom.GetSymbol(), [
+    #         'C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca', 'Fe',
+    #         'As', 'Al', 'I', 'B', 'V', 'K', 'Tl', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co',
+    #         'Se', 'Ti', 'Zn', 'H', 'Li', 'Ge', 'Cu', 'Au', 'Ni', 'Cd', 'In', 'Mn', 'Zr',
+    #         'Cr', 'Pt', 'Hg', 'Pb', 'Unknown'
+    #     ])
+    # a2 = one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    # a3 = one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    # a4 = one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    # a5 = [atom.GetIsAromatic()]
+    # arr = np.array(a1 + a2 + a3 + a4 + a5)
+    # return arr
     return np.array(
         one_of_k_encoding_unk(atom.GetSymbol(), [
             'C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca', 'Fe',
@@ -164,9 +208,10 @@ def one_of_k_encoding_unk(x, allowable_set):
 
 
 def smile_to_graph(smile):
+    """ (ap) Convert SMILES to graph. """
     mol = Chem.MolFromSmiles(smile)
 
-    c_size = mol.GetNumAtoms()
+    c_size = mol.GetNumAtoms()  # num atoms in molecule
 
     features = []
     for atom in mol.GetAtoms():
@@ -176,24 +221,32 @@ def smile_to_graph(smile):
     edges = []
     for bond in mol.GetBonds():
         edges.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
-    g = nx.Graph(edges).to_directed()
+    g = nx.Graph(edges).to_directed()  # return a directed graph
     edge_index = []
     for e1, e2 in g.edges:
         edge_index.append([e1, e2])
-
+    # (ap) How is edges list different from edge_index list??
+    # It seems that len(edge_index) is twice the size of len(edges)
     return c_size, features, edge_index
 
 
 def load_drug_smile():
-    reader = csv.reader(open(folder + "drug_smiles.csv"))
+    """
+    (ap) drug_smiles.csv is a table [224, 4] with 223 drugs.
+    Creates and returns the following:
+    drug_dict:   dict (drug names, rows in which the drug appears)
+    drug_smile:  list of drug SMILES
+    smile_graph: dict (SMILES, [c_size, features, edge_index])
+    """
+    reader = csv.reader(open(folder + "drug_smiles.csv"))  # generated by download_smiles()
     next(reader, None)
 
     drug_dict = {}
     drug_smile = []
 
     for item in reader:
-        name = item[0]
-        smile = item[2]
+        name = item[0]   # Drug name
+        smile = item[2]  # Drug canonical SMILES
 
         if name in drug_dict:
             pos = drug_dict[name]
@@ -204,37 +257,52 @@ def load_drug_smile():
 
     smile_graph = {}
     for smile in drug_smile:
-        g = smile_to_graph(smile)
+        g = smile_to_graph(smile)  # (ap) g: [c_size, features, edge_index]
         smile_graph[smile] = g
 
     return drug_dict, drug_smile, smile_graph
 
 
+"""
+The following part will prepare the mutation features for the cell.
+"""
+
 def save_cell_mut_matrix():
+    """
+    (ap) Create a binary matrix where 1 indicates that a mutation
+    is present. Rows are CCLs and cols are mutations.
+    PANCANCER_Genetic_feature.csv is a table [714056, 6]. The
+    col "genetic_feature" contains either mutation suffixed with
+    "_mut" or CNA prefixes with "cna_"
+    """
     f = open(folder + "PANCANCER_Genetic_feature.csv")
     reader = csv.reader(f)
     next(reader)
     features = {}
-    cell_dict = {}
-    mut_dict = {}
-    matrix_list = []
+    cell_dict = {}    # dict of CCL
+    mut_dict = {}     # dict of genetic features (mutations and CNA)
+    matrix_list = []  # list of matrix coordinates where mutations are present
 
     for item in reader:
-        cell_id = item[1]
-        mut = item[5]
-        is_mutated = int(item[6])
+        cell_id = item[1]          # CCL ID
+        mut = item[5]              # mutation
+        is_mutated = int(item[6])  # whether it's mutated
 
+        # (ap) Mutations will be stored in columns
         if mut in mut_dict:
             col = mut_dict[mut]
         else:
             col = len(mut_dict)
             mut_dict[mut] = col
 
+        # (ap) CCLs will be stored in rows
         if cell_id in cell_dict:
             row = cell_dict[cell_id]
         else:
             row = len(cell_dict)
             cell_dict[cell_id] = row
+
+        # (ap) append coordinates where mutations are active
         if is_mutated == 1:
             matrix_list.append((row, col))
 
@@ -253,9 +321,8 @@ def save_cell_mut_matrix():
 This part is used to extract the drug - cell interaction strength. it contains IC50, AUC, Max conc, RMSE, Z_score
 """
 
-
 def save_mix_drug_cell_matrix():
-    f = open(folder + "PANCANCER_IC.csv")
+    f = open(folder + "PANCANCER_IC.csv") # contains the IC50 of 250 drugs and 1074 CCL
     reader = csv.reader(f)
     next(reader)
 
@@ -266,9 +333,9 @@ def save_mix_drug_cell_matrix():
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
 
     for item in reader:
-        drug = item[0]
-        cell = item[3]
-        ic50 = item[8]
+        drug = item[0]  # Drug name
+        cell = item[3]  # Cosmic sample id
+        ic50 = item[8]  # IC50
         ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
         temp_data.append((drug, cell, ic50))
 
@@ -278,19 +345,20 @@ def save_mix_drug_cell_matrix():
     lst_drug = []
     lst_cell = []
     random.shuffle(temp_data)
-    for data in temp_data:
+    for data in temp_data:  # tuples of (drug name, cell id, IC50)
         drug, cell, ic50 = data
-        if drug in drug_dict and cell in cell_dict:
+        if drug in drug_dict and cell in cell_dict:  # len(drug_dict): 223, len(cell_dict): 990
             xd.append(drug_smile[drug_dict[drug]])
             xc.append(cell_feature[cell_dict[cell]])
             y.append(ic50)
-            bExist[drug_dict[drug], cell_dict[cell]] = 1
+            bExist[drug_dict[drug], cell_dict[cell]] = 1  # This is not used (??)
             lst_drug.append(drug)
             lst_cell.append(cell)
 
     with open('drug_dict', 'wb') as fp:
         pickle.dump(drug_dict, fp)
 
+    # Three arrays of size 191049, as the number of responses
     xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
 
     size = int(xd.shape[0] * 0.8)
@@ -415,7 +483,7 @@ def save_blind_drug_matrix():
                 y_test.append(ic50)
                 lstDrugTest.append(drug)
 
-    with open('drug_bind_test', 'wb') as fp:
+    with open('drug_blind_test', 'wb') as fp:
         pickle.dump(lstDrugTest, fp)
 
     print(len(y_train), len(y_val), len(y_test))
@@ -526,7 +594,7 @@ def save_blind_cell_matrix():
                 y_test.append(ic50)
                 lstCellTest.append(cell)
 
-    with open('cell_bind_test', 'wb') as fp:
+    with open('cell_blind_test', 'wb') as fp:
         pickle.dump(lstCellTest, fp)
 
     print(len(y_train), len(y_val), len(y_test))
@@ -627,6 +695,22 @@ def save_best_individual_drug_cell_matrix():
 
 
 if __name__ == "__main__":
+    import candle
+    from pathlib import Path
+    fdir = Path(__file__).resolve().parent
+
+    ftp_fname = fdir/"ftp_file_list"
+    with open(ftp_fname, "r") as f:
+        data_file_list = f.readlines()
+
+    ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/reproducability/GraphDRP/data"
+    for f in data_file_list:
+        candle.get_file(fname=f.strip(),
+                        origin=os.path.join(ftp_origin, f.strip()),
+                        unpack=False, md5_hash=None,
+                        datadir=fdir/"./data",
+                        cache_subdir="common")
+
     parser = argparse.ArgumentParser(description='prepare dataset to train model')
     parser.add_argument(
         '--choice',
