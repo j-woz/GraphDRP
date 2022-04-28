@@ -1,6 +1,6 @@
 import os
 import csv
-from pubchempy import *
+# from pubchempy import *
 import numpy as np
 import numbers
 import h5py
@@ -17,6 +17,7 @@ import pickle
 import sys
 import matplotlib.pyplot as plt
 import argparse
+from pathlib import Path
 
 
 def is_not_float(string_list):
@@ -355,9 +356,9 @@ def save_mix_drug_cell_matrix():
             xd.append(drug_smile[drug_dict[drug]])
             xc.append(cell_feature[cell_dict[cell]])
             y.append(ic50)
+            bExist[drug_dict[drug], cell_dict[cell]] = 1  # This is not used (??)
             lst_drug.append(drug)
             lst_cell.append(cell)
-            bExist[drug_dict[drug], cell_dict[cell]] = 1  # not used
 
     # Three arrays of size 191049, as the number of responses
     xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
@@ -419,10 +420,7 @@ def save_blind_drug_matrix():
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
-    with open('drug_dict', 'wb') as fp:
-        pickle.dump(drug_dict, fp)
-
-    # matrix_list = []  # not used
+    matrix_list = []  # not used
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
 
     temp_data = []
@@ -449,17 +447,18 @@ def save_blind_drug_matrix():
     xc_unknown = []  # not used
     y_unknown = []   # not used
 
-    dict_drug_cell = {}  # keys are drug names
+    dict_drug_cell = {}
 
     random.shuffle(temp_data)  # shuffle cell-drug combinations
-    for data in temp_data:  # tuples of (drug name, cell id, IC50)
+    for data in temp_data:
         drug, cell, ic50 = data
         if drug in drug_dict and cell in cell_dict:
             if drug in dict_drug_cell:
                 dict_drug_cell[drug].append((cell, ic50))
             else:
                 dict_drug_cell[drug] = [(cell, ic50)]
-            bExist[drug_dict[drug], cell_dict[cell]] = 1  # not used
+
+            bExist[drug_dict[drug], cell_dict[cell]] = 1
 
     lstDrugTest = []
 
@@ -529,10 +528,7 @@ def save_blind_cell_matrix():
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
-    with open('drug_dict', 'wb') as fp:
-        pickle.dump(drug_dict, fp)
-
-    # matrix_list = []  # not used
+    matrix_list = []  # not used
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
 
     temp_data = []
@@ -559,17 +555,18 @@ def save_blind_cell_matrix():
     xc_unknown = []  # not used
     y_unknown = []   # not used
 
-    dict_drug_cell = {}  # keys are cell names
+    dict_drug_cell = {}
 
-    random.shuffle(temp_data)  # shuffle cell-drug combinations
-    for data in temp_data:  # tuples of (drug name, cell id, IC50)
+    random.shuffle(temp_data)
+    for data in temp_data:
         drug, cell, ic50 = data
         if drug in drug_dict and cell in cell_dict:
             if cell in dict_drug_cell:
                 dict_drug_cell[cell].append((drug, ic50))
             else:
                 dict_drug_cell[cell] = [(drug, ic50)]
-            bExist[drug_dict[drug], cell_dict[cell]] = 1  # not used
+
+            bExist[drug_dict[drug], cell_dict[cell]] = 1
 
     lstCellTest = []
 
@@ -639,7 +636,7 @@ def save_best_individual_drug_cell_matrix():
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
-    # matrix_list = []  # not used
+    matrix_list = []  # not used
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
 
     temp_data = []
@@ -666,8 +663,8 @@ def save_best_individual_drug_cell_matrix():
                 dict_drug_cell[drug].append((cell, ic50))
             else:
                 dict_drug_cell[drug] = [(cell, ic50)]
-            bExist[drug_dict[drug], cell_dict[cell]] = 1  # not used
 
+            bExist[drug_dict[drug], cell_dict[cell]] = 1
     cells = []
     for drug, values in dict_drug_cell.items():
         for v in values:
@@ -693,6 +690,253 @@ def save_best_individual_drug_cell_matrix():
         smile_graph=smile_graph,
         saliency_map=True)
 
+
+def create_complete_set():
+    """ Create table that lists of [drug, cell, ic50] that have all the
+    required features.
+    """
+
+
+def create_lc_sets(split_type: str="mix"):
+    """ Creates subsets for training, val, and test. """
+    f = open(folder + "PANCANCER_IC.csv") # IC50 of 250 drugs and 1074 CCL
+    reader = csv.reader(f)
+    next(reader)
+
+    cell_dict, _ = save_cell_mut_matrix()
+    drug_dict, _, _ = load_drug_smile()
+
+    temp_data = []
+    for item in reader:
+        drug = item[0]  # Drug name
+        cell = item[3]  # Cosmic sample id
+        ic50 = item[8]  # IC50
+        ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
+        temp_data.append((drug, cell, ic50))
+
+    fdir = os.path.dirname(os.path.abspath(__file__))
+    lc_dir = Path(os.path.join(fdir, "lc_data"))
+    os.makedirs(lc_dir, exist_ok=True)
+
+    import pdb; pdb.set_trace()
+    if split_type == "mix":
+        outdir = lc_dir/"mix_drug_cell"
+        os.makedirs(outdir, exist_ok=True)
+
+        drug_cell_rsp = []  # ap: data that contains all features
+        random.shuffle(temp_data)  # shuffle cell-drug combinations
+        for data in temp_data:  # tuples of (drug name, cell id, IC50)
+            drug, cell, ic50 = data
+            if drug in drug_dict and cell in cell_dict:
+                drug_cell_rsp.append((drug, cell, ic50))  # ap
+
+        df = pd.DataFrame(drug_cell_rsp, columns=["Drug", "Cell", "IC50"])
+
+        # Define vars that determine train, val, and test sizes
+        size = int(len(df) * 0.8)
+        size1 = int(len(df) * 0.9)
+
+        df_tr = df[:size]
+        df_vl = df[size:size1]
+        df_te = df[size1:]
+        df_tr.to_csv(outdir/"train_data.csv", index=False)
+        df_vl.to_csv(outdir/"val_data.csv", index=False)
+        df_te.to_csv(outdir/"test_data.csv", index=False)
+
+        df = pd.concat([df_tr, df_vl, df_te], axis=0)
+        df.to_csv(outdir/"drug_cell_rsp.csv", index=False)
+
+    elif split_type == "drug":
+        outdir = lc_dir/"drug_blind"
+        os.makedirs(outdir, exist_ok=True)
+
+        dict_drug_cell = {}
+        random.shuffle(temp_data)  # shuffle cell-drug combinations
+        for data in temp_data:
+            drug, cell, ic50 = data
+            if drug in drug_dict and cell in cell_dict:
+                if drug in dict_drug_cell:
+                    dict_drug_cell[drug].append((cell, ic50))
+                else:
+                    dict_drug_cell[drug] = [(cell, ic50)]
+
+        # Define vars that determine train, val, and test sizes
+        size = int(len(dict_drug_cell) * 0.8)
+        size1 = int(len(dict_drug_cell) * 0.9)
+
+        import pdb; pdb.set_trace()
+        # Create data splits
+        df_tr = []  # ap: data that contains all features
+        df_vl = []  # ap: data that contains all features
+        df_te = []  # ap: data that contains all features
+        pos = 0
+        for drug, values in dict_drug_cell.items():
+            pos += 1
+            for v in values:
+                cell, ic50 = v
+                if pos < size:
+                    df_tr.append((drug, cell, ic50))  # ap
+                elif pos < size1:
+                    df_vl.append((drug, cell, ic50))  # ap
+                else:
+                    df_te.append((drug, cell, ic50))  # ap
+
+        df_tr = pd.DataFrame(df_tr, columns=["Drug", "Cell", "IC50"])
+        df_vl = pd.DataFrame(df_vl, columns=["Drug", "Cell", "IC50"])
+        df_te = pd.DataFrame(df_te, columns=["Drug", "Cell", "IC50"])
+        df_tr.to_csv(outdir/"train_data.csv", index=False)
+        df_vl.to_csv(outdir/"val_data.csv", index=False)
+        df_te.to_csv(outdir/"test_data.csv", index=False)
+
+        # set(df_tr["Drug"].values).intersection(set(df_vl["Drug"].values))
+        # set(df_tr["Drug"].values).intersection(set(df_te["Drug"].values))
+        # set(df_vl["Drug"].values).intersection(set(df_te["Drug"].values))
+
+        df = pd.concat([df_tr, df_vl, df_te], axis=0)
+        df.to_csv(outdir/"drug_cell_rsp.csv", index=False)
+
+    elif split_type == "cell":
+        outdir = lc_dir/"cell_blind"
+        os.makedirs(outdir, exist_ok=True)
+        
+        df_tr = None
+        df_vl = None
+        df_te = None
+
+    # --------------------------------------------
+
+    # Save splits
+    # lc_init_args = {'cv_lists': cv_lists,
+    #                 'lc_step_scale': args['lc_step_scale'],
+    #                 'lc_sizes': args['lc_sizes'],
+    #                 'min_size': args['min_size'],
+    #                 'max_size': args['max_size'],
+    #                 'lc_sizes_arr': args['lc_sizes_arr'],
+    #                 'print_fn': print
+    #                 }
+
+    lc_init_args = {'cv_lists': None,
+                    'lc_step_scale': "log",
+                    'lc_sizes': 7,
+                    'min_size': None,
+                    'max_size': None,
+                    'lc_sizes_arr': None,
+                    'print_fn': print
+                    }
+
+    lc_step_scale = "log"
+    lc_sizes = 7
+    min_size = 1024
+    max_size = df_tr.shape[0]
+    # from learningcurve.lrn_crv import LearningCurve
+    # lc_obj = LearningCurve(X=None, Y=None, meta=None, **lc_init_args)
+    pw = np.linspace(0, lc_sizes-1, num=lc_sizes) / (lc_sizes-1)
+    m = min_size * (max_size/min_size) ** pw
+    m = np.array([int(i) for i in m])  # cast to int
+    lc_sizes = m
+
+    # LC subsets
+    for i, sz in enumerate(lc_sizes):
+        aa = df_tr[:sz]
+        aa.to_csv(outdir/f"train_sz_{i+1}.csv", index=False)
+    return None
+
+
+def create_arr_from_data(df, drug_dict, cell_dict, drug_smile, cell_feature):
+    """ ... """
+    xd, xc, y = [], [], []
+
+    # import pdb; pdb.set_trace()
+    df_data = [(r[1]["Drug"], r[1]["Cell"], r[1]["IC50"]) for r in df.iterrows()]
+    for data in df_data:  # tuples of (drug name, cell id, IC50)
+        drug, cell, ic50 = data
+        if drug in drug_dict and cell in cell_dict:
+            xd.append(drug_smile[drug_dict[drug]])
+            xc.append(cell_feature[cell_dict[cell]])
+            y.append(ic50)
+
+    # Three arrays of size 191049, as the number of responses
+    xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
+    return xd, xc, y
+
+
+def create_lc_datasets(split_type: str="mix"):
+    """ Creates subsets for training, val, and test. """
+    f = open(folder + "PANCANCER_IC.csv") # IC50 of 250 drugs and 1074 CCL
+    reader = csv.reader(f)
+    next(reader)
+
+    cell_dict, cell_feature = save_cell_mut_matrix()
+    drug_dict, drug_smile, smile_graph = load_drug_smile()
+
+    fdir = os.path.dirname(os.path.abspath(__file__))
+    lc_dir = Path(os.path.join(fdir, "lc_data"))
+
+    import pdb; pdb.set_trace()
+    if split_type == "mix":
+        datadir = lc_dir/"mix_drug_cell"
+        types = {"Drug": str, "Cell": str, "IC50": float}
+
+        # Create PyTorch datasets
+        dataset = 'GDSC'
+        print('preparing ', dataset + '_train.pt in pytorch format!')
+        root = datadir
+
+        fn_args = {"drug_dict": drug_dict,
+                   "cell_dict": cell_dict,
+                   "drug_smile": drug_smile,
+                   "cell_feature": cell_feature}
+
+        tr_sz_files = list(datadir.glob("train_sz*.csv"))
+        for fpath in tr_sz_files:
+            data = pd.read_csv(fpath, dtype=types)
+            xd_train, xc_train, y_train = create_arr_from_data(data, **fn_args)
+            train_data = TestbedDataset(
+                root=root,
+                dataset=fpath.with_suffix("").name,
+                xd=xd_train,
+                xt=xc_train,
+                y=y_train,
+                smile_graph=smile_graph)
+
+        tr_data = pd.read_csv(datadir/"train_data.csv", dtype=types)
+        xd_train, xc_train, y_train = create_arr_from_data(tr_data, **fn_args)
+        val_data = TestbedDataset(
+            root=root,
+            dataset="train_data",
+            xd=xd_train,
+            xt=xc_train,
+            y=y_train,
+            smile_graph=smile_graph)
+
+        vl_data = pd.read_csv(datadir/"val_data.csv", dtype=types)
+        xd_val, xc_val, y_val = create_arr_from_data(vl_data, **fn_args)
+        val_data = TestbedDataset(
+            root=root,
+            dataset="val_data",
+            xd=xd_val,
+            xt=xc_val,
+            y=y_val,
+            smile_graph=smile_graph)
+
+        te_data = pd.read_csv(datadir/"test_data.csv", dtype=types)
+        xd_test, xc_test, y_test = create_arr_from_data(
+            te_data, drug_dict, cell_dict, drug_smile, cell_feature)
+        test_data = TestbedDataset(
+            root=root,
+            dataset="test_data",
+            xd=xd_test,
+            xt=xc_test,
+            y=y_test,
+            smile_graph=smile_graph)
+
+    elif split_type == "drug":
+        datadir = lc_dir/"drug_blind"
+
+    elif split_type == "cell":
+        datadir = lc_dir/"cell_blind"
+    return None
+        
 
 if __name__ == "__main__":
     import candle
@@ -720,17 +964,26 @@ if __name__ == "__main__":
         help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
     args = parser.parse_args()
     choice = args.choice
-    if choice == 0:
-        # save mix test dataset
-        save_mix_drug_cell_matrix()
-    elif choice == 1:
-        # save saliency map dataset
-        save_best_individual_drug_cell_matrix()
-    elif choice == 2:
-        # save blind drug dataset
-        save_blind_drug_matrix()
-    elif choice == 3:
-        # save blind cell dataset
-        save_blind_cell_matrix()
-    else:
-        print("Invalide option, choose 0 -> 4")
+
+    # import pdb; pdb.set_trace()
+    create_lc_sets(split_type="mix")
+    # create_lc_sets(split_type="drug")
+
+    # import pdb; pdb.set_trace()
+    create_lc_datasets(split_type="mix")
+
+#     import pdb; pdb.set_trace()
+#     if choice == 0:
+#         # save mix test dataset
+#         save_mix_drug_cell_matrix()
+#     elif choice == 1:
+#         # save saliency map dataset
+#         save_best_individual_drug_cell_matrix()
+#     elif choice == 2:
+#         # save blind drug dataset
+#         save_blind_drug_matrix()
+#     elif choice == 3:
+#         # save blind cell dataset
+#         save_blind_cell_matrix()
+#     else:
+#         print("Invalide option, choose 0 -> 4")

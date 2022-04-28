@@ -87,8 +87,10 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     # ap
     from pathlib import Path
     fdir = Path(__file__).resolve().parent
-    outdir = fdir/"results"
-    # outdir = os.path.join(fdir, "results")
+    if args.gout is not None:
+        outdir = fdir/args.gout
+    else:
+        outdir = fdir/"results"
     os.makedirs(outdir, exist_ok=True)
 
     print('Learning rate: ', lr)
@@ -100,12 +102,31 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     val_losses = []
     val_pearsons = []
     print('\nrunning on ', model_st + '_' + dataset)
-    # processed_data_file_train = 'data/processed/' + dataset + '_train_mix' + '.pt' # ap: "mix" is hard-coded
-    # processed_data_file_val = 'data/processed/' + dataset + '_val_mix' + '.pt'
-    # processed_data_file_test = 'data/processed/' + dataset + '_test_mix' + '.pt'
-    processed_data_file_train = 'data/processed/' + dataset + '_train' + set_str + '.pt' # ap: allow to specify mix/cell_blind/drug_blind
-    processed_data_file_val = 'data/processed/' + dataset + '_val' + set_str + '.pt'
-    processed_data_file_test = 'data/processed/' + dataset + '_test' + set_str + '.pt'
+
+    root = args.root
+    if args.tr_file is None:
+        processed_data_file_train = root + '/processed/' + dataset + '_train' + set_str + '.pt'
+    else:
+        processed_data_file_train = root + '/processed/' + args.tr_file + '.pt'
+
+    if args.vl_file is None:
+        processed_data_file_val = root + '/processed/' + dataset + '_val' + set_str + '.pt'
+    else:
+        processed_data_file_val = root + '/processed/' + args.vl_file + '.pt'
+
+    if args.tr_file is None:
+        processed_data_file_test = root + '/processed/'+ dataset + '_test' + set_str + '.pt'
+    else:
+        processed_data_file_test = root + '/processed/' + args.te_file + '.pt'
+
+    # # processed_data_file_train = 'data/processed/' + dataset + '_train_mix' + '.pt' # ap: "mix" is hard-coded
+    # # processed_data_file_val = 'data/processed/' + dataset + '_val_mix' + '.pt'
+    # # processed_data_file_test = 'data/processed/' + dataset + '_test_mix' + '.pt'
+    # processed_data_file_train = 'data/processed/' + dataset + '_train' + set_str + '.pt' # ap: allow to specify mix/cell_blind/drug_blind
+    # processed_data_file_val = 'data/processed/' + dataset + '_val' + set_str + '.pt'
+    # processed_data_file_test = 'data/processed/' + dataset + '_test' + set_str + '.pt'
+
+    # import pdb; pdb.set_trace()
     if ((not os.path.isfile(processed_data_file_train))
             or (not os.path.isfile(processed_data_file_val))
             or (not os.path.isfile(processed_data_file_test))):
@@ -114,9 +135,16 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
         # train_data = TestbedDataset(root='data', dataset=dataset + '_train_mix')
         # val_data = TestbedDataset(root='data', dataset=dataset + '_val_mix')
         # test_data = TestbedDataset(root='data', dataset=dataset + '_test_mix')
-        train_data = TestbedDataset(root='data', dataset=dataset + '_train' + set_str)
-        val_data = TestbedDataset(root='data', dataset=dataset + '_val' + set_str)
-        test_data = TestbedDataset(root='data', dataset=dataset + '_test' + set_str)
+
+        # import pdb; pdb.set_trace()
+        # train_data = TestbedDataset(root='data', dataset=dataset + '_train' + set_str)
+        # val_data = TestbedDataset(root='data', dataset=dataset + '_val' + set_str)
+        # test_data = TestbedDataset(root='data', dataset=dataset + '_test' + set_str)
+
+        # import pdb; pdb.set_trace()
+        train_data = TestbedDataset(root=root, dataset=args.tr_file)
+        val_data = TestbedDataset(root=root, dataset=args.vl_file)
+        test_data = TestbedDataset(root=root, dataset=args.te_file)
 
         # make data PyTorch mini-batch processing ready
         train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -173,7 +201,7 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
         draw_loss(train_losses, val_losses, loss_fig_name)
         draw_pearson(val_pearsons, pearson_fig_name)
 
-        # ap: Add code to creade dir for results
+        # ap: Add code to create dir for results
         # res_dir = fdir/"ap_res"
         # os.makedirs(res_dir, exist_ok=True)
 
@@ -232,7 +260,16 @@ if __name__ == "__main__":
     parser.add_argument(
         '--cuda_name', type=str, required=False, default="cuda:0", help='Cuda')
     parser.add_argument("--set", type=str, choices=["mix", "cell", "drug"], help="Validation scheme.")
-
+    parser.add_argument('--root', required=False, default="data", type=str,
+                        help='Path to processed .pt files (default: data).')
+    parser.add_argument('--gout', default=None, type=str,
+                        help="Global outdir to dump all the resusts.")
+    parser.add_argument('--tr_file', required=False, default=None, type=str,
+                        help='Train data path (default: None).')
+    parser.add_argument('--vl_file', required=False, default=None, type=str,
+                        help='Val data path (default: None).')
+    parser.add_argument('--te_file', required=False, default=None, type=str,
+                        help='Test data path (default: None).')
     args = parser.parse_args()
 
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model]
