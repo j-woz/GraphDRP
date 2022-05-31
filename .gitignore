@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# IMPROVE
+ap_data/
+datasplit/
+ftp_data/
+lc_data/
+lc_out/
+results/
