@@ -1,26 +1,29 @@
+import argparse
+import datetime
+import os
+import sys
+from random import shuffle
+from time import time
+
+import candle
 import numpy as np
 import pandas as pd
-import sys, os
-from random import shuffle
 import torch
 import torch.nn as nn
+
+import graphdrp as bmk
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 from utils import *
-import datetime
-import argparse
-
-import candle
-import graphdrp as bmk
 
 
-from time import time
 class Timer:
     """
     Measure runtime.
     """
+
     def __init__(self):
         self.start = time()
 
@@ -31,15 +34,15 @@ class Timer:
 
     def display_timer(self, print_fn=print):
         time_diff = self.timer_end()
-        if (time_diff)//3600 > 0:
-            print_fn("Runtime: {:.1f} hrs".format( (time_diff)/3600) )
+        if (time_diff) // 3600 > 0:
+            print_fn("Runtime: {:.1f} hrs".format((time_diff) / 3600))
         else:
-            print_fn("Runtime: {:.1f} mins".format( (time_diff)/60) )
+            print_fn("Runtime: {:.1f} mins".format((time_diff) / 60))
 
 
 # training function at each epoch
 def train(model, device, train_loader, optimizer, epoch, log_interval):
-    print('Training on {} samples...'.format(len(train_loader.dataset)))
+    print("Training on {} samples...".format(len(train_loader.dataset)))
     model.train()
     loss_fn = nn.MSELoss()
     avg_loss = []
@@ -52,9 +55,15 @@ def train(model, device, train_loader, optimizer, epoch, log_interval):
         optimizer.step()
         avg_loss.append(loss.item())
         if batch_idx % log_interval == 0:
-            print('Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data.x), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+            print(
+                "Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    epoch,
+                    batch_idx * len(data.x),
+                    len(train_loader.dataset),
+                    100.0 * batch_idx / len(train_loader),
+                    loss.item(),
+                )
+            )
     return sum(avg_loss) / len(avg_loss)
 
 
@@ -62,7 +71,7 @@ def predicting(model, device, loader):
     model.eval()
     total_preds = torch.Tensor()
     total_labels = torch.Tensor()
-    print('Make prediction for {} samples...'.format(len(loader.dataset)))
+    print("Make prediction for {} samples...".format(len(loader.dataset)))
     with torch.no_grad():
         for data in loader:
             data = data.to(device)
@@ -72,8 +81,7 @@ def predicting(model, device, loader):
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
 
 
-def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args):
+def launch(modeling, args):
 
     # ap
     timer = Timer()
@@ -89,48 +97,62 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
 
     # ap
     from pathlib import Path
+
     fdir = Path(__file__).resolve().parent
     if args.gout is not None:
-        outdir = fdir/args.gout
+        outdir = fdir / args.gout
     else:
-        outdir = fdir/"results"
+        outdir = fdir / "results"
     os.makedirs(outdir, exist_ok=True)
 
-    print('Learning rate: ', lr)
-    print('Epochs: ', num_epoch)
+    print("Learning rate: ", args.learning_rate)
+    print("Epochs: ", args.epochs)
 
     model_st = modeling.__name__
-    dataset = 'GDSC'
+    dataset = "GDSC"
     train_losses = []
     val_losses = []
     val_pearsons = []
-    print('\nrunning on ', model_st + '_' + dataset)
+    print("\nrunning on ", model_st + "_" + dataset)
 
     root = args.root
     if args.tr_file is None:
-        processed_data_file_train = root + '/processed/' + dataset + '_train' + set_str + '.pt'
+        processed_data_file_train = (
+            root + "/processed/" + dataset + "_train" + set_str + ".pt"
+        )
     else:
-        processed_data_file_train = root + '/processed/' + args.tr_file + '.pt'
+        processed_data_file_train = root + "/processed/" + args.tr_file + ".pt"
 
     if args.vl_file is None:
-        processed_data_file_val = root + '/processed/' + dataset + '_val' + set_str + '.pt'
+        processed_data_file_val = (
+            root + "/processed/" + dataset + "_val" + set_str + ".pt"
+        )
     else:
-        processed_data_file_val = root + '/processed/' + args.vl_file + '.pt'
+        processed_data_file_val = root + "/processed/" + args.vl_file + ".pt"
 
     if args.tr_file is None:
-        processed_data_file_test = root + '/processed/'+ dataset + '_test' + set_str + '.pt'
+        processed_data_file_test = (
+            root + "/processed/" + dataset + "_test" + set_str + ".pt"
+        )
     else:
-        processed_data_file_test = root + '/processed/' + args.te_file + '.pt'
+        processed_data_file_test = root + "/processed/" + args.te_file + ".pt"
 
     # import pdb; pdb.set_trace()
-    if ((not os.path.isfile(processed_data_file_train))
-            or (not os.path.isfile(processed_data_file_val))
-            or (not os.path.isfile(processed_data_file_test))):
-        print('please run create_data.py to prepare data in pytorch format!')
+    if (
+        (not os.path.isfile(processed_data_file_train))
+        or (not os.path.isfile(processed_data_file_val))
+        or (not os.path.isfile(processed_data_file_test))
+    ):
+        print("please run create_data.py to prepare data in pytorch format!")
     else:
         train_data = TestbedDataset(root=root, dataset=args.tr_file)
         val_data = TestbedDataset(root=root, dataset=args.vl_file)
         test_data = TestbedDataset(root=root, dataset=args.te_file)
+
+        # currently all set to batch_size, may change.
+        train_batch = args.batch_size
+        val_batch = args.batch_size
+        test_batch = args.batch_size
 
         # make data PyTorch mini-batch processing ready
         train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -139,20 +161,31 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         print("CPU/GPU: ", torch.cuda.is_available())
 
         # training the model
-        device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-        print(device)
+        device = torch.device(args.cuda_name if torch.cuda.is_available() else "cpu")
+        print("Device: ", device)
         model = modeling().to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         best_mse = 1000
         best_pearson = 1
         best_epoch = -1
- 
-        model_file_name = outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '.model')
-        result_file_name = outdir/('result_' + model_st + '_' + dataset + '_' + val_scheme + '.csv')
-        loss_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_loss'))
-        pearson_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_pearson'))
-        for epoch in range(num_epoch):
-            train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
+
+        model_file_name = outdir / (
+            "model_" + model_st + "_" + dataset + "_" + val_scheme + ".model"
+        )
+        result_file_name = outdir / (
+            "result_" + model_st + "_" + dataset + "_" + val_scheme + ".csv"
+        )
+        loss_fig_name = str(
+            outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_loss")
+        )
+        pearson_fig_name = str(
+            outdir
+            / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_pearson")
+        )
+        for epoch in range(args.epochs):
+            train_loss = train(
+                model, device, train_loader, optimizer, epoch + 1, args.log_interval
+            )
             G, P = predicting(model, device, val_loader)
             ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
 
@@ -161,26 +194,38 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
                 rmse(G_test, P_test),
                 mse(G_test, P_test),
                 pearson(G_test, P_test),
-                spearman(G_test, P_test)
+                spearman(G_test, P_test),
             ]
 
             train_losses.append(train_loss)
             val_losses.append(ret[1])
             val_pearsons.append(ret[2])
 
-            if ret[1] < best_mse: # ap: is it early stopping on the mse of train set??
+            if ret[1] < best_mse:  # ap: is it early stopping on the mse of train set??
                 torch.save(model.state_dict(), model_file_name)
-                with open(result_file_name, 'w') as f:
-                    f.write(','.join(map(str, ret_test)))
+                with open(result_file_name, "w") as f:
+                    f.write(",".join(map(str, ret_test)))
                 best_epoch = epoch + 1
                 best_mse = ret[1]
                 best_pearson = ret[2]
-                print(' rmse improved at epoch ', best_epoch, '; best_mse:', best_mse,
-                      model_st, dataset)
+                print(
+                    " rmse improved at epoch ",
+                    best_epoch,
+                    "; best_mse:",
+                    best_mse,
+                    model_st,
+                    dataset,
+                )
             else:
-                print(' no improvement since epoch ', best_epoch,
-                      '; best_mse, best pearson:', best_mse, best_pearson, model_st,
-                      dataset)
+                print(
+                    " no improvement since epoch ",
+                    best_epoch,
+                    "; best_mse, best pearson:",
+                    best_mse,
+                    best_pearson,
+                    model_st,
+                    dataset,
+                )
         draw_loss(train_losses, val_losses, loss_fig_name)
         draw_pearson(val_pearsons, pearson_fig_name)
 
@@ -190,7 +235,7 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         G_test, P_test = predicting(model, device, test_loader)
         preds = pd.DataFrame({"True": G_test, "Pred": P_test})
         preds_file_name = f"preds_{val_scheme}_{model_st}_{dataset}.csv"
-        preds.to_csv(outdir/preds_file_name, index=False)
+        preds.to_csv(outdir / preds_file_name, index=False)
 
         # ap: Add code to calc and dump scores
         # ret = [rmse(G_test, P_test), mse(G_test, P_test), pearson(G_test, P_test), spearman(G_test, P_test)]
@@ -198,31 +243,27 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         rmse_scr = rmse(G_test, P_test)
         scores = {"ccp": ccp_scr, "rmse": rmse_scr}
         import json
-        with open(outdir/f"scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
+
+        with open(
+            outdir / f"scores_{val_scheme}_{model_st}_{dataset}.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(scores, f, ensure_ascii=False, indent=4)
 
         timer.display_timer()
         print(scores)
         print("Done.")
 
+
 def run(gParameters):
     print("In Run Function:\n")
     args = candle.ArgumentStruct(**gParameters)
-    args.cuda = torch.cuda.is_available()
-    args.device = torch.device("cuda" if args.cuda else "cpu")
-
-    train_batch = args.batch_size
-    test_batch = args.batch_size
-    val_batch = args.batch_size
-    num_epoch = args.epochs
-    lr = args.learning_rate
-    log_interval = args.log_interval
-    cuda_name = args.cuda_name
-
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
 
-    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args)
+    # call the launch function with specific model and args with all hyperparameters
+    launch(modeling, args)
+
 
 def initialize_parameters():
     print("Initializing parameters\n")
@@ -248,6 +289,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
