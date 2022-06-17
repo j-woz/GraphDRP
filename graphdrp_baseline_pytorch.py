@@ -122,29 +122,12 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
     else:
         processed_data_file_test = root + '/processed/' + args.te_file + '.pt'
 
-    # # processed_data_file_train = 'data/processed/' + dataset + '_train_mix' + '.pt' # ap: "mix" is hard-coded
-    # # processed_data_file_val = 'data/processed/' + dataset + '_val_mix' + '.pt'
-    # # processed_data_file_test = 'data/processed/' + dataset + '_test_mix' + '.pt'
-    # processed_data_file_train = 'data/processed/' + dataset + '_train' + set_str + '.pt' # ap: allow to specify mix/cell_blind/drug_blind
-    # processed_data_file_val = 'data/processed/' + dataset + '_val' + set_str + '.pt'
-    # processed_data_file_test = 'data/processed/' + dataset + '_test' + set_str + '.pt'
-
     # import pdb; pdb.set_trace()
     if ((not os.path.isfile(processed_data_file_train))
             or (not os.path.isfile(processed_data_file_val))
             or (not os.path.isfile(processed_data_file_test))):
         print('please run create_data.py to prepare data in pytorch format!')
     else:
-        # train_data = TestbedDataset(root='data', dataset=dataset + '_train_mix')
-        # val_data = TestbedDataset(root='data', dataset=dataset + '_val_mix')
-        # test_data = TestbedDataset(root='data', dataset=dataset + '_test_mix')
-
-        # import pdb; pdb.set_trace()
-        # train_data = TestbedDataset(root='data', dataset=dataset + '_train' + set_str)
-        # val_data = TestbedDataset(root='data', dataset=dataset + '_val' + set_str)
-        # test_data = TestbedDataset(root='data', dataset=dataset + '_test' + set_str)
-
-        # import pdb; pdb.set_trace()
         train_data = TestbedDataset(root=root, dataset=args.tr_file)
         val_data = TestbedDataset(root=root, dataset=args.vl_file)
         test_data = TestbedDataset(root=root, dataset=args.te_file)
@@ -163,10 +146,7 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         best_mse = 1000
         best_pearson = 1
         best_epoch = -1
-        # model_file_name = 'model_' + model_st + '_' + dataset + '.model'
-        # result_file_name = 'result_' + model_st + '_' + dataset + '.csv'
-        # loss_fig_name = 'model_' + model_st + '_' + dataset + '_loss'
-        # pearson_fig_name = 'model_' + model_st + '_' + dataset + '_pearson'
+ 
         model_file_name = outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '.model')
         result_file_name = outdir/('result_' + model_st + '_' + dataset + '_' + val_scheme + '.csv')
         loss_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_loss'))
@@ -205,8 +185,6 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         draw_pearson(val_pearsons, pearson_fig_name)
 
         # ap: Add code to create dir for results
-        # res_dir = fdir/"ap_res"
-        # os.makedirs(res_dir, exist_ok=True)
 
         # ap: Add to drop raw predictions
         G_test, P_test = predicting(model, device, test_loader)
@@ -257,62 +235,6 @@ def initialize_parameters():
         prog="graphdrp",
         desc="Graph DRP",
     )
-
-    parser = argparse.ArgumentParser(description='train model')
-    parser.add_argument(
-        '--model',
-        type=int,
-        required=False,
-        default=0,
-        help='0: GINConvNet, 1: GATNet, 2: GAT_GCN, 3: GCNNet')
-    parser.add_argument(
-        '--train_batch',
-        type=int,
-        required=False,
-        default=1024,
-        help='Batch size training set')
-    parser.add_argument(
-        '--val_batch',
-        type=int,
-        required=False,
-        default=1024,
-        help='Batch size validation set')
-    parser.add_argument(
-        '--test_batch',
-        type=int,
-        required=False,
-        default=1024,
-        help='Batch size test set')
-    parser.add_argument(
-        '--lr', type=float, required=False, default=1e-4, help='Learning rate')
-    parser.add_argument(
-        '--num_epoch', type=int, required=False, default=300, help='Number of epoch')
-    parser.add_argument(
-        '--log_interval', type=int, required=False, default=20, help='Log interval')
-    parser.add_argument(
-        '--cuda_name', type=str, required=False, default="cuda:0", help='Cuda')
-    parser.add_argument("--set", type=str, choices=["mix", "cell", "drug"], help="Validation scheme.")
-    parser.add_argument('--root', required=False, default="data", type=str,
-                        help='Path to processed .pt files (default: data).')
-    parser.add_argument('--gout', default=None, type=str,
-                        help="Global outdir to dump all the resusts.")
-    parser.add_argument('--tr_file', required=False, default=None, type=str,
-                        help='Train data path (default: None).')
-    parser.add_argument('--vl_file', required=False, default=None, type=str,
-                        help='Val data path (default: None).')
-    parser.add_argument('--te_file', required=False, default=None, type=str,
-                        help='Test data path (default: None).')
-    args = parser.parse_args()
-
-    # modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
-    train_batch = args.train_batch
-    val_batch = args.val_batch
-    test_batch = args.test_batch
-    lr = args.lr
-    num_epoch = args.num_epoch
-    log_interval = args.log_interval
-    cuda_name = args.cuda_name
-
 
     gParameters = candle.finalize_parameters(graphdrp_bench)
     return gParameters
