@@ -30,9 +30,9 @@ conda install -c bioconda pubchempy --yes
 conda install -c rdkit rdkit --yes
 
 # My packages
-conda install -c conda-forge ipdb=0.13.9 --yes
-conda install -c conda-forge jupyterlab=3.2.0 --yes
-conda install -c conda-forge python-lsp-server=1.2.4 --yes
+#conda install -c conda-forge ipdb=0.13.9 --yes
+#conda install -c conda-forge jupyterlab=3.2.0 --yes
+#conda install -c conda-forge python-lsp-server=1.2.4 --yes
 
 # Check
 # python -c "import torch; print(torch.__version__)"

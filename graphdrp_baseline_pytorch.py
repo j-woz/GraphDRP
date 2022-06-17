@@ -12,6 +12,9 @@ from utils import *
 import datetime
 import argparse
 
+import candle
+import graphdrp as bmk
+
 
 from time import time
 class Timer:
@@ -224,12 +227,36 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         print(scores)
         print("Done.")
 
-# def run(gParameters):
+def run(gParameters):
+    print("In Run Function:\n")
+    args = candle.ArgumentStruct(**gParameters)
+    args.cuda = torch.cuda.is_available()
+    args.device = torch.device("cuda" if args.cuda else "cpu")
 
+    train_batch = args.batch_size
+    test_batch = args.batch_size
+    val_batch = args.batch_size
+    num_epoch = args.epochs
+    lr = args.learning_rate
+    log_interval = args.log_interval
+    cuda_name = args.cuda_name
+
+    modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
+
+    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
+         cuda_name, args)
 
 def initialize_parameters():
     print("Initializing parameters\n")
 
+    """Initialize the parameters for the GraphDRP benchmark"""
+    graphdrp_bench = bmk.BenchmarkGraphDRP(
+        bmk.file_path,
+        "graphdrp_default_model.txt",
+        "pytorch",
+        prog="graphdrp",
+        desc="Graph DRP",
+    )
 
     parser = argparse.ArgumentParser(description='train model')
     parser.add_argument(
@@ -277,7 +304,7 @@ def initialize_parameters():
                         help='Test data path (default: None).')
     args = parser.parse_args()
 
-    modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model]
+    # modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
     train_batch = args.train_batch
     val_batch = args.val_batch
     test_batch = args.test_batch
@@ -285,13 +312,16 @@ def initialize_parameters():
     num_epoch = args.num_epoch
     log_interval = args.log_interval
     cuda_name = args.cuda_name
-    print("In Run Function:\n")
-    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args)
+
+
+    gParameters = candle.finalize_parameters(graphdrp_bench)
+    return gParameters
+
 
 def main():
     gParameters = initialize_parameters()
-    # run(gParameters)
+    print(gParameters)
+    run(gParameters)
 
 
 if __name__ == "__main__":

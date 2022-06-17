@@ -38,7 +38,7 @@ The following 4 function is used to preprocess the drug data. We download the dr
 
 folder = "data/"
 #folder = ""
-folder = "ap_data/" # ap: new
+#folder = "ap_data/" # ap: new
 
 def load_drug_list():
     """ from tCCN
@@ -718,7 +718,7 @@ def create_lc_sets(split_type: str="mix"):
     lc_dir = Path(os.path.join(fdir, "lc_data"))
     os.makedirs(lc_dir, exist_ok=True)
 
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     if split_type == "mix":
         outdir = lc_dir/"mix_drug_cell"
         os.makedirs(outdir, exist_ok=True)
@@ -764,7 +764,7 @@ def create_lc_sets(split_type: str="mix"):
         size = int(len(dict_drug_cell) * 0.8)
         size1 = int(len(dict_drug_cell) * 0.9)
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # Create data splits
         df_tr = []  # ap: data that contains all features
         df_vl = []  # ap: data that contains all features
@@ -872,7 +872,7 @@ def create_lc_datasets(split_type: str="mix"):
     fdir = os.path.dirname(os.path.abspath(__file__))
     lc_dir = Path(os.path.join(fdir, "lc_data"))
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     if split_type == "mix":
         datadir = lc_dir/"mix_drug_cell"
         types = {"Drug": str, "Cell": str, "IC50": float}

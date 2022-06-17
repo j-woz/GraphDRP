@@ -37,7 +37,7 @@ The following 4 function is used to preprocess the drug data. We download the dr
 
 folder = "data/"
 #folder = ""
-folder = "ap_data/" # ap: new
+#folder = "ap_data/" # ap: new
 
 def load_drug_list():
     """ from tCCN

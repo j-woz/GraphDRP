@@ -1,0 +1,17 @@
+[Global_Params]
+weight_decay = 1.0
+model_name = 'GraphDRP'
+learning_rate = 0.0001
+batch_size = 50
+epochs = 10
+cuda_name = 'cuda:0'
+device = 'cpu'
+model = 0
+set = 'mix'
+tr_file = 'train_sz_1'
+vl_file = 'val_data'
+te_file = 'test_data'
+gout = 'lc_out/train_sz_1'
+root = 'lc_data/mix_drug_cell'
+log_interval = 20
+modeling = 0
