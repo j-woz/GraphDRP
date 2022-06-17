@@ -254,6 +254,7 @@ def launch(modeling, args):
         timer.display_timer()
         print(scores)
         print("Done.")
+        return scores
 
 
 def run(gParameters):
@@ -262,8 +263,8 @@ def run(gParameters):
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
 
     # call the launch function with specific model and args with all hyperparameters
-    launch(modeling, args)
-
+    scores = launch(modeling, args)
+    return scores
 
 def initialize_parameters():
     print("Initializing parameters\n")
