@@ -164,9 +164,9 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         # result_file_name = 'result_' + model_st + '_' + dataset + '.csv'
         # loss_fig_name = 'model_' + model_st + '_' + dataset + '_loss'
         # pearson_fig_name = 'model_' + model_st + '_' + dataset + '_pearson'
-        model_file_name = outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '.model')
-        result_file_name = outdir/('result_' + model_st + '_' + dataset + '_' + val_scheme + '.csv')
-        loss_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_loss'))
+        model_file_name = outdir/('model_' + val_scheme + '_' + model_st + '.model')
+        result_file_name = outdir/('result_' + val_scheme + '_' + model_st + '.csv')
+        loss_fig_name = str(outdir/('model_' + val_scheme + '_' + model_st + '_loss'))
         pearson_fig_name = str(outdir/('model_' + model_st + '_' + dataset + '_' + val_scheme + '_pearson'))
         for epoch in range(num_epoch):
             train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
@@ -208,7 +208,7 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         # ap: Add to drop raw predictions
         G_test, P_test = predicting(model, device, test_loader)
         preds = pd.DataFrame({"True": G_test, "Pred": P_test})
-        preds_file_name = f"preds_{val_scheme}_{model_st}_{dataset}.csv"
+        preds_file_name = f"preds_{val_scheme}_{model_st}.csv"
         preds.to_csv(outdir/preds_file_name, index=False)
 
         # ap: Add code to calc and dump scores
@@ -217,7 +217,7 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         rmse_scr = rmse(G_test, P_test)
         scores = {"ccp": ccp_scr, "rmse": rmse_scr}
         import json
-        with open(outdir/f"scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
+        with open(outdir/f"scores_{val_scheme}_{model_st}.json", "w", encoding="utf-8") as f:
             json.dump(scores, f, ensure_ascii=False, indent=4)
 
         timer.display_timer()

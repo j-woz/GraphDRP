@@ -36,8 +36,8 @@ The following 4 function is used to preprocess the drug data. We download the dr
 """
 
 folder = "data/"
-#folder = ""
-#folder = "ap_data/" # ap: new
+fdir = os.path.dirname(os.path.abspath(__file__)) # parent dir
+
 
 def load_drug_list():
     """ from tCCN
@@ -321,10 +321,12 @@ def save_cell_mut_matrix():
 This part is used to extract the drug - cell interaction strength. it contains IC50, AUC, Max conc, RMSE, Z_score
 """
 
-def save_mix_drug_cell_matrix():
+def save_mix_drug_cell_matrix(args):
     f = open(folder + "PANCANCER_IC.csv") # contains the IC50 of 250 drugs and 1074 CCL
     reader = csv.reader(f)
     next(reader)
+
+    root = os.path.join(args.outdir, "mix_drug_cell")
 
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
@@ -386,35 +388,44 @@ def save_mix_drug_cell_matrix():
     y_test = y[size1:]
 
     # Create PyTorch datasets
-    dataset = 'GDSC'
+    # dataset = 'GDSC'
+    dataset = "data"
     print('preparing ', dataset + '_train.pt in pytorch format!')
     train_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_train_mix',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_train_mix',
+        dataset='train_' + dataset,
         xd=xd_train,
         xt=xc_train,
         y=y_train,
         smile_graph=smile_graph)
     val_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_val_mix',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_val_mix',
+        dataset='val_' + dataset,
         xd=xd_val,
         xt=xc_val,
         y=y_val,
         smile_graph=smile_graph)
     test_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_test_mix',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_test_mix',
+        dataset='test_' + dataset,
         xd=xd_test,
         xt=xc_test,
         y=y_test,
         smile_graph=smile_graph)
 
 
-def save_blind_drug_matrix():
+def save_blind_drug_matrix(args):
     f = open(folder + "PANCANCER_IC.csv")
     reader = csv.reader(f)
     next(reader)
+
+    root = os.path.join(args.outdir, "drug_blind")
 
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
@@ -496,35 +507,44 @@ def save_blind_drug_matrix():
     xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(y_test)
 
     # Create PyTorch datasets
-    dataset = 'GDSC'
+    # dataset = 'GDSC'
+    dataset = "data"
     print('preparing ', dataset + '_train.pt in pytorch format!')
     train_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_train_blind',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_train_blind',
+        dataset='train_' + dataset,
         xd=xd_train,
         xt=xc_train,
         y=y_train,
         smile_graph=smile_graph)
     val_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_val_blind',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_val_blind',
+        dataset='val_' + dataset,
         xd=xd_val,
         xt=xc_val,
         y=y_val,
         smile_graph=smile_graph)
     test_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_test_blind',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_test_blind',
+        dataset='test_' + dataset,
         xd=xd_test,
         xt=xc_test,
         y=y_test,
         smile_graph=smile_graph)
 
 
-def save_blind_cell_matrix():
+def save_blind_cell_matrix(args):
     f = open(folder + "PANCANCER_IC.csv")
     reader = csv.reader(f)
     next(reader)
+
+    root = os.path.join(args.outdir, "cell_blind")
 
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
@@ -606,32 +626,39 @@ def save_blind_cell_matrix():
     xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(y_test)
 
     # Create PyTorch datasets
-    dataset = 'GDSC'
+    # dataset = 'GDSC'
+    dataset = "data"
     print('preparing ', dataset + '_train.pt in pytorch format!')
     train_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_train_cell_blind',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_train_cell_blind',
+        dataset="train_" + dataset,
         xd=xd_train,
         xt=xc_train,
         y=y_train,
         smile_graph=smile_graph)
     val_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_val_cell_blind',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_val_cell_blind',
+        dataset="val_" + dataset,
         xd=xd_val,
         xt=xc_val,
         y=y_val,
         smile_graph=smile_graph)
     test_data = TestbedDataset(
-        root='data',
-        dataset=dataset + '_test_cell_blind',
+        # root='data',
+        root=root,
+        # dataset=dataset + '_test_cell_blind',
+        dataset="test_" + dataset,
         xd=xd_test,
         xt=xc_test,
         y=y_test,
         smile_graph=smile_graph)
 
 
-def save_best_individual_drug_cell_matrix():
+def save_best_individual_drug_cell_matrix(args):
     f = open(folder + "PANCANCER_IC.csv")
     reader = csv.reader(f)
     next(reader)
@@ -718,19 +745,26 @@ if __name__ == "__main__":
         required=False,
         default=0,
         help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
+    parser.add_argument(
+        '--outdir',
+        type=str,
+        required=False,
+        default="data_processed",
+        help='Data dir name to store the preprocessed data.')
+
     args = parser.parse_args()
     choice = args.choice
     if choice == 0:
         # save mix test dataset
-        save_mix_drug_cell_matrix()
+        save_mix_drug_cell_matrix(args)
     elif choice == 1:
         # save saliency map dataset
-        save_best_individual_drug_cell_matrix()
+        save_best_individual_drug_cell_matrix(args)
     elif choice == 2:
         # save blind drug dataset
-        save_blind_drug_matrix()
+        save_blind_drug_matrix(args)
     elif choice == 3:
         # save blind cell dataset
-        save_blind_cell_matrix()
+        save_blind_cell_matrix(args)
     else:
-        print("Invalide option, choose 0 -> 4")
+        print("Invalid option, choose 0 -> 4")
