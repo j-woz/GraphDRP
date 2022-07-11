@@ -1,15 +1,16 @@
 [Global_Params]
 model_name = 'GraphDRP'
 learning_rate = 0.0001
-batch_size = 50
-epochs = 1
-cuda_name = 'cuda:0'
-model = 1
+trn_batch_size = 32
+test_batch_size = 32
+val_batch_size = 32
+epochs = 2
+device = 'cuda:0'
 set = 'mix'
-tr_file = 'train_data'
-vl_file = 'val_data'
-te_file = 'test_data'
-gout = 'out'
+train_data = 'train_data'
+val_data = 'val_data'
+test_data = 'test_data'
 root = 'data_processed/mix_drug_cell'
-log_interval = 20
+output_dir = 'out'
 modeling = 0
+log_interval = 20
