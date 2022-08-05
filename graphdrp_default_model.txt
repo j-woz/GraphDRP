@@ -1,10 +1,11 @@
 [Global_Params]
 model_name = 'GraphDRP'
 learning_rate = 0.0001
-batch_size = 50
-epochs = 1
-cuda_name = 'cuda:0'
-model = 1
+trn_batch_size = 32
+test_batch_size = 32
+val_batch_size = 32
+epochs = 2
+device = 'cuda:0'
 set = 'mix'
 train_data = 'train_data'
 val_data = 'val_data'

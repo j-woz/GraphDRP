@@ -5,20 +5,16 @@ file_path = os.path.dirname(os.path.realpath(__file__))
 import candle
 
 additional_definitions = [
-    {"name": "log_interval", "action": "store", "type": int},
-    {"name": "modeling", "action": "store", "type": int},
-    {"name": "model", "action": "store", "type": int},
-    {"name": "cuda_name", "action": "store", "type": str},
-    {"name": "tr_file", "action": "store", "type": str},
-    {"name": "vl_file", "action": "store", "type": str},
-    {"name": "te_file", "action": "store", "type": str},
-    {"name": "gout", "action": "store", "type": str},
-    {"name": "root", "action": "store", "type": str},
+    {"name": "log_interval", "action": "store", "type": int, "help": "interval for saving o/p"},
+    {"name": "modeling", "action": "store", "type": int, "help": "Integer: see model folder for options"},    
+    {"name": "root", "action": "store", "type": str, "help": "needed for preprocessing/dataloader"},
+    {"name": "trn_batch_size", "default": 32, "type": int, "help": "input batch size for training",},
+    {"name": "val_batch_size", "default": 32, "type": int, "help": "input batch size for validation",},    
+    {"name": "test_batch_size", "default": 32, "type": int, "help": "input batch size for testing",},    
 ]
 
 required = [
     "learning_rate",
-    "batch_size",
     "epochs",
     "log_interval",
     "model_name",
