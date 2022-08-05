@@ -7,10 +7,12 @@ from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 
 # GINConv model
 class GINConvNet(torch.nn.Module):
-    def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
+    def __init__(self, n_output=1, num_features_xd=78, num_features_xt=25,
                  n_filters=32, embed_dim=128, output_dim=128, dropout=0.2):
 
         super(GINConvNet, self).__init__()
+
+        # self.output_dim = output_dim  # ap
 
         dim = 32
         self.dropout = nn.Dropout(dropout)
@@ -50,7 +52,8 @@ class GINConvNet(torch.nn.Module):
         self.pool_xt_2 = nn.MaxPool1d(3)
         self.conv_xt_3 = nn.Conv1d(in_channels=n_filters*2, out_channels=n_filters*4, kernel_size=8)
         self.pool_xt_3 = nn.MaxPool1d(3)
-        self.fc1_xt = nn.Linear(2944, output_dim)
+        # self.fc1_xt = nn.Linear(2944, output_dim)
+        self.fc1_xt = nn.Linear(3968, output_dim)
 
         # combined layers
         self.fc1 = nn.Linear(2*output_dim, 1024)
@@ -62,6 +65,7 @@ class GINConvNet(torch.nn.Module):
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, data):
+        # import pdb; pdb.set_trace()
         x, edge_index, batch = data.x, data.edge_index, data.batch
         #print(x)
         #print(data.target)
@@ -81,7 +85,7 @@ class GINConvNet(torch.nn.Module):
 
         # protein input feed-forward:
         target = data.target
-        target = target[:,None,:]
+        target = target[:, None, :]
 
         # 1d conv layers
         conv_xt = self.conv_xt_1(target)
@@ -95,8 +99,12 @@ class GINConvNet(torch.nn.Module):
         conv_xt = self.pool_xt_3(conv_xt)
         
         # flatten
-        xt = conv_xt.view(-1, conv_xt.shape[1] * conv_xt.shape[2])
-        xt = self.fc1_xt(xt)
+        in_dim = conv_xt.shape[1] * conv_xt.shape[2]
+        # xt = conv_xt.view(-1, conv_xt.shape[1] * conv_xt.shape[2])
+        xt = conv_xt.view(-1, in_dim)
+        xt = self.fc1_xt(xt)  # error here??
+        # dense_layer = nn.Linear(in_dim, self.output_dim)
+        # xt = dense_layer(xt)
         
         # concat
         xc = torch.cat((x, xt), 1)

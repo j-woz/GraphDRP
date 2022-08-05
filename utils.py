@@ -34,6 +34,13 @@ class TestbedDataset(InMemoryDataset):
                 self.processed_paths[0]))
             self.process(xd, xt, y, smile_graph)
             self.data, self.slices = torch.load(self.processed_paths[0])
+        # dd = self.data
+        # ss = self.slices
+        # print(dd)
+        # print(ss.keys())
+        # print(dd.x.shape)
+        # print(dd.c_size)
+        print("Loaded pre-processed data.\n")
 
     @property
     def raw_file_names(self):
@@ -67,9 +74,9 @@ class TestbedDataset(InMemoryDataset):
         data_len = len(xd)
         for i in range(data_len):
             print('Converting SMILES to graph: {}/{}'.format(i + 1, data_len))
-            smiles = xd[i]
-            target = xt[i]
-            labels = y[i]
+            smiles = xd[i]  # SMILES of a drug
+            target = xt[i]  # omic vector of cell
+            labels = y[i]   # response
             # convert SMILES to molecular representation using rdkit
             c_size, features, edge_index = smile_graph[smiles]
             # make the graph ready for PyTorch Geometrics GCN algorithms:
