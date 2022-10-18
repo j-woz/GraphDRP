@@ -13,3 +13,5 @@ test_file = 'test_data'
 gout = 'out.cs'
 log_interval = 20
 modeling = 0
+test_data='test_data'
+root='data_processed/mix_drug_cell'
