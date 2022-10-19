@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import os
+from pathlib import Path
 import sys
 from random import shuffle
 from time import time
@@ -40,8 +41,8 @@ class Timer:
             print_fn("Runtime: {:.1f} mins".format((time_diff) / 60))
 
 
-# training function at each epoch
 def train(model, device, train_loader, optimizer, epoch, log_interval):
+    """ Training function at each epoch. """
     print("Training on {} samples...".format(len(train_loader.dataset)))
     model.train()
     loss_fn = nn.MSELoss()
@@ -66,6 +67,7 @@ def train(model, device, train_loader, optimizer, epoch, log_interval):
             )
     return sum(avg_loss) / len(avg_loss)
 
+
 def predicting(model, device, loader):
     model.eval()
     total_preds = torch.Tensor()
@@ -79,13 +81,14 @@ def predicting(model, device, loader):
             total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
 
+
 def launch(modeling, args):
 
-    # ap
+    # ap -----
     timer = Timer()
-    if args.set == "mix":
-        set_str = "_mix"
-        val_scheme = "mixed"
+    if args.set == "mixed":
+        set_str = "_mixed"
+        val_scheme = "mixed_set"
     elif args.set == "cell":
         set_str = "_cell_blind"
         val_scheme = "cell_blind"
@@ -93,9 +96,7 @@ def launch(modeling, args):
         set_str = "_blind"
         val_scheme = "drug_blind"
 
-    # ap
-    from pathlib import Path
-
+    # Create output dir
     fdir = Path(__file__).resolve().parent
     if args.output_dir is not None:
         outdir = fdir / args.output_dir
@@ -103,8 +104,28 @@ def launch(modeling, args):
         outdir = fdir / "results"
     os.makedirs(outdir, exist_ok=True)
 
-    print("Learning rate: ", args.learning_rate)
-    print("Epochs: ", args.epochs)
+    # Fetch data (if needed)
+    ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"
+    data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
+    for f in data_file_list:
+        candle.get_file(fname=f.strip(),
+                        origin=os.path.join(ftp_origin, f.strip()),
+                        unpack=False, md5_hash=None,
+                        datadir=fdir/f"./data_processed/{val_scheme}/processed",
+                        cache_subdir=None)
+
+    root = args.root
+    cuda_name = args.device
+    lr = args.learning_rate
+    num_epoch = args.epochs
+    log_interval = args.log_interval
+    train_batch = args.trn_batch_size
+    val_batch = args.test_batch_size
+    test_batch = args.val_batch_size
+    # ap -----
+
+    print("Learning rate: ", lr)
+    print("Epochs: ", num_epoch)
 
     model_st = modeling.__name__
     dataset = "GDSC"
@@ -114,18 +135,12 @@ def launch(modeling, args):
     print("\nrunning on ", model_st + "_" + dataset)
 
     file_train = args.train_data
-    file_test = args.test_data
     file_val = args.test_data
-    root = args.root
+    file_test = args.test_data
 
     train_data = TestbedDataset(root=root, dataset=file_train)
     val_data = TestbedDataset(root=root, dataset=file_val)
     test_data = TestbedDataset(root=root, dataset=file_test)
-
-    # currently all set to batch_size, may change.
-    train_batch = args.trn_batch_size
-    val_batch = args.test_batch_size
-    test_batch = args.val_batch_size
 
     # make data PyTorch mini-batch processing ready
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -134,10 +149,10 @@ def launch(modeling, args):
     print("CPU/GPU: ", torch.cuda.is_available())
 
     # training the model
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
     print("Device: ", device)
     model = modeling().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_mse = 1000
     best_pearson = 1
     best_epoch = -1
@@ -155,9 +170,10 @@ def launch(modeling, args):
         outdir
         / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_pearson")
     )
-    for epoch in range(args.epochs):
+
+    for epoch in range(num_epoch):
         train_loss = train(
-            model, device, train_loader, optimizer, epoch + 1, args.log_interval
+            model, device, train_loader, optimizer, epoch + 1, log_interval
         )
         G, P = predicting(model, device, val_loader)
         ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
@@ -174,7 +190,7 @@ def launch(modeling, args):
         val_losses.append(ret[1])
         val_pearsons.append(ret[2])
 
-        if ret[1] < best_mse:  # ap: is it early stopping on the mse of train set??
+        if ret[1] < best_mse:
             torch.save(model.state_dict(), model_file_name)
             with open(result_file_name, "w") as f:
                 f.write(",".join(map(str, ret_test)))
@@ -199,23 +215,24 @@ def launch(modeling, args):
                 model_st,
                 dataset,
             )
+
     draw_loss(train_losses, val_losses, loss_fig_name)
     draw_pearson(val_pearsons, pearson_fig_name)
 
-    # ap: Add code to create dir for results
-
-    # ap: Add to drop raw predictions
+    # ap -----
+    # Dump raw predictions
     G_test, P_test = predicting(model, device, test_loader)
     preds = pd.DataFrame({"True": G_test, "Pred": P_test})
     preds_file_name = f"preds_{val_scheme}_{model_st}_{dataset}.csv"
     preds.to_csv(outdir / preds_file_name, index=False)
 
-    # ap: Add code to calc and dump scores
+    # Calc and dump scores
     # ret = [rmse(G_test, P_test), mse(G_test, P_test), pearson(G_test, P_test), spearman(G_test, P_test)]
     ccp_scr = pearson(G_test, P_test)
     rmse_scr = rmse(G_test, P_test)
     scores = {"ccp": ccp_scr, "rmse": rmse_scr}
     import json
+    # ap -----
 
     with open(
         outdir / f"scores_{val_scheme}_{model_st}_{dataset}.json",
@@ -229,6 +246,7 @@ def launch(modeling, args):
     print("Done.")
     return scores
 
+
 def run(gParameters):
     print("In Run Function:\n")
     args = candle.ArgumentStruct(**gParameters)
@@ -238,10 +256,11 @@ def run(gParameters):
     scores = launch(modeling, args)
     return scores
 
+
 def initialize_parameters():
     print("Initializing parameters\n")
 
-    """Initialize the parameters for the GraphDRP benchmark"""
+    """ Initialize the parameters for the GraphDRP benchmark """
     graphdrp_bench = bmk.BenchmarkGraphDRP(
         bmk.file_path,
         "graphdrp_default_model.txt",
@@ -252,6 +271,7 @@ def initialize_parameters():
 
     gParameters = candle.finalize_parameters(graphdrp_bench)
     return gParameters
+
 
 def main():
     gParameters = initialize_parameters()

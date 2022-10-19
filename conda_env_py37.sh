@@ -28,6 +28,10 @@ conda install -c conda-forge h5py=3.1 --yes
 
 conda install -c bioconda pubchempy --yes
 conda install -c rdkit rdkit --yes
+conda install -c anaconda networkx --yes
+
+# CANDLE
+pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
 
 # My packages
 #conda install -c conda-forge ipdb=0.13.9 --yes
