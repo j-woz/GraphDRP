@@ -224,8 +224,6 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         print(scores)
         print("Done.")
 
-# def run(gParameters):
-
 
 def initialize_parameters():
     print("Initializing parameters\n")
@@ -296,6 +294,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

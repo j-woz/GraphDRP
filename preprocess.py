@@ -326,7 +326,7 @@ def save_mix_drug_cell_matrix(args):
     reader = csv.reader(f)
     next(reader)
 
-    root = os.path.join(args.outdir, "mix_drug_cell")
+    root = os.path.join(args.outdir, "mixed_set")
 
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
@@ -730,13 +730,13 @@ if __name__ == "__main__":
     with open(ftp_fname, "r") as f:
         data_file_list = f.readlines()
 
-    ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/reproducability/GraphDRP/data"
+    ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data"
     for f in data_file_list:
         candle.get_file(fname=f.strip(),
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
                         datadir=fdir/"./data",
-                        cache_subdir="common")
+                        cache_subdir=None)
 
     parser = argparse.ArgumentParser(description='prepare dataset to train model')
     parser.add_argument(
@@ -744,7 +744,7 @@ if __name__ == "__main__":
         type=int,
         required=False,
         default=0,
-        help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
+        help='0. mix test, 1. saliency value, 2. drug blind, 3. cell blind')
     parser.add_argument(
         '--outdir',
         type=str,
@@ -768,3 +768,5 @@ if __name__ == "__main__":
         save_blind_cell_matrix(args)
     else:
         print("Invalid option, choose 0 -> 4")
+
+    print("Finished pre-processing.")
