@@ -97,7 +97,7 @@ def launch(modeling, args):
         val_scheme = "drug_blind"
 
     # Create output dir
-    fdir = Path(__file__).resolve().parent
+    fdir=Path(os.getenv('CANDLE_DATA_DIR'))
     if args.output_dir is not None:
         outdir = fdir / args.output_dir
     else:
@@ -107,14 +107,17 @@ def launch(modeling, args):
     # Fetch data (if needed)
     ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"
     data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
+
     for f in data_file_list:
-        candle.get_file(fname=f.strip(),
+        fname=os.getenv('CANDLE_DATA_DIR') + '/' + args.cache_subdir + '/' + f.strip()
+        candle.get_file(fname=fname,
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
-                        datadir=fdir/f"./data_processed/{val_scheme}/processed",
-                        cache_subdir=None)
+                        datadir=f"./data_processed/{val_scheme}/processed",
+                        cache_subdir=os.getenv('CANDLE_DATA_DIR')) + '/' + args.cache_subdir 
 
-    root = args.root
+    # input
+    root = os.getenv('CANDLE_DATA_DIR') + args.datadir # args.root
     cuda_name = args.device
     lr = args.learning_rate
     num_epoch = args.epochs
@@ -137,7 +140,6 @@ def launch(modeling, args):
     file_train = args.train_data
     file_val = args.test_data
     file_test = args.test_data
-
     train_data = TestbedDataset(root=root, dataset=file_train)
     val_data = TestbedDataset(root=root, dataset=file_val)
     test_data = TestbedDataset(root=root, dataset=file_test)
