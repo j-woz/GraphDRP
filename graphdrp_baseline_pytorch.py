@@ -109,15 +109,16 @@ def launch(modeling, args):
     data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
 
     for f in data_file_list:
-        fname=os.getenv('CANDLE_DATA_DIR') + '/' + args.cache_subdir + '/' + f.strip()
-        candle.get_file(fname=fname,
+        #fname=os.getenv('CANDLE_DATA_DIR') + '/' + args.cache_subdir + '/' + f.strip()
+        candle.get_file(#fname=fname,
+                        fname=f,
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
-                        datadir=f"./data_processed/{val_scheme}/processed",
-                        cache_subdir=os.getenv('CANDLE_DATA_DIR')) + '/' + args.cache_subdir 
+                        cache_subdir=args.cache_subdir )
 
     # input
-    root = os.getenv('CANDLE_DATA_DIR') + args.datadir # args.root
+    _data_dir = os.path.split(args.cache_subdir)[0]
+    root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
     cuda_name = args.device
     lr = args.learning_rate
     num_epoch = args.epochs
@@ -140,6 +141,7 @@ def launch(modeling, args):
     file_train = args.train_data
     file_val = args.test_data
     file_test = args.test_data
+    print('root: {}'.format(root))
     train_data = TestbedDataset(root=root, dataset=file_train)
     val_data = TestbedDataset(root=root, dataset=file_val)
     test_data = TestbedDataset(root=root, dataset=file_test)
