@@ -97,9 +97,8 @@ def launch(modeling, args):
         val_scheme = "drug_blind"
 
     # Create output dir
-    fdir=Path(os.getenv('CANDLE_DATA_DIR'))
     if args.output_dir is not None:
-        outdir = fdir / args.output_dir
+        outdir = Path(args.output_dir)
     else:
         outdir = fdir / "results"
     os.makedirs(outdir, exist_ok=True)
@@ -109,9 +108,7 @@ def launch(modeling, args):
     data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
 
     for f in data_file_list:
-        #fname=os.getenv('CANDLE_DATA_DIR') + '/' + args.cache_subdir + '/' + f.strip()
-        candle.get_file(#fname=fname,
-                        fname=f,
+        candle.get_file(fname=f,
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
                         cache_subdir=args.cache_subdir )
