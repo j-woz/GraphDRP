@@ -1,15 +1,14 @@
 import os
+import candle
 
 file_path = os.path.dirname(os.path.realpath(__file__))
-
-import candle
 
 additional_definitions = [
     {"name": "log_interval",
      "action": "store",
      "type": int,
      "help": "Interval for saving o/p"},
-    {"name": "modeling",
+    {"name": "model",
      "action": "store",
      "type": int,
      "help": "Integer. 0: GINConvNet, 1: GATNet, 2: GAT_GCN, 3: GCNNet"},    
@@ -21,43 +20,42 @@ additional_definitions = [
     # "default": 300,
     # "type": int,
     # "help": "Number of epochs.",},
-    # {"name": "trn_batch_size",
-    #  "default": 256,
-    #  "type": int,
-    #  "help": "Input batch size for training.",},
-    # {"name": "val_batch_size",
-    #  "default": 256,
-    #  "type": int,
-    #  "help": "Input batch size for validation.",},    
-    # {"name": "test_batch_size",
-    #  "default": 256,
-    #  "type": int,
-    #  "help": "Input batch size for testing.",},
+    {"name": "batch_size",
+     "default": 256,
+     "type": int,
+     "help": "Input batch size for training.",},
+    {"name": "val_batch",
+     "default": 256,
+     "type": int,
+     "help": "Input batch size for validation.",},    
+    {"name": "test_batch",
+     "default": 256,
+     "type": int,
+     "help": "Input batch size for testing.",},
     {"name": "set",
      "default": "mixed",
      "choices": ["mixed", "cell", "drug"],
      "type": str,
      "help": "Validation scheme (data splitting strategy).",},
-    {"name": "device",
-     "default": "cuda:0",
-     "type": str,
-     "help": "Cuda device.",},
 ]
 
 required = [
-    "learning_rate",
     "epochs",
+    "learning_rate",
     "log_interval",
     "model_name",
     "set",
+    "train_data",
+    "val_data",
+    "test_data",
 ]
 
 
 class BenchmarkGraphDRP(candle.Benchmark):
-    """Benchmark for GraphDRP"""
+    """ Benchmark for GraphDRP. """
 
     def set_locals(self):
-        """Set parameters for the benchmark.
+        """ Set parameters for the benchmark.
 
         Args:
             required: set of required parameters for the benchmark.
