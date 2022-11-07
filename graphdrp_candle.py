@@ -226,7 +226,6 @@ def launch(modeling, args):
             # print(" no improvement since epoch ", best_epoch, "; best_mse, best pearson:", best_mse, best_pearson, model_st, dataset)
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
 
-    import pdb; pdb.set_trace()
     draw_loss(train_losses, val_losses, loss_fig_name)
     draw_pearson(val_pearsons, pearson_fig_name)
 
