@@ -70,7 +70,7 @@ def predicting(model, device, loader):
 
 
 def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args):
+           cuda_name, args):
 
     # ap
     timer = Timer()
@@ -104,6 +104,7 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
     print('\nrunning on ', model_st + '_' + dataset)
 
     root = args.root
+    print("root: {}".format(root))
     if args.tr_file is None:
         processed_data_file_train = root + '/processed/' + dataset + '_train' + set_str + '.pt'
     else:
@@ -228,7 +229,6 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
 def initialize_parameters():
     print("Initializing parameters\n")
 
-
     parser = argparse.ArgumentParser(description='train model')
     parser.add_argument(
         '--model',
@@ -274,6 +274,11 @@ def initialize_parameters():
     parser.add_argument('--te_file', required=False, default=None, type=str,
                         help='Test data path (default: None).')
     args = parser.parse_args()
+    return args
+
+
+def main():
+    args = initialize_parameters()
 
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model]
     train_batch = args.train_batch
@@ -283,13 +288,11 @@ def initialize_parameters():
     num_epoch = args.num_epoch
     log_interval = args.log_interval
     cuda_name = args.cuda_name
-    print("In Run Function:\n")
-    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args)
 
-def main():
-    gParameters = initialize_parameters()
+    print("In Run Function:\n")
     # run(gParameters)
+    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
+        cuda_name, args)
 
 
 if __name__ == "__main__":
