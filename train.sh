@@ -1,8 +1,10 @@
+
+#!/bin/bash
+
 #########################################################################
 ### THIS IS A TEMPLATE FILE. SUBSTITUTE #PATH# WITH THE MODEL EXECUTABLE.
 #########################################################################
 
-#!/bin/bash
 
 # arg 1 CUDA_VISIBLE_DEVICES
 # arg 2 CANDLE_DATA_DIR
@@ -11,21 +13,24 @@
 ### Path to your CANDLEized model's main Python script###
 CANDLE_MODEL=/usr/local/GraphDRP/graphdrp_baseline_pytorch.py
 
-if [[ $# -lt 3 ]]; then
+if [ $# -lt 2 ] ; then
 	echo "Illegalnumber of paramaters"
 	exit -1
-elif [[ $# -eq 3 ]]; then
-  echo "num args is 3"
+
+elif [ $# -eq 3 ] ; then
   CUDA_VISIBLE_DEVICES=$1
   CANDLE_DATA_DIR=/candle_data_dir/$2
   CANDLE_CONFIG=$3
   CMD="python ${CANDLE_MODEL} --config_file $CANDLE_CONFIG"
+  echo "CMD = $CMD"
+
 else
   echo "num args is greather than 3 $#"
   # the candle config is converted to command line parameters
   CUDA_VISIBLE_DEVICES=$1 ; shift
   CANDLE_DATA_DIR=/candle_data_dir/$1 ; shift
   CMD="python ${CANDLE_MODEL} $@"
+  echo "CMD = $CMD"
 fi
 
 # Display runtime arguments
