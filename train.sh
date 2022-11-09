@@ -19,7 +19,7 @@ if [ $# -lt 2 ] ; then
 
 elif [ $# -eq 3 ] ; then
   CUDA_VISIBLE_DEVICES=$1
-  CANDLE_DATA_DIR=/candle_data_dir/$2
+  CANDLE_DATA_DIR=$2
   CANDLE_CONFIG=$3
   CMD="python ${CANDLE_MODEL} --config_file $CANDLE_CONFIG"
   echo "CMD = $CMD"
@@ -28,7 +28,7 @@ else
   echo "num args is greather than 3 $#"
   # the candle config is converted to command line parameters
   CUDA_VISIBLE_DEVICES=$1 ; shift
-  CANDLE_DATA_DIR=/candle_data_dir/$1 ; shift
+  CANDLE_DATA_DIR=$1 ; shift
   CMD="python ${CANDLE_MODEL} $@"
   echo "CMD = $CMD"
 fi
