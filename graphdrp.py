@@ -8,7 +8,7 @@ additional_definitions = [
      "action": "store",
      "type": int,
      "help": "Interval for saving o/p"},
-    {"name": "model",
+    {"name": "modeling",
      "action": "store",
      "type": int,
      "help": "Integer. 0: GINConvNet, 1: GATNet, 2: GAT_GCN, 3: GCNNet"},    

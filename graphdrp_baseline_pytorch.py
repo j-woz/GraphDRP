@@ -120,7 +120,7 @@ def launch(modeling, args):
     lr = args.learning_rate
     num_epoch = args.epochs
     log_interval = args.log_interval
-    train_batch = args.trn_batch_size
+    train_batch = args.batch_size
     val_batch = args.test_batch_size
     test_batch = args.val_batch_size
     # ap -----
