@@ -84,7 +84,6 @@ def predicting(model, device, loader):
 
 def launch(modeling, args):
 
-    # ap -----
     timer = Timer()
     if args.set == "mixed":
         set_str = "_mixed"
@@ -113,22 +112,18 @@ def launch(modeling, args):
                         unpack=False, md5_hash=None,
                         cache_subdir=args.cache_subdir )
 
-    # CUDA device from env var
-    print("CUDA_VISIBLE_DEVICES:", os.getenv("CUDA_VISIBLE_DEVICES"))
-    assert os.getenv("CUDA_VISIBLE_DEVICES").isnumeric(), print("CUDA_VISIBLE_DEVICES must be numeric.")
-    cuda_name = f"cuda:{int(os.getenv('CUDA_VISIBLE_DEVICES'))}"
-
-    # input
     _data_dir = os.path.split(args.cache_subdir)[0]
     root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
-    # cuda_name = args.device
+
+    # CANDLE known params
     lr = args.learning_rate
     num_epoch = args.epochs
-    log_interval = args.log_interval
     train_batch = args.batch_size
+
+    # Model specific params
+    log_interval = args.log_interval
     val_batch = args.val_batch
     test_batch = args.test_batch
-    # ap -----
 
     print("Learning rate: ", lr)
     print("Epochs: ", num_epoch)
@@ -138,12 +133,13 @@ def launch(modeling, args):
     train_losses = []
     val_losses = []
     val_pearsons = []
-    print("\nrunning on ", model_st + "_" + dataset)
+    # print("\nrunning on ", model_st + "_" + dataset)
 
+    # Prepare data loaders
+    print("root: {}".format(root))
     file_train = args.train_data
     file_val = args.test_data
     file_test = args.test_data
-    print('root: {}'.format(root))
     train_data = TestbedDataset(root=root, dataset=file_train)
     val_data = TestbedDataset(root=root, dataset=file_val)
     test_data = TestbedDataset(root=root, dataset=file_test)
@@ -154,33 +150,33 @@ def launch(modeling, args):
     test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False)
     print("CPU/GPU: ", torch.cuda.is_available())
 
-    # training the model
+    # CUDA device from env var
+    # assert os.getenv("CUDA_VISIBLE_DEVICES").isnumeric(), print("CUDA_VISIBLE_DEVICES must be numeric.")
+    # cuda_name = f"cuda:{int(os.getenv('CUDA_VISIBLE_DEVICES'))}"
+    # if os.getenv("CUDA_VISIBLE_DEVICES").isnumeric():
+    if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
+        print("CUDA_VISIBLE_DEVICES:", os.getenv("CUDA_VISIBLE_DEVICES"))
+        cuda_name = "cuda:0"
+    else:
+        cuda_name = args.cuda_name
+
+    # Training the model
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
     print("Device: ", device)
     model = modeling().to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_mse = 1000
     best_pearson = 1
     best_epoch = -1
 
-    model_file_name = outdir / (
-        "model_" + model_st + "_" + dataset + "_" + val_scheme + ".model"
-    )
-    result_file_name = outdir / (
-        "result_" + model_st + "_" + dataset + "_" + val_scheme + ".csv"
-    )
-    loss_fig_name = str(
-        outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_loss")
-    )
-    pearson_fig_name = str(
-        outdir
-        / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_pearson")
-    )
+    model_file_name = outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + ".model")
+    result_file_name = outdir / ("result_" + model_st + "_" + dataset + "_" + val_scheme + ".csv")
+    loss_fig_name = str(outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_loss"))
+    pearson_fig_name = str(outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_pearson"))
 
     for epoch in range(num_epoch):
-        train_loss = train(
-            model, device, train_loader, optimizer, epoch + 1, log_interval
-        )
+        train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
         G, P = predicting(model, device, val_loader)
         ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
 
@@ -203,29 +199,13 @@ def launch(modeling, args):
             best_epoch = epoch + 1
             best_mse = ret[1]
             best_pearson = ret[2]
-            print(
-                " rmse improved at epoch ",
-                best_epoch,
-                "; best_mse:",
-                best_mse,
-                model_st,
-                dataset,
-            )
+            print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
         else:
-            print(
-                " no improvement since epoch ",
-                best_epoch,
-                "; best_mse, best pearson:",
-                best_mse,
-                best_pearson,
-                model_st,
-                dataset,
-            )
+            print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
 
     draw_loss(train_losses, val_losses, loss_fig_name)
     draw_pearson(val_pearsons, pearson_fig_name)
 
-    # ap -----
     # Dump raw predictions
     G_test, P_test = predicting(model, device, test_loader)
     preds = pd.DataFrame({"True": G_test, "Pred": P_test})
@@ -238,18 +218,12 @@ def launch(modeling, args):
     rmse_scr = rmse(G_test, P_test)
     scores = {"ccp": ccp_scr, "rmse": rmse_scr}
     import json
-    # ap -----
 
-    with open(
-        outdir / f"scores_{val_scheme}_{model_st}_{dataset}.json",
-        "w",
-        encoding="utf-8",
-    ) as f:
+    with open(outdir / f"scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
         json.dump(scores, f, ensure_ascii=False, indent=4)
 
     timer.display_timer()
-    print(scores)
-    print("Done.")
+    print("Scores:\n\t{}".format(scores))
     return scores
 
 
@@ -258,31 +232,31 @@ def run(gParameters):
     args = candle.ArgumentStruct(**gParameters)
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
 
-    # call the launch function with specific model and args with all hyperparameters
+    # Call launch() with specific model arch and args with all HPs
     scores = launch(modeling, args)
     return scores
 
 
 def initialize_parameters():
+    """ Initialize the parameters for the GraphDRP benchmark. """
     print("Initializing parameters\n")
-
-    """ Initialize the parameters for the GraphDRP benchmark """
-    graphdrp_bench = bmk.BenchmarkGraphDRP(
-        bmk.file_path,
-        "graphdrp_default_model.txt",
-        "pytorch",
-        prog="graphdrp",
-        desc="Graph DRP",
+    graphdrp_bmk = bmk.BenchmarkGraphDRP(
+        filepath=bmk.file_path,
+        defmodel="graphdrp_default_model.txt",
+        # defmodel="graphdrp_model_candle.txt",
+        framework="pytorch",
+        prog="GraphDRP",
+        desc="CANDLE compliant GraphDRP",
     )
-
-    gParameters = candle.finalize_parameters(graphdrp_bench)
+    gParameters = candle.finalize_parameters(graphdrp_bmk)
     return gParameters
 
 
 def main():
     gParameters = initialize_parameters()
     print(gParameters)
-    run(gParameters)
+    scores = run(gParameters)
+    print("Done.")
 
 
 if __name__ == "__main__":

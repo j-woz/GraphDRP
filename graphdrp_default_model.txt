@@ -1,6 +1,7 @@
 [Global_Params]
 batch_size = 256
 cache_subdir = 'data_processed/mixed_set/processed'
+cuda_name = "cuda:0"
 data_url = 'https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP'
 epochs = 2
 learning_rate = 0.0001
