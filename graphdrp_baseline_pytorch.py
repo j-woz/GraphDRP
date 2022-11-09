@@ -113,16 +113,21 @@ def launch(modeling, args):
                         unpack=False, md5_hash=None,
                         cache_subdir=args.cache_subdir )
 
+    # CUDA device from env var
+    print("CUDA_VISIBLE_DEVICES:", os.getenv("CUDA_VISIBLE_DEVICES"))
+    assert os.getenv("CUDA_VISIBLE_DEVICES").isnumeric(), print("CUDA_VISIBLE_DEVICES must be numeric.")
+    cuda_name = f"cuda:{int(os.getenv('CUDA_VISIBLE_DEVICES'))}"
+
     # input
     _data_dir = os.path.split(args.cache_subdir)[0]
     root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
-    cuda_name = args.device
+    # cuda_name = args.device
     lr = args.learning_rate
     num_epoch = args.epochs
     log_interval = args.log_interval
     train_batch = args.batch_size
-    val_batch = args.test_batch_size
-    test_batch = args.val_batch_size
+    val_batch = args.val_batch
+    test_batch = args.test_batch
     # ap -----
 
     print("Learning rate: ", lr)
