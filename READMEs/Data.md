@@ -14,10 +14,10 @@ Preprocessing scripts are often required to generate ML data from raw data. Howe
 
 
 # Raw data
-The raw data is donwloaded from GDSC website (version 6.0) and refers here to three types of data:
+The raw data is downloaded from GDSC website (version 6.0) and refers here to three types of data:
 1) Dose-independent drug response values.
 `PANCANCER_IC.csv`: drug and cell ids, IC50 values and other metadata (223 drugs and 948 cell lines).
-2) Cancer sample information. `PANCANCER_Genetic_feature.csv`: 735 binary features that include coding variatns and copy number alterations.
+2) Cancer sample information. `PANCANCER_Genetic_feature.csv`: 735 binary features that include coding variants and copy number alterations.
 3) Drug information. `drug_smiles.csv`: SMILES strings of drug molecules. The SMILES were retrieved from PubChem using CIDs (Druglist.csv). The script `preprocess.py` provides functions to generate this file.
 
 All these data types were provided with the GraphDRP repo. The data is available in: https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data/
@@ -26,8 +26,8 @@ All these data types were provided with the GraphDRP repo. The data is available
 # ML data
 The script `preprocess.py` uses raw data to generate ML data that can be used to train and test with GraphDRP. The necessary raw data are automatically downloaded from the FTP server using a `candle_lib` utility function `get_file()` and processed:
 
-- __Rersponse data__. IC50 values (PANCANCER_IC.csv) are transformed using 1 / (1 + pow(math.exp(float(ic50)), -0.1)).
-- __Cancer features__. 735 binary features including mutations and copy number alterations are not modified.
+- __Response data__. IC50 values (PANCANCER_IC.csv) are transformed using 1 / (1 + pow(math.exp(float(ic50)), -0.1)).
+- __Cancer features__. 735 binary features, including mutations and copy number alterations, are not modified.
 - __Drug features__. SMILES string of each drug is converted into graph structure where nodes represent atoms and edges represent the bonds (each atom is represented by 78 features).
 
 The user can specify one of three data splitting strategies: 1) mixed set (random split), 2) cell-blind (hard partition on cell line samples), 3) drug-blind (hard partition on drugs).
