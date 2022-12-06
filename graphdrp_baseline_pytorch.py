@@ -233,7 +233,7 @@ def launch(modeling, args):
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
 
     # Supervisor HPO
-    print("\nIMPROVE_RESULT val_loss: {}\n".format(best_mse))
+    print("\nIMPROVE_RESULT val_loss:\t{}\n".format(best_mse))
     val_scores = {"val_loss": float(best_mse), "pcc": float(best_pearson), "scc": float(best_spearman), "rmse": float(best_rmse)}
     with open(outdir / "scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
