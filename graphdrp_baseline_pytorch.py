@@ -177,9 +177,16 @@ def launch(modeling, args):
 
     for epoch in range(num_epoch):
         train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
-        G, P = predicting(model, device, val_loader)
-        ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
 
+        # Val set scores
+        G, P = predicting(model, device, val_loader)
+        ret = [rmse(G, P),
+               mse(G, P),
+               pearson(G, P),
+               spearman(G, P)
+        ]
+
+        # Test set scores
         G_test, P_test = predicting(model, device, test_loader)
         ret_test = [
             rmse(G_test, P_test),
@@ -197,8 +204,10 @@ def launch(modeling, args):
             with open(result_file_name, "w") as f:
                 f.write(",".join(map(str, ret_test)))
             best_epoch = epoch + 1
+            best_rmse = ret[0]
             best_mse = ret[1]
             best_pearson = ret[2]
+            best_spearman = ret[3]
             print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
         else:
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
@@ -206,25 +215,32 @@ def launch(modeling, args):
     draw_loss(train_losses, val_losses, loss_fig_name)
     draw_pearson(val_pearsons, pearson_fig_name)
 
-    # Dump raw predictions
+    # Test set raw predictions
     G_test, P_test = predicting(model, device, test_loader)
     preds = pd.DataFrame({"True": G_test, "Pred": P_test})
-    preds_file_name = f"preds_{val_scheme}_{model_st}_{dataset}.csv"
+    preds_file_name = f"test_preds_{val_scheme}_{model_st}_{dataset}.csv"
     preds.to_csv(outdir / preds_file_name, index=False)
 
-    # Calc and dump scores
-    # ret = [rmse(G_test, P_test), mse(G_test, P_test), pearson(G_test, P_test), spearman(G_test, P_test)]
-    ccp_scr = pearson(G_test, P_test)
-    rmse_scr = rmse(G_test, P_test)
-    scores = {"ccp": ccp_scr, "rmse": rmse_scr}
+    # Test set scores
+    pcc_test = pearson(G_test, P_test)
+    scc_test = spearman(G_test, P_test)
+    rmse_test = rmse(G_test, P_test)
+    test_scores = {"pcc": pcc_test, "scc": scc_test, "rmse": rmse_test}
+
     import json
 
-    with open(outdir / f"scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
-        json.dump(scores, f, ensure_ascii=False, indent=4)
+    with open(outdir / f"test_scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
+        json.dump(test_scores, f, ensure_ascii=False, indent=4)
+
+    # Supervisor HPO
+    print("\nIMPROVE_RESULT val_loss: {}\n".format(best_mse))
+    val_scores = {"val_loss": float(best_mse), "pcc": float(best_pearson), "scc": float(best_spearman), "rmse": float(best_rmse)}
+    with open(outdir / "scores.json", "w", encoding="utf-8") as f:
+        json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     timer.display_timer()
-    print("Scores:\n\t{}".format(scores))
-    return scores
+    print("Scores:\n\t{}".format(val_scores))
+    return val_scores
 
 
 def run(gParameters):
