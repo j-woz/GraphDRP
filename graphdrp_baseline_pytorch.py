@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 from random import shuffle
 from time import time
+import json
 
 import candle
 import numpy as np
@@ -227,7 +228,7 @@ def launch(modeling, args):
     rmse_test = rmse(G_test, P_test)
     test_scores = {"pcc": pcc_test, "scc": scc_test, "rmse": rmse_test}
 
-    import json
+    
 
     with open(outdir / f"test_scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
