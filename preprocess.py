@@ -311,8 +311,8 @@ def save_cell_mut_matrix():
     for item in matrix_list:
         cell_feature[item[0], item[1]] = 1
 
-    with open('mut_dict', 'wb') as fp:
-        pickle.dump(mut_dict, fp)
+    # with open('mut_dict', 'wb') as fp:
+    #     pickle.dump(mut_dict, fp)
 
     return cell_dict, cell_feature
 
@@ -331,8 +331,8 @@ def save_mix_drug_cell_matrix(args):
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
-    with open('drug_dict', 'wb') as fp:
-        pickle.dump(drug_dict, fp)
+    # with open('drug_dict', 'wb') as fp:
+    #     pickle.dump(drug_dict, fp)
 
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
 
@@ -368,11 +368,11 @@ def save_mix_drug_cell_matrix(args):
     size = int(xd.shape[0] * 0.8)
     size1 = int(xd.shape[0] * 0.9)
 
-    with open('list_drug_mix_test', 'wb') as fp:
-        pickle.dump(lst_drug[size1:], fp)
+    # with open('list_drug_mix_test', 'wb') as fp:
+    #     pickle.dump(lst_drug[size1:], fp)
 
-    with open('list_cell_mix_test', 'wb') as fp:
-        pickle.dump(lst_cell[size1:], fp)
+    # with open('list_cell_mix_test', 'wb') as fp:
+    #     pickle.dump(lst_cell[size1:], fp)
 
     # Create data splits
     xd_train = xd[:size]
@@ -430,8 +430,8 @@ def save_blind_drug_matrix(args):
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
-    with open('drug_dict', 'wb') as fp:
-        pickle.dump(drug_dict, fp)
+    # with open('drug_dict', 'wb') as fp:
+    #     pickle.dump(drug_dict, fp)
 
     # matrix_list = []  # not used
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
@@ -498,8 +498,8 @@ def save_blind_drug_matrix(args):
                 y_test.append(ic50)
                 lstDrugTest.append(drug)
 
-    with open('drug_blind_test', 'wb') as fp:
-        pickle.dump(lstDrugTest, fp)
+    # with open('drug_blind_test', 'wb') as fp:
+    #     pickle.dump(lstDrugTest, fp)
 
     print(len(y_train), len(y_val), len(y_test))
     xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
@@ -549,8 +549,8 @@ def save_blind_cell_matrix(args):
     cell_dict, cell_feature = save_cell_mut_matrix()
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
-    with open('drug_dict', 'wb') as fp:
-        pickle.dump(drug_dict, fp)
+    # with open('drug_dict', 'wb') as fp:
+    #     pickle.dump(drug_dict, fp)
 
     # matrix_list = []  # not used
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
@@ -617,8 +617,8 @@ def save_blind_cell_matrix(args):
                 y_test.append(ic50)
                 lstCellTest.append(cell)
 
-    with open('cell_blind_test', 'wb') as fp:
-        pickle.dump(lstCellTest, fp)
+    # with open('cell_blind_test', 'wb') as fp:
+    #     pickle.dump(lstCellTest, fp)
 
     print(len(y_train), len(y_val), len(y_test))
     xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
@@ -735,8 +735,16 @@ if __name__ == "__main__":
         candle.get_file(fname=f.strip(),
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
-                        datadir=fdir/"./data",
+                        datadir=fdir/"data",
                         cache_subdir=None)
+
+    # Download zip file.
+    # ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP"
+    # candle.get_file(fname="data.zip",
+    #                 origin=ftp_origin,
+    #                 unpack=False, md5_hash=None,
+    #                 datadir=fdir/"data_tmp",
+    #                 cache_subdir=None)
 
     parser = argparse.ArgumentParser(description='prepare dataset to train model')
     parser.add_argument(

@@ -32,6 +32,7 @@ conda install -c anaconda networkx --yes
 
 # CANDLE
 pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
+# pip install git+https://github.com/ECP-CANDLE/candle_lib@candle_data_dir
 
 # My packages
 #conda install -c conda-forge ipdb=0.13.9 --yes

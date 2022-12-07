@@ -70,13 +70,16 @@ def predicting(model, device, loader):
 
 
 def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args):
+           cuda_name, args):
 
     # ap
     timer = Timer()
-    if args.set == "mix":
-        set_str = "_mix"
-        val_scheme = "mixed"
+    # if args.set == "mix":
+    #     set_str = "_mix"
+    #     val_scheme = "mixed"
+    if args.set == "mixed":
+        set_str = "_mixed"
+        val_scheme = "mixed_set"
     elif args.set == "cell":
         set_str = "_cell_blind"
         val_scheme = "cell_blind"
@@ -104,18 +107,23 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
     print('\nrunning on ', model_st + '_' + dataset)
 
     root = args.root
+    root = os.path.join(root, val_scheme)
+    print("root: {}".format(root))
     if args.tr_file is None:
-        processed_data_file_train = root + '/processed/' + dataset + '_train' + set_str + '.pt'
+        # processed_data_file_train = root + '/processed/' + dataset + '_train' + set_str + '.pt'
+        processed_data_file_train = os.path.join(root, "processed", "train_data.pt")
     else:
         processed_data_file_train = root + '/processed/' + args.tr_file + '.pt'
 
     if args.vl_file is None:
-        processed_data_file_val = root + '/processed/' + dataset + '_val' + set_str + '.pt'
+        # processed_data_file_val = root + '/processed/' + dataset + '_val' + set_str + '.pt'
+        processed_data_file_val = os.path.join(root, "processed", "val_data.pt")
     else:
         processed_data_file_val = root + '/processed/' + args.vl_file + '.pt'
 
     if args.tr_file is None:
-        processed_data_file_test = root + '/processed/'+ dataset + '_test' + set_str + '.pt'
+        # processed_data_file_test = root + '/processed/'+ dataset + '_test' + set_str + '.pt'
+        processed_data_file_test = os.path.join(root, "processed", "test_data.pt")
     else:
         processed_data_file_test = root + '/processed/' + args.te_file + '.pt'
 
@@ -141,10 +149,15 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         # val_data = TestbedDataset(root='data', dataset=dataset + '_val' + set_str)
         # test_data = TestbedDataset(root='data', dataset=dataset + '_test' + set_str)
 
+        # # import pdb; pdb.set_trace()
+        # train_data = TestbedDataset(root=root, dataset=args.tr_file)
+        # val_data = TestbedDataset(root=root, dataset=args.vl_file)
+        # test_data = TestbedDataset(root=root, dataset=args.te_file)
+
         # import pdb; pdb.set_trace()
-        train_data = TestbedDataset(root=root, dataset=args.tr_file)
-        val_data = TestbedDataset(root=root, dataset=args.vl_file)
-        test_data = TestbedDataset(root=root, dataset=args.te_file)
+        train_data = TestbedDataset(root=root, dataset="train_data")
+        val_data = TestbedDataset(root=root, dataset="val_data")
+        test_data = TestbedDataset(root=root, dataset="test_data")
 
         # make data PyTorch mini-batch processing ready
         train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -153,6 +166,7 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
         print("CPU/GPU: ", torch.cuda.is_available())
 
         # training the model
+        # cuda_name = f"cuda:{int(os.getenv('CUDA_VISIBLE_DEVICES'))}"
         device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
         print(device)
         model = modeling().to(device)
@@ -228,7 +242,6 @@ def launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_inte
 def initialize_parameters():
     print("Initializing parameters\n")
 
-
     parser = argparse.ArgumentParser(description='train model')
     parser.add_argument(
         '--model',
@@ -262,7 +275,7 @@ def initialize_parameters():
         '--log_interval', type=int, required=False, default=20, help='Log interval')
     parser.add_argument(
         '--cuda_name', type=str, required=False, default="cuda:0", help='Cuda')
-    parser.add_argument("--set", type=str, choices=["mix", "cell", "drug"], help="Validation scheme.")
+    parser.add_argument("--set", type=str, choices=["mixed", "cell", "drug"], help="Validation scheme.")
     parser.add_argument('--root', required=False, default="data", type=str,
                         help='Path to processed .pt files (default: data).')
     parser.add_argument('--gout', default=None, type=str,
@@ -274,6 +287,11 @@ def initialize_parameters():
     parser.add_argument('--te_file', required=False, default=None, type=str,
                         help='Test data path (default: None).')
     args = parser.parse_args()
+    return args
+
+
+def main():
+    args = initialize_parameters()
 
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model]
     train_batch = args.train_batch
@@ -283,13 +301,11 @@ def initialize_parameters():
     num_epoch = args.num_epoch
     log_interval = args.log_interval
     cuda_name = args.cuda_name
-    print("In Run Function:\n")
-    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-         cuda_name, args)
 
-def main():
-    gParameters = initialize_parameters()
+    print("In Run Function:\n")
     # run(gParameters)
+    launch(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
+        cuda_name, args)
 
 
 if __name__ == "__main__":
