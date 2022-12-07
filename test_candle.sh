@@ -17,4 +17,5 @@ cdd=$2
 # python -m pdb graphdrp_baseline_pytorch.py --model 0 --cuda_name "cuda:6"
 
 # test_candle.sh 0 candle_data_dir
-CUDA_VISIBLE_DEVICES=$1 CANDLE_DATA_DIR=$2 python -m pdb graphdrp_baseline_pytorch.py --modeling 0
+# CUDA_VISIBLE_DEVICES=$1 CANDLE_DATA_DIR=$2 python -m pdb graphdrp_baseline_pytorch.py --modeling 0
+CUDA_VISIBLE_DEVICES=$1 CANDLE_DATA_DIR=$2 python graphdrp_baseline_pytorch.py --modeling 0

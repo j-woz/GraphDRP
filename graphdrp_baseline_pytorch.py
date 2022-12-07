@@ -232,11 +232,11 @@ def launch(modeling, args):
     with open(outdir / f"test_scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
 
-    # Supervisor HPO
-    print("\nIMPROVE_RESULT val_loss:\t{}\n".format(best_mse))
+    # # Supervisor HPO
+    # print("\nIMPROVE_RESULT val_loss:\t{}\n".format(best_mse))
     val_scores = {"val_loss": float(best_mse), "pcc": float(best_pearson), "scc": float(best_spearman), "rmse": float(best_rmse)}
-    with open(outdir / "scores.json", "w", encoding="utf-8") as f:
-        json.dump(val_scores, f, ensure_ascii=False, indent=4)
+    # with open(outdir / "scores.json", "w", encoding="utf-8") as f:
+    #     json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     timer.display_timer()
     print("Scores:\n\t{}".format(val_scores))
@@ -250,6 +250,13 @@ def run(gParameters):
 
     # Call launch() with specific model arch and args with all HPs
     scores = launch(modeling, args)
+
+    # Supervisor HPO
+    print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["val_loss"]))
+    import json
+    with open(Path(args.output_dir) / "scores.json", "w", encoding="utf-8") as f:
+        json.dump(scores, f, ensure_ascii=False, indent=4)
+
     return scores
 
 
