@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import json
 import os
 from pathlib import Path
 import sys
@@ -227,8 +228,6 @@ def launch(modeling, args):
     rmse_test = rmse(G_test, P_test)
     test_scores = {"pcc": pcc_test, "scc": scc_test, "rmse": rmse_test}
 
-    import json
-
     with open(outdir / f"test_scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
 
@@ -253,7 +252,6 @@ def run(gParameters):
 
     # Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["val_loss"]))
-    import json
     with open(Path(args.output_dir) / "scores.json", "w", encoding="utf-8") as f:
         json.dump(scores, f, ensure_ascii=False, indent=4)
 
