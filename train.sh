@@ -1,6 +1,5 @@
-
 #!/bin/bash
-
+  
 #########################################################################
 ### THIS IS A TEMPLATE FILE. SUBSTITUTE #PATH# WITH THE MODEL EXECUTABLE.
 #########################################################################
@@ -14,30 +13,43 @@
 CANDLE_MODEL=/usr/local/GraphDRP/graphdrp_baseline_pytorch.py
 
 if [ $# -lt 2 ] ; then
-	echo "Illegalnumber of paramaters"
-	exit -1
-
-elif [ $# -eq 3 ] ; then
-  CUDA_VISIBLE_DEVICES=$1
-  CANDLE_DATA_DIR=$2
-  CANDLE_CONFIG=$3
-  CMD="python ${CANDLE_MODEL} --config_file $CANDLE_CONFIG"
-  echo "CMD = $CMD"
-
-else
-  echo "num args is greather than 3 $#"
-  # the candle config is converted to command line parameters
-  CUDA_VISIBLE_DEVICES=$1 ; shift
-  CANDLE_DATA_DIR=$1 ; shift
-  CMD="python ${CANDLE_MODEL} $@"
-  echo "CMD = $CMD"
+        echo "Illegal number of parameters"
+        echo "CUDA_VISIBLE_DEVICES and CANDLE_DATA_DIR are required"
+        exit -1
 fi
+
+if [ $# -eq 2 ] ; then
+        CUDA_VISIBLE_DEVICES=$1 ; shift
+        CANDLE_DATA_DIR=$1 ; shift
+        CMD="python ${CANDLE_MODEL}"
+        echo "CMD = $CMD"
+
+elif [ $# -ge 3 ] ; then
+        CUDA_VISIBLE_DEVICES=$1 ; shift
+        CANDLE_DATA_DIR=$1 ; shift
+
+        # if original $3 is a file, set candle_config and passthrough $@
+        if [ -f $CANDLE_DATA_DIR/$1 ] ; then
+		echo "$CANDLE_DATA_DIR/$1 is a file"
+                CANDLE_CONFIG=$1 ; shift
+                CMD="python ${CANDLE_MODEL} --config_file $CANDLE_CONFIG $@"
+                echo "CMD = $CMD $@"
+
+        # else passthrough $@
+        else
+		echo "$1 is not a file"
+                CMD="python ${CANDLE_MODEL} $@"
+                echo "CMD = $CMD"
+
+        fi
+fi
+
 
 # Display runtime arguments
 echo "using CUDA_VISIBLE_DEVICES ${CUDA_VISIBLE_DEVICES}"
 echo "using CANDLE_DATA_DIR ${CANDLE_DATA_DIR}"
 echo "using CANDLE_CONFIG ${CANDLE_CONFIG}"
-echo "running command ${CMD}"
 
 # Set up environmental variables and execute model
+echo "running command ${CMD}"
 CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} CANDLE_DATA_DIR=${CANDLE_DATA_DIR} $CMD
