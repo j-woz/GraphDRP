@@ -29,6 +29,7 @@ conda install -c conda-forge h5py=3.1 --yes
 conda install -c bioconda pubchempy --yes
 conda install -c rdkit rdkit --yes
 conda install -c anaconda networkx --yes
+conda install -c conda-forge pyarrow=10.0 --yes
 
 # CANDLE
 pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
