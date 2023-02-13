@@ -153,14 +153,6 @@ def raw_drp_to_ml_data(args):
                         datadir=raw_datadir) # cache_subdir=args.cache_subdir
 
     # -------------------
-    # Folder for saving the generated ML data
-    # _data_dir = os.path.split(args.cache_subdir)[0]
-    # root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
-    ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    root = ML_DATADIR/f"data.{args.src}"/f"{args.split_file_name}" # ML data
-    os.makedirs(root, exist_ok=True)
-
-    # -------------------
     # Response data
     pathlist = list(Path(src_raw_datadir).glob("rsp*.csv"))
     pathlist = [p for p in pathlist if "full" not in str(p)]
@@ -211,10 +203,24 @@ def raw_drp_to_ml_data(args):
     cc = {c_id: ge.iloc[i, 1:].values for i, c_id in enumerate(ge["CancID"].values)}  # cell_dict; len(c_dict): 634
 
     # -------------------
-    # Data splits
+    # Load the splits file
     splitdir = Path(os.path.join(src_raw_datadir))/"splits"
-    with open(splitdir/args.split_file_name) as f:
-        ids = [int(line.rstrip()) for line in f]
+    if args.split_file_name == "full":
+        # Full dataset (take all samples)
+        ids = list(range(rsp_df.shape[0]))
+    else:
+        # Check that the split file exists and load
+        assert (splitdir/args.split_file_name).exists(), "split_file_name not found."
+        with open(splitdir/args.split_file_name) as f:
+            ids = [int(line.rstrip()) for line in f]
+
+    # -------------------
+    # Folder for saving the generated ML data
+    # _data_dir = os.path.split(args.cache_subdir)[0]
+    # root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
+    ML_DATADIR = IMPROVE_DATADIR/"ml_data"
+    root = ML_DATADIR/f"data.{args.src}"/f"{args.split_file_name}" # ML data
+    os.makedirs(root, exist_ok=True)
 
     # -------------------
     # Index data
@@ -222,6 +228,7 @@ def raw_drp_to_ml_data(args):
     rsp_data.to_csv(root/"rsp.csv", index=False)
 
     def extract_data_vars(df, d_dict, c_dict, d_smile, c_feature, dd, cc):
+        """ Get drug and cancer feature data, and response values. """
         xd = []
         xc = []
         y = []
@@ -275,6 +282,7 @@ def raw_drp_to_ml_data(args):
         xt=xc,
         y=y,
         smile_graph=smile_graph)
+    return root
 
 
 if __name__ == "__main__":
@@ -307,5 +315,6 @@ if __name__ == "__main__":
         help='Data source name.')
 
     args = parser.parse_args()
-    raw_drp_to_ml_data(args)
-    print("Finished pre-processing.")
+    ml_data_path = raw_drp_to_ml_data(args)
+    print("\nFinished pre-processing.")
+    print(f"ML data path:\t\n{ml_data_path}")

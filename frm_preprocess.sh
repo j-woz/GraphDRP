@@ -13,4 +13,4 @@ python frm_preprocess.py --src ccle --split_file_name split_5_vl_id
 python frm_preprocess.py --src ccle --split_file_name split_5_te_id
 
 # Data for cross-study validation
-# ...
+python frm_preprocess.py --src gdsc2 --split_file_name full
