@@ -132,6 +132,8 @@ def raw_drp_to_ml_data(args):
     """ Generate a single ML data file from raw DRP data. The raw DRP data is
     defined as IMPROVE doc website. """
 
+    # import ipdb; ipdb.set_trace()
+
     # Main data dir
     # TODO:
     # What shoud it be and how this should be specified? config_file?
@@ -139,8 +141,8 @@ def raw_drp_to_ml_data(args):
 
     # -------------------
     # Specify paths for raw DRP data
-    raw_datadir = IMPROVE_DATADIR/"raw_data"  # contains data.{src} folders with raw DRP data
-    src_raw_datadir = raw_datadir/f"data.{args.src}"   # folder of specific data source with raw DRP data
+    RAW_DATADIR = IMPROVE_DATADIR/"raw_data"  # contains data.{src} folders with raw DRP data
+    src_raw_datadir = RAW_DATADIR/f"data.{args.src}"   # folder of specific data source with raw DRP data
 
     # Download raw DRP data (which inludes the data splits)
     ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/CSG_data"
@@ -150,7 +152,7 @@ def raw_drp_to_ml_data(args):
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
                         cache_subdir=None,
-                        datadir=raw_datadir) # cache_subdir=args.cache_subdir
+                        datadir=RAW_DATADIR) # cache_subdir=args.cache_subdir
 
     # -------------------
     # Response data
@@ -205,21 +207,40 @@ def raw_drp_to_ml_data(args):
     # -------------------
     # Load the splits file
     splitdir = Path(os.path.join(src_raw_datadir))/"splits"
-    if args.split_file_name == "full":
+    # import ipdb; ipdb.set_trace()
+    if len(args.split_file_name) == 1 and args.split_file_name[0] == "full":
         # Full dataset (take all samples)
         ids = list(range(rsp_df.shape[0]))
+        outdir_name = "full"
     else:
         # Check that the split file exists and load
-        assert (splitdir/args.split_file_name).exists(), "split_file_name not found."
-        with open(splitdir/args.split_file_name) as f:
-            ids = [int(line.rstrip()) for line in f]
+        ids = []
+        split_id_str = []    # e.g. split_5
+        split_type_str = []  # e.g. tr, vl, te
+        # import ipdb; ipdb.set_trace()
+        for fname in args.split_file_name:
+            assert (splitdir/fname).exists(), "split_file_name not found."
+            with open(splitdir/fname) as f:
+                # Get the ids
+                ids_ = [int(line.rstrip()) for line in f]
+                ids.extend(ids_)
+                # Get the name
+                fname_sep = fname.split("_")
+                split_id_str.append("_".join([s for s in fname_sep[:2]]))
+                split_type_str.append(fname_sep[2])
+
+        assert len(set(split_id_str)) == 1, "Data splits must be from the same dataset source."
+        split_id_str = list(set(split_id_str))[0]
+        split_type_str = "_".join([x for x in split_type_str])
+        outdir_name = f"{split_id_str}_{split_type_str}"
 
     # -------------------
     # Folder for saving the generated ML data
     # _data_dir = os.path.split(args.cache_subdir)[0]
     # root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
     ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    root = ML_DATADIR/f"data.{args.src}"/f"{args.split_file_name}" # ML data
+    # root = ML_DATADIR/f"data.{args.src}"/f"{args.split_file_name}" # ML data
+    root = ML_DATADIR/f"data.{args.src}"/outdir_name # ML data
     os.makedirs(root, exist_ok=True)
 
     # -------------------
@@ -302,10 +323,17 @@ if __name__ == "__main__":
     #     required=False,
     #     default=0,
     #     help='Split id in the cross-stugy analysis.')
+    # ------------------------------
     # That's for CSG analysis
+    # parser.add_argument(
+    #     '--split_file_name',
+    #     type=str,
+    #     required=True,
+    #     help='Split file path in the cross-stugy analysis.')
     parser.add_argument(
         '--split_file_name',
         type=str,
+        nargs="+",
         required=True,
         help='Split file path in the cross-stugy analysis.')
     parser.add_argument(
