@@ -12,7 +12,7 @@ class GINConvNet(torch.nn.Module):
 
         super(GINConvNet, self).__init__()
 
-        # self.output_dim = output_dim  # ap
+        self.output_dim = output_dim  # ap
 
         dim = 32
         self.dropout = nn.Dropout(dropout)
@@ -52,7 +52,13 @@ class GINConvNet(torch.nn.Module):
         self.pool_xt_2 = nn.MaxPool1d(3)
         self.conv_xt_3 = nn.Conv1d(in_channels=n_filters*2, out_channels=n_filters*4, kernel_size=8)
         self.pool_xt_3 = nn.MaxPool1d(3)
-        self.fc1_xt = nn.Linear(2944, output_dim)
+
+        # (ap) Determine in_dim
+        # TODO:
+        # Need to determine in_dim in __init__() and then use this info in forward()
+        # self.in_dim = 2944 # original GraphDRP data
+        self.in_dim = 3968 # our July2020 data
+        self.fc1_xt = nn.Linear(self.in_dim, output_dim)
         # self.fc1_xt = nn.Linear(3968, output_dim)
 
         # combined layers
@@ -65,7 +71,7 @@ class GINConvNet(torch.nn.Module):
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, data):
-        # import pdb; pdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         x, edge_index, batch = data.x, data.edge_index, data.batch
         #print(x)
         #print(data.target)
@@ -85,7 +91,7 @@ class GINConvNet(torch.nn.Module):
 
         # protein input feed-forward:
         target = data.target
-        target = target[:, None, :]
+        target = target[:, None, :]  # [256, 1, 942]
 
         # 1d conv layers
         conv_xt = self.conv_xt_1(target)
@@ -99,6 +105,7 @@ class GINConvNet(torch.nn.Module):
         conv_xt = self.pool_xt_3(conv_xt)
         
         # flatten
+        # import ipdb; ipdb.set_trace()
         in_dim = conv_xt.shape[1] * conv_xt.shape[2]
         # xt = conv_xt.view(-1, conv_xt.shape[1] * conv_xt.shape[2])
         xt = conv_xt.view(-1, in_dim)
