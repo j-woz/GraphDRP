@@ -46,21 +46,23 @@ def launch(modeling, args):
 
     # -----------------------------
     # Create output dir for inference results
-    IMPROVE_DATADIR = fdir/"improve_data_dir"
-    INFER_DIR = IMPROVE_DATADIR/"infer"
+    # IMPROVE_DATADIR = fdir/"improve_data_dir"
+    # INFER_DIR = IMPROVE_DATADIR/"infer"
 
     # Outputdir name structure: train_dataset-test_datast
     import ipdb; ipdb.set_trace()
     # print(args.model_dir)
     # print(args.src)
     # print(args.test_ml_datadir)
-    infer_outdir = INFER_DIR / f"{str(args.model_dir).split(os.sep)[2]}-{args.src}"  # source dataset
+    # infer_outdir = INFER_DIR / f"{str(args.model_dir).split(os.sep)[2]}-{args.src}"  # source dataset
+    infer_outdir = fdir/args.infer_outdir
     os.makedirs(infer_outdir, exist_ok=True)
 
     # -----------------------------
     # Test dataset
-    ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    root_test_data = ML_DATADIR/f"data.{args.src}/{args.test_ml_datadir}"
+    # ML_DATADIR = IMPROVE_DATADIR/"ml_data"
+    # root_test_data = ML_DATADIR/f"data.{args.src}/{args.test_ml_datadir}"
+    root_test_data = fdir/args.test_ml_datadir
 
     # -----------------------------
     # Prepare PyG datasets

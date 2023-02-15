@@ -134,15 +134,15 @@ def raw_drp_to_ml_data(args):
 
     # import ipdb; ipdb.set_trace()
 
-    # Main data dir
+    # Main data dir (e.g., CANDLE_DATADIR, IMPROVE_DATADIR)
     # TODO:
     # What shoud it be and how this should be specified? config_file?
     IMPROVE_DATADIR = fdir/"improve_data_dir"
 
     # -------------------
     # Specify paths for raw DRP data
-    RAW_DATADIR = IMPROVE_DATADIR/"raw_data"  # contains data.{src} folders with raw DRP data
-    src_raw_datadir = RAW_DATADIR/f"data.{args.src}"   # folder of specific data source with raw DRP data
+    RAW_DATADIR = IMPROVE_DATADIR/"raw_data"  # contains folders "data.{src}" with raw DRP data
+    src_raw_datadir = RAW_DATADIR/f"data.{args.src}"  # folder of specific data source with raw DRP data
 
     # Download raw DRP data (which inludes the data splits)
     ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/CSG_data"
@@ -156,15 +156,16 @@ def raw_drp_to_ml_data(args):
 
     # -------------------
     # Response data
-    pathlist = list(Path(src_raw_datadir).glob("rsp*.csv"))
-    pathlist = [p for p in pathlist if "full" not in str(p)]
-    rsp_df = pd.read_csv(pathlist[0])
-    rsp_df = rsp_df[["DrugID", "CancID", "AUC"]]  # temp_data
+    pathlist = list(Path(src_raw_datadir).glob("rsp*.csv"))   # glob files that contain response data
+    pathlist = [p for p in pathlist if "full" not in str(p)]  # get the file that contains the full dataset
+    rsp_df = pd.read_csv(pathlist[0])  # should be only one suitable file
+    rsp_df = rsp_df[["DrugID", "CancID", "AUC"]]  # [drug id, cancer id, response metric]
     print(rsp_df[["CancID", "DrugID"]].nunique())
 
     # Drugs data
-    pathlist = list(Path(src_raw_datadir).glob("smiles*.csv"))
+    pathlist = list(Path(src_raw_datadir).glob("smiles*.csv"))   # glob the drug SMILES file
     smi = pd.read_csv(pathlist[0])
+    # Below is drug featurization from GraphDRP
     d_dict = {v: i for i, v in enumerate(smi["DrugID"].values)}  # drug_dict; len(d_dict): 311
     d_smile = smi["SMILES"].values  # drug_smile
     smile_graph = {}  # smile_graph
@@ -177,7 +178,7 @@ def raw_drp_to_ml_data(args):
     print("Unique smiles: {}".format(len(smile_graph)))
 
     # Cancer data
-    pathlist = list(Path(src_raw_datadir).glob("ge*.parquet"))
+    pathlist = list(Path(src_raw_datadir).glob("ge*.parquet"))   # glob gene expression files
     ge = read_df(pathlist[0])
 
     # Use landmark genes (for gene selection)
@@ -194,11 +195,12 @@ def raw_drp_to_ml_data(args):
 
     # Scale gene expression data
     # TODO:
-    # We might need to save the scaler object (needs to be applied it to test/infer data).
+    # We might need to save the scaler object (needs to be applied to test/infer data).
     ge_xdata = ge.iloc[:, 1:]
     ge_xdata_scaled = scale_fea(ge_xdata, scaler_name='stnd', dtype=np.float32, verbose=False)
     ge = pd.concat([ge[["CancID"]], ge_xdata_scaled], axis=1)
 
+    # Below is omic data preparation from GraphDRP
     # ge = ge.iloc[:, :1000]  # Take subset of cols (genes)
     c_dict = {v: i for i, v in enumerate(ge["CancID"].values)}  # cell_dict; len(c_dict): 634
     c_feature = ge.iloc[:, 1:].values  # cell_feature
@@ -239,12 +241,14 @@ def raw_drp_to_ml_data(args):
     # _data_dir = os.path.split(args.cache_subdir)[0]
     # root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
     ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    # root = ML_DATADIR/f"data.{args.src}"/f"{args.split_file_name}" # ML data
     root = ML_DATADIR/f"data.{args.src}"/outdir_name # ML data
     os.makedirs(root, exist_ok=True)
 
     # -------------------
     # Index data
+    # TODO:
+    # We need to make sure all models properly index the rsp data. Consider to
+    # make it a standard IMPROVE/CANDLE func.
     rsp_data = rsp_df.loc[ids]
     rsp_data.to_csv(root/"rsp.csv", index=False)
 

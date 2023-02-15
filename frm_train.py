@@ -88,7 +88,7 @@ def launch(modeling, args):
     # 3. Raw predictions of the val data (would be nice but probably not mandatory) 
     # Currently we use: improve_data_dir/models/DATASET_NAME/split_ID
     # outdir = Path(args.output_dir)
-    IMPROVE_DATADIR = fdir/"improve_data_dir"  # This should already exist
+    # IMPROVE_DATADIR = fdir/"improve_data_dir"  # This should already exist
 
     # Fetch data (if needed)
     # ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"
@@ -108,11 +108,13 @@ def launch(modeling, args):
     # TODO:
     # Currently, these are hard-coded.
     # Where these should be specified??
-    ML_DATADIR = IMPROVE_DATADIR/"ml_data"
+    # ML_DATADIR = IMPROVE_DATADIR/"ml_data"
     # root_train_data = ML_DATADIR/f"data.{args.src}/split_{args.split}_tr_id"
     # root_val_data = ML_DATADIR/f"data.{args.src}/split_{args.split}_vl_id"
-    root_train_data = ML_DATADIR/f"data.{args.src}/{args.train_ml_datadir}"
-    root_val_data = ML_DATADIR/f"data.{args.src}/{args.val_ml_datadir}"
+    # root_train_data = ML_DATADIR/f"data.{args.src}/{args.train_ml_datadir}"
+    # root_val_data = ML_DATADIR/f"data.{args.src}/{args.val_ml_datadir}"
+    root_train_data = fdir/args.train_ml_datadir
+    root_val_data = fdir/args.val_ml_datadir
 
     # -----------------------------
     # Prepare PyG datasets
@@ -149,11 +151,9 @@ def launch(modeling, args):
     # import ipdb; ipdb.set_trace()
     # TODO:
     # What should this be? We need to encode the traina and val data.
-    # model_datadir = IMPROVE_DATADIR/f"models/{args.src}/split_{args.split}"
-    model_datadir = IMPROVE_DATADIR/f"models/{args.src}/{args.train_ml_datadir}-{args.val_ml_datadir}"
-    os.makedirs(model_datadir, exist_ok=True)
-    model_file_name = model_datadir/"model.pt"
-    # result_file_name = model_datadir / ("result_" + model_st + ".csv")
+    model_outdir = fdir/args.model_outdir
+    os.makedirs(model_outdir, exist_ok=True)
+    model_file_name = model_outdir/"model.pt"
 
     # Iterate over epochs
     # import ipdb; ipdb.set_trace()
@@ -183,30 +183,16 @@ def launch(modeling, args):
     # draw_loss(train_losses, val_losses, loss_fig_name)
     # draw_pearson(val_pearsons, pearson_fig_name)
 
-    # # Test set raw predictions
-    # G_test, P_test = predicting(model, device, test_loader)
-    # preds = pd.DataFrame({"True": G_test, "Pred": P_test})
-    # preds_file_name = f"test_preds_{val_scheme}_{model_st}_{src}.csv"
-    # preds.to_csv(outdir / preds_file_name, index=False)
-    # # Test set scores
-    # pcc_test = pearson(G_test, P_test)
-    # scc_test = spearman(G_test, P_test)
-    # rmse_test = rmse(G_test, P_test)
-    # test_scores = {"pcc": pcc_test, "scc": scc_test, "rmse": rmse_test}
-
     # Load the best model (as determined based val data)
     # TODO:
     # What should be the output so that we know exactly all the specific attributes
     # of this training run (e.g., data source, data split)?
     del model
-    modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
     model = modeling().to(device)
-    # model = TheModelClass(*args, **kwargs)
     model.load_state_dict(torch.load(model_file_name))
     model.eval()
 
     # Compute raw predictions for val data
-    # import ipdb; ipdb.set_trace()
     G_val, P_val = predicting(model, device, val_loader)
     pred = pd.DataFrame({"True": G_val, "Pred": P_val})
 
@@ -221,7 +207,7 @@ def launch(modeling, args):
     # Save the raw predictions on val data
     pred_fname = "val_preds.csv"
     # pred_fname = f"preds_val_{args.src}_split_{args.split}.csv"
-    pred.to_csv(model_datadir/pred_fname, index=False)
+    pred.to_csv(model_outdir/pred_fname, index=False)
 
     # Get performance scores for val data
     # TODO:
@@ -244,9 +230,9 @@ def launch(modeling, args):
     #               "scc": float(best_spearman)}
 
     # Performance scores for Supervisor HPO
-    import ipdb; ipdb.set_trace()
+    # import ipdb; ipdb.set_trace()
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(mse_val))
-    with open(model_datadir/"val_scores.json", "w", encoding="utf-8") as f:
+    with open(model_outdir/"val_scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     # timer.display_timer()
