@@ -17,9 +17,6 @@ INFER_DIR=improve_data_dir/infer
 
 ## Preprocess
 # TODO: if a model needs info about the target dataset, this can be provided as target_data_name.
-# python frm_preprocess.py --src $src --split_file_name split_"$split"_tr_id
-# python frm_preprocess.py --src $src --split_file_name split_"$split"_vl_id
-# python frm_preprocess.py --src $src --split_file_name split_"$split"_te_id
 python frm_preprocess.py --source_data_name $source_data_name --split_file_name split_"$split"_tr_id --sens_score AUC
 python frm_preprocess.py --source_data_name $source_data_name --split_file_name split_"$split"_vl_id --sens_score AUC
 python frm_preprocess.py --source_data_name $source_data_name --split_file_name split_"$split"_te_id --sens_score AUC
