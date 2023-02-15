@@ -44,7 +44,15 @@ additional_definitions = [
     {"name": "src",
      "action": "store",
      "type": str,
-     "help": "Data source"},
+     "help": "Source data for model development."},
+    {"name": "source_data_name",
+     "action": "store",
+     "type": str,
+     "help": "Source data for model development."},
+    {"name": "target_data_name",
+     "action": "store",
+     "type": str,
+     "help": "Target data for model inference/testing."},
     {"name": "split",
      "action": "store",
      "type": str,
@@ -77,6 +85,11 @@ additional_definitions = [
      "action": "store",
      "type": str,
      "help": "Dir to save inference results."},
+    {"name": "sens_score",
+     "default": "AUC",
+     "action": "store",
+     "type": str,
+     "help": "Drug sensitivity score to use as the target variable (e.g., AUC, IC50)."},
 ]
 
 required = [

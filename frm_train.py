@@ -105,14 +105,6 @@ def launch(modeling, args):
 
     # -----------------------------
     # Dirs of train and val data
-    # TODO:
-    # Currently, these are hard-coded.
-    # Where these should be specified??
-    # ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    # root_train_data = ML_DATADIR/f"data.{args.src}/split_{args.split}_tr_id"
-    # root_val_data = ML_DATADIR/f"data.{args.src}/split_{args.split}_vl_id"
-    # root_train_data = ML_DATADIR/f"data.{args.src}/{args.train_ml_datadir}"
-    # root_val_data = ML_DATADIR/f"data.{args.src}/{args.val_ml_datadir}"
     root_train_data = fdir/args.train_ml_datadir
     root_val_data = fdir/args.val_ml_datadir
 
@@ -123,9 +115,8 @@ def launch(modeling, args):
     val_data = TestbedDataset(root=root_val_data, dataset=DATA_FILE_NAME)
 
     # PyTorch dataloaders
-    # Note! Don't shuffle the val_loader
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
+    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)  # Note! Don't shuffle the val_loader
 
     # CUDA device from env var
     print("CPU/GPU: ", torch.cuda.is_available())
@@ -140,7 +131,7 @@ def launch(modeling, args):
     # CUDA/CPU device and optimizer
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
     model = modeling().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # DL optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # DL optimizer. TODO: should this be specified with CANDLE/IMPROVE?
 
     # Vars to monitor best model based val data
     best_mse = 1000
@@ -149,8 +140,6 @@ def launch(modeling, args):
 
     # Dir to save the trained (converged) model
     # import ipdb; ipdb.set_trace()
-    # TODO:
-    # What should this be? We need to encode the traina and val data.
     model_outdir = fdir/args.model_outdir
     os.makedirs(model_outdir, exist_ok=True)
     model_file_name = model_outdir/"model.pt"
@@ -166,6 +155,7 @@ def launch(modeling, args):
 
         # Save best model
         # TODO:
+        # Early stopping should be done the same way for all models.
         # Should this be replaced with a checkpoint??
         if ret[1] < best_mse:
             torch.save(model.state_dict(), model_file_name)
@@ -180,9 +170,6 @@ def launch(modeling, args):
         else:
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
 
-    # draw_loss(train_losses, val_losses, loss_fig_name)
-    # draw_pearson(val_pearsons, pearson_fig_name)
-
     # Load the best model (as determined based val data)
     # TODO:
     # What should be the output so that we know exactly all the specific attributes
@@ -196,7 +183,10 @@ def launch(modeling, args):
     G_val, P_val = predicting(model, device, val_loader)
     pred = pd.DataFrame({"True": G_val, "Pred": P_val})
 
+    # -----------------------------
     # Concat raw predictions with the cancer and drug ids, and the true values
+    # TODO:
+    # Should this be a standard in CANDLE/IMPROVE?
     RSP_FNAME = "rsp.csv"
     rsp_df = pd.read_csv(root_val_data/RSP_FNAME)
     pred = pd.concat([rsp_df, pred], axis=1)
@@ -206,11 +196,12 @@ def launch(modeling, args):
 
     # Save the raw predictions on val data
     pred_fname = "val_preds.csv"
-    # pred_fname = f"preds_val_{args.src}_split_{args.split}.csv"
     pred.to_csv(model_outdir/pred_fname, index=False)
 
+    # -----------------------------
     # Get performance scores for val data
     # TODO:
+    # Should this be a standard in CANDLE/IMPROVE?
     # Here performance scores/metrics are computed using functions defined in
     # this repo. Consider to use function defined by the framework (e.g., CANDLE)
     # so that all DRP models use same methods to compute scores.
@@ -235,7 +226,6 @@ def launch(modeling, args):
     with open(model_outdir/"val_scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
-    # timer.display_timer()
     print("Scores:\n\t{}".format(val_scores))
     return val_scores
 
