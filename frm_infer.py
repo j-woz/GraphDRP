@@ -50,18 +50,12 @@ def launch(modeling, args):
     # INFER_DIR = IMPROVE_DATADIR/"infer"
 
     # Outputdir name structure: train_dataset-test_datast
-    import ipdb; ipdb.set_trace()
-    # print(args.model_dir)
-    # print(args.src)
-    # print(args.test_ml_datadir)
-    # infer_outdir = INFER_DIR / f"{str(args.model_dir).split(os.sep)[2]}-{args.src}"  # source dataset
+    # import ipdb; ipdb.set_trace()
     infer_outdir = fdir/args.infer_outdir
     os.makedirs(infer_outdir, exist_ok=True)
 
     # -----------------------------
     # Test dataset
-    # ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    # root_test_data = ML_DATADIR/f"data.{args.src}/{args.test_ml_datadir}"
     root_test_data = fdir/args.test_ml_datadir
 
     # -----------------------------
@@ -109,6 +103,7 @@ def launch(modeling, args):
 
     # Get performance scores for val data
     # TODO:
+    # Should this be a standard in CANDLE/IMPROVE?
     # Here performance scores/metrics are computed using functions defined in
     # this repo. Consider to use function defined by the framework (e.g., CANDLE)
     # so that all DRP models use same methods to compute scores.
@@ -131,7 +126,6 @@ def launch(modeling, args):
     with open(infer_outdir/"test_scores.json", "w", encoding="utf-8") as f:
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
 
-    # timer.display_timer()
     print("Scores:\n\t{}".format(test_scores))
     return test_scores
 
