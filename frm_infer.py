@@ -22,7 +22,18 @@ from models.ginconv import GINConvNet
 from utils import *
 
 
+# These are globals for all models
+# TODO:
+# Where do these go?
+true_col_name = "True"
+pred_col_name = "Pred"
+
+
 def predicting(model, device, loader):
+    """ Method to run predictions/inference.
+    The same method is in infer.py
+    TODO: put this in some utils script.
+    """
     model.eval()
     total_preds = torch.Tensor()
     total_labels = torch.Tensor()
@@ -87,15 +98,15 @@ def launch(modeling, args):
     # Compute raw predictions for val data
     # import ipdb; ipdb.set_trace()
     G_test, P_test = predicting(model, device, test_loader)
-    pred = pd.DataFrame({"True": G_test, "Pred": P_test})
+    pred = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})
 
     # Concat raw predictions with the cancer and drug ids, and the true values
     RSP_FNAME = "rsp.csv"
     rsp_df = pd.read_csv(root_test_data/RSP_FNAME)
     pred = pd.concat([rsp_df, pred], axis=1)
     pred = pred.astype({"AUC": np.float32, "True": np.float32, "Pred": np.float32})
-    assert sum(pred["True"] == pred["AUC"]) == pred.shape[0], \
-        "Columns 'AUC' and 'True' are the ground truth, and thus, should be the same."
+    assert sum(pred[true_col_name] == pred[args.y_col_name]) == pred.shape[0], \
+        f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
 
     # Save the raw predictions on val data
     pred_fname = "test_preds.csv"

@@ -96,13 +96,28 @@ def smile_to_graph(smile):
 The functions below generate datasets for CSG (data from July 2020) - Start
 """
 
+# These are globals for all models
+# TODO:
+# Where do these go?
+raw_datadir_name = "raw_data"
+x_datadir_name = "x_data"
+y_datadir_name = "y_data"
+canc_col_name = "CancID"
+drug_col_name = "DrugID"
+ge_fname = "ge.parquet"  # cancer feature
+smiles_fname = "smiles.csv"  # drug feature
+y_file_substr = "rsp"
 
-def read_df(fpath, sep="\t"):
+
+def read_df(fpath, sep=","):
+    """ Load a dataframe. Supports csv and parquet files.
+    sep : the sepator in csv file
+    """
     assert Path(fpath).exists(), f"File {fpath} was not found."
     if "parquet" in str(fpath):
         df = pd.read_parquet(fpath)
     else:
-        df = pd.read_csv(fpath, sep=sep, na_values=na_values)
+        df = pd.read_csv(fpath, sep=sep)
     return df
 
 
@@ -128,16 +143,18 @@ def scale_fea(xdata, scaler_name='stnd', dtype=np.float32, verbose=False):
     return pd.DataFrame(scaler.fit_transform(xdata), columns=cols, dtype=dtype)
 
 
-def read_rsp_data(src_raw_datadir, sens_score="AUC"):
-    """ Read drug response response file from datadir.
-    AUC: Drug sensitivity score/metric
-
+def load_rsp_data(src_raw_datadir, y_col_name="AUC"):
+    """ Read drug response response file and return a datarame with cancer ids,
+    drug ids, and drug response values.
+    src_raw_datadir : data dir where the raw DRP data is stored
+    y_col_name : Drug sensitivity score/metric (e.g., AUC, IC50)
     """
-    pathlist = list(Path(src_raw_datadir).glob("rsp*.csv"))   # glob files that contain response data
+    # TODO: Should this be a standard CANDLE/IMPROVE function?
+    pathlist = list(Path(src_raw_datadir/y_datadir_name).glob(f"{y_file_substr}*.csv"))  # glob csv files that contain response data
     pathlist = [p for p in pathlist if "full" not in str(p)]  # get the file that contains the full dataset
-    rsp_df = pd.read_csv(pathlist[0])  # should be only one suitable file
-    rsp_df = rsp_df[["DrugID", "CancID", sens_score]]  # [drug id, cancer id, response metric]
-    # print(rsp_df[["CancID", "DrugID"]].nunique())
+    rsp_df = pd.read_csv(pathlist[0])  # there should be only one suitable file
+    rsp_df = rsp_df[[drug_col_name, canc_col_name, y_col_name]]  # [drug id, cancer id, response]
+    # print(rsp_df[[canc_col_name, drug_col_name]].nunique())
     return rsp_df
 
 
@@ -150,59 +167,64 @@ def raw_drp_to_ml_data(args):
     # Main data dir (e.g., CANDLE_DATADIR, IMPROVE_DATADIR)
     # TODO:
     # What shoud it be and how this should be specified? config_file?
+    # Keep in mind the unified interface.
     IMPROVE_DATADIR = fdir/"improve_data_dir"
 
     # -------------------
     # Specify path for raw DRP data (download data from ftp)
-    RAW_DATADIR = IMPROVE_DATADIR/"raw_data"  # contains folders "data.{source_data_name}" with raw DRP data
+    # E.g., improve_data_dir/raw_data/data.ccle
+    RAW_DATADIR = IMPROVE_DATADIR/raw_datadir_name  # contains folders "data.{source_data_name}" with raw DRP data
     src_raw_datadir = RAW_DATADIR/f"data.{args.source_data_name}"  # folder of specific data source with raw DRP data
 
     # Download raw DRP data (which inludes the data splits)
+    # download = True
+    download = False
     # TODO:
     # Where this should be specified? config_file?
-    ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/CSG_data"
-    data_file_list = [f"data.{args.source_data_name}.zip"]
-    for f in data_file_list:
-        candle.get_file(fname=f,
-                        origin=os.path.join(ftp_origin, f.strip()),
-                        unpack=False, md5_hash=None,
-                        cache_subdir=None,
-                        datadir=RAW_DATADIR) # cache_subdir=args.cache_subdir
+    if download:
+        ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/CSG_data"
+        data_file_list = [f"data.{args.source_data_name}.zip"]
+        for f in data_file_list:
+            candle.get_file(fname=f,
+                            origin=os.path.join(ftp_origin, f.strip()),
+                            unpack=False, md5_hash=None,
+                            cache_subdir=None,
+                            datadir=RAW_DATADIR) # cache_subdir=args.cache_subdir
 
     # -------------------
-    # Response data (GENERAL pre-processing commands for all models)
+    # Response data (general func for all models)
     # TODO:
-    # read_rsp_data should be the same across all models.
+    # This command should be used in preprocess of all models.
     # Should this be a standard in CANDLE/IMPROVE?
-    rsp_df = read_rsp_data(src_raw_datadir, sens_score=args.sens_score)
-    # pathlist = list(Path(src_raw_datadir).glob("rsp*.csv"))   # glob files that contain response data
-    # pathlist = [p for p in pathlist if "full" not in str(p)]  # get the file that contains the full dataset
-    # rsp_df = pd.read_csv(pathlist[0])  # should be only one suitable file
-    # rsp_df = rsp_df[["DrugID", "CancID", "AUC"]]  # [drug id, cancer id, response metric]
-    print(rsp_df[["CancID", "DrugID"]].nunique())
+    rsp_df = load_rsp_data(src_raw_datadir, y_col_name=args.y_col_name)
+    print(rsp_df[[canc_col_name, drug_col_name]].nunique())
 
     # -------------------
-    # Drugs data (specific to GraphDRP)
-    pathlist = list(Path(src_raw_datadir).glob("smiles*.csv"))   # glob the drug SMILES file
-    smi = pd.read_csv(pathlist[0])
-    # Below is drug featurization for GraphDRP
-    d_dict = {v: i for i, v in enumerate(smi["DrugID"].values)}  # drug_dict; len(d_dict): 311
+    # Drugs data (general func for all models)
+    smi = read_df(src_raw_datadir/x_datadir_name/smiles_fname)
+
+    # Drug featurization for GraphDRP (specific to GraphDRP)
+    d_dict = {v: i for i, v in enumerate(smi[drug_col_name].values)}  # drug_dict; len(d_dict): 311
     d_smile = smi["SMILES"].values  # drug_smile
     smile_graph = {}  # smile_graph
-    dd = {d_id: s for d_id, s in zip(smi["DrugID"].values, smi["SMILES"].values)}
+    dd = {d_id: s for d_id, s in zip(smi[drug_col_name].values, smi["SMILES"].values)}
     for smile in d_smile:
-        g = smile_to_graph(smile)  # (ap) g: [c_size, features, edge_index]
+        g = smile_to_graph(smile)  # g: [c_size, features, edge_index]
         smile_graph[smile] = g
 
     # print("Unique drugs: {}".format(len(d_dict)))
     # print("Unique smiles: {}".format(len(smile_graph)))
 
     # -------------------
-    # Cancer data
-    pathlist = list(Path(src_raw_datadir).glob("ge*.parquet"))   # glob gene expression files
-    ge = read_df(pathlist[0])
+    # Cancer data (general func for all models)
+    # pathlist = list(Path(src_raw_datadir/x_data_subdir).glob(ge_fname))  # glob gene expression files
+    # ge = read_df(pathlist[0])
+    ge = read_df(src_raw_datadir/x_datadir_name/ge_fname)
 
     # Use landmark genes (for gene selection)
+    # TODO:
+    # Eventually, lincs genes will provided with the raw DRP data (check with data curation team).
+    # Thus, it will be part of CANDLE/IMPROVE functions.
     use_lincs = True
     if use_lincs:
         # with open(Path(src_raw_datadir)/"../landmark_genes") as f:
@@ -211,7 +233,7 @@ def raw_drp_to_ml_data(args):
         genes = ["ge_" + str(g) for g in genes]
         print("Genes count: {}".format(len(set(genes).intersection(set(ge.columns[1:])))))
         genes = list(set(genes).intersection(set(ge.columns[1:])))
-        cols = ["CancID"] + genes
+        cols = [canc_col_name] + genes
         ge = ge[cols]
 
     # Scale gene expression data
@@ -219,65 +241,87 @@ def raw_drp_to_ml_data(args):
     # We might need to save the scaler object (needs to be applied to test/infer data).
     ge_xdata = ge.iloc[:, 1:]
     ge_xdata_scaled = scale_fea(ge_xdata, scaler_name='stnd', dtype=np.float32, verbose=False)
-    ge = pd.concat([ge[["CancID"]], ge_xdata_scaled], axis=1)
+    ge = pd.concat([ge[[canc_col_name]], ge_xdata_scaled], axis=1)
 
     # Below is omic data preparation for GraphDRP
     # ge = ge.iloc[:, :1000]  # Take subset of cols (genes)
-    c_dict = {v: i for i, v in enumerate(ge["CancID"].values)}  # cell_dict; len(c_dict): 634
+    c_dict = {v: i for i, v in enumerate(ge[canc_col_name].values)}  # cell_dict; len(c_dict): 634
     c_feature = ge.iloc[:, 1:].values  # cell_feature
-    cc = {c_id: ge.iloc[i, 1:].values for i, c_id in enumerate(ge["CancID"].values)}  # cell_dict; len(c_dict): 634
+    cc = {c_id: ge.iloc[i, 1:].values for i, c_id in enumerate(ge[canc_col_name].values)}  # cell_dict; len(c_dict): 634
 
     # -------------------
-    # Data splits
+    # Get data splits and create folder for saving the generated ML data
     # TODO:
     # Should this be a standard in CANDLE/IMPROVE?
-    splitdir = Path(os.path.join(src_raw_datadir))/"splits"
-    # import ipdb; ipdb.set_trace()
+
+    # Method 1
+    # splitdir = Path(os.path.join(src_raw_datadir))/"splits"
+    # if len(args.split_file_name) == 1 and args.split_file_name[0] == "full":
+    #     # Full dataset (take all samples)
+    #     ids = list(range(rsp_df.shape[0]))
+    #     outdir_name = "full"
+    # else:
+    #     # Check if the split file exists and load
+    #     ids = []
+    #     split_id_str = []    # e.g. split_5
+    #     split_type_str = []  # e.g. tr, vl, te
+    #     for fname in args.split_file_name:
+    #         assert (splitdir/fname).exists(), "split_file_name not found."
+    #         with open(splitdir/fname) as f:
+    #             # Get the ids
+    #             ids_ = [int(line.rstrip()) for line in f]
+    #             ids.extend(ids_)
+    #             # Get the name
+    #             fname_sep = fname.split("_")
+    #             split_id_str.append("_".join([s for s in fname_sep[:2]]))
+    #             split_type_str.append(fname_sep[2])
+    #     assert len(set(split_id_str)) == 1, "Data splits must be from the same dataset source."
+    #     split_id_str = list(set(split_id_str))[0]
+    #     split_type_str = "_".join([x for x in split_type_str])
+    #     outdir_name = f"{split_id_str}_{split_type_str}"
+    # ML_DATADIR = IMPROVE_DATADIR/"ml_data"
+    # root = ML_DATADIR/f"data.{args.source_data_name}"/outdir_name # ML data
+    # os.makedirs(root, exist_ok=True)
+
+    # Method 2
+    splitdir = src_raw_datadir/args.splitdir_name
     if len(args.split_file_name) == 1 and args.split_file_name[0] == "full":
         # Full dataset (take all samples)
         ids = list(range(rsp_df.shape[0]))
-        outdir_name = "full"
     else:
-        # Check that the split file exists and load
+        # Check if the split file exists and load
         ids = []
-        split_id_str = []    # e.g. split_5
-        split_type_str = []  # e.g. tr, vl, te
-        # import ipdb; ipdb.set_trace()
         for fname in args.split_file_name:
             assert (splitdir/fname).exists(), "split_file_name not found."
             with open(splitdir/fname) as f:
-                # Get the ids
                 ids_ = [int(line.rstrip()) for line in f]
                 ids.extend(ids_)
-                # Get the name
-                fname_sep = fname.split("_")
-                split_id_str.append("_".join([s for s in fname_sep[:2]]))
-                split_type_str.append(fname_sep[2])
+    root = fdir/args.outdir
+    os.makedirs(root, exist_ok=True)
 
-        assert len(set(split_id_str)) == 1, "Data splits must be from the same dataset source."
-        split_id_str = list(set(split_id_str))[0]
-        split_type_str = "_".join([x for x in split_type_str])
-        outdir_name = f"{split_id_str}_{split_type_str}"
 
     # -------------------
     # Folder for saving the generated ML data
     # _data_dir = os.path.split(args.cache_subdir)[0]
     # root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
-    ML_DATADIR = IMPROVE_DATADIR/"ml_data"
-    root = ML_DATADIR/f"data.{args.source_data_name}"/outdir_name # ML data
-    os.makedirs(root, exist_ok=True)
+    # -----
+    # ML_DATADIR = IMPROVE_DATADIR/"ml_data"
+    # root = ML_DATADIR/f"data.{args.source_data_name}"/outdir_name # ML data
+    # -----
+    # root = fdir/args.outdir
+    # os.makedirs(root, exist_ok=True)
+
 
     # -------------------
     # Index data
     # TODO:
-    # We need to make sure all models properly index the rsp data. Consider to
-    # Should this be a standard in CANDLE/IMPROVE?
+    # CANDLE should have this function(?)
     rsp_data = rsp_df.loc[ids]
     rsp_data.to_csv(root/"rsp.csv", index=False)
 
     # -------------------
     # Extract features and reponse data
-    def extract_data_vars(df, d_dict, c_dict, d_smile, c_feature, dd, cc, sens_score="AUC"):
+    def extract_data_vars(df, d_dict, c_dict, d_smile, c_feature, dd, cc, y_col_name="AUC"):
         """ Get drug and cancer feature data, and response values. """
         xd = []
         xc = []
@@ -304,16 +348,16 @@ def raw_drp_to_ml_data(args):
                 y.append(rsp)
                 meta.append([drug, cell, rsp])
             elif cell not in c_dict:
-                import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
                 miss_cell.append(cell)
             elif drug not in d_dict:
-                import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
                 miss_drug.append(drug)
 
         # Three arrays of size 191049, as the number of responses
         xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
         xd_, xc_ = np.asarray(xd_), np.asarray(xc_)
-        meta = pd.DataFrame(meta, columns=["DrugID", "CancID", sens_score])
+        meta = pd.DataFrame(meta, columns=[drug_col_name, canc_col_name, y_col_name])
 
         return xd, xc, y
 
@@ -336,25 +380,35 @@ def raw_drp_to_ml_data(args):
 if __name__ == "__main__":
     fdir = Path(__file__).resolve().parent
 
-    parser = argparse.ArgumentParser(description='prepare dataset to train model')
+    parser = argparse.ArgumentParser(description="prepare dataset to train model")
     parser.add_argument(
-        '--split_file_name',
+        "--splitdir_name",
+        type=str,
+        required=True,
+        help="Dir that stores the split files.")
+    parser.add_argument(
+        "--split_file_name",
         type=str,
         nargs="+",
         required=True,
-        help='Split file path in the cross-study analysis.')
+        help="Split file path in the cross-study analysis.")
     parser.add_argument(
-        '--source_data_name',
+        "--source_data_name",
         type=str,
         required=True,
-        help='Data source name.')
+        help="Data source name.")
     parser.add_argument(
-        '--sens_score',
+        "--y_col_name",
         type=str,
         required=True,
-        help='Drug sensitivity score to use as the target variable.')
+        help="Drug sensitivity score to use as the target variable.")
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        required=True,
+        help="Output dir to store the generated ML data files.")
 
     args = parser.parse_args()
     ml_data_path = raw_drp_to_ml_data(args)
+    print(f"\nML data path:\t\n{ml_data_path}")
     print("\nFinished pre-processing.")
-    print(f"ML data path:\t\n{ml_data_path}")

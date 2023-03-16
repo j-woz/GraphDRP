@@ -22,6 +22,14 @@ from models.ginconv import GINConvNet
 from utils import *
 
 
+# These are globals for all models
+# TODO:
+# Where do these go?
+true_col_name = "True"
+pred_col_name = "Pred"
+
+
+
 def train(model, device, train_loader, optimizer, epoch, log_interval):
     """ Training function at each epoch. """
     print("Training on {} samples...".format(len(train_loader.dataset)))
@@ -50,6 +58,10 @@ def train(model, device, train_loader, optimizer, epoch, log_interval):
 
 
 def predicting(model, device, loader):
+    """ Method to run predictions/inference.
+    The same method is in infer.py
+    TODO: put this in some utils script.
+    """
     model.eval()
     total_preds = torch.Tensor()
     total_labels = torch.Tensor()
@@ -181,7 +193,7 @@ def launch(modeling, args):
 
     # Compute raw predictions for val data
     G_val, P_val = predicting(model, device, val_loader)
-    pred = pd.DataFrame({"True": G_val, "Pred": P_val})
+    pred = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})
 
     # -----------------------------
     # Concat raw predictions with the cancer and drug ids, and the true values
@@ -190,9 +202,9 @@ def launch(modeling, args):
     RSP_FNAME = "rsp.csv"
     rsp_df = pd.read_csv(root_val_data/RSP_FNAME)
     pred = pd.concat([rsp_df, pred], axis=1)
-    pred = pred.astype({"AUC": np.float32, "True": np.float32, "Pred": np.float32})
-    assert sum(pred["True"] == pred["AUC"]) == pred.shape[0], \
-        "Columns 'AUC' and 'True' are the ground truth, and thus, should be the same."
+    pred = pred.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
+    assert sum(pred[true_col_name] == pred[args.y_col_name]) == pred.shape[0], \
+        f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
 
     # Save the raw predictions on val data
     pred_fname = "val_preds.csv"
