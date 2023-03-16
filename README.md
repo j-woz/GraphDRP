@@ -52,3 +52,7 @@ This returns the model and result files for the modelling achieving the best MSE
 python saliency_map.py --model 0 --num_feature 10 --processed_data_file "data/processed/GDSC_bortezomib.pt" --model_file "model_GINConvNet_GDSC.model" --cuda_name "cuda:0"
 ```
 The model and model_file must be the same kind of graph neural network. This outputs most important abberations with corresponding saliency value.
+
+# IMPROVE framework development
+* Create computational env
+* Run frm_workflow_within.sh or frm_workflow_cross.sh
