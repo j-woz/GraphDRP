@@ -4,50 +4,80 @@ from pathlib import Path
 fdir = Path(__file__).resolve().parent
 print('Current path:', fdir)
 
-data_dir = fdir/"../lc_data/mix_drug_cell"
-fname = "scores_mixed_GINConvNet_GDSC.json"
-
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# data_dir = fdir/"../lc_data/mix_drug_cell"
+# fname = "scores_mixed_GINConvNet_GDSC.json"
+
+# import pdb; pdb.set_trace()
+# res_dir = fdir/"../lc_out"
+# res_dirs = list(res_dir.glob("train_sz_*"))
+# fs = []
+# for ii in range(len(res_dirs)):
+#     file = res_dir/f"train_sz_{ii+1}"/fname
+#     with open(str(file), "r") as f:
+#         dct = json.load(f)
+#     df = pd.read_csv(data_dir/f"train_sz_{ii+1}.csv")
+#     dct["tr_size"] = df.shape[0]
+#     fs.append(dct)
+
+src="gdsc1"
+data_dir = fdir/f"../improve_data_dir/infer/{src}-{src}"
+fname = "test_scores.json"
+split=0
+
 import pdb; pdb.set_trace()
-res_dir = fdir/"../lc_out"
-res_dirs = list(res_dir.glob("train_sz_*"))
+# res_dir = fdir/f"../lc_out/{src}"
+lc_src_dir = fdir/f"../improve_data_dir/infer/{src}-{src}"
 fs = []
-for ii in range(len(res_dirs)):
-    file = res_dir/f"train_sz_{ii+1}"/fname
-    with open(str(file), "r") as f:
-        dct = json.load(f)
-    df = pd.read_csv(data_dir/f"train_sz_{ii+1}.csv")
-    dct["tr_size"] = df.shape[0]
-    fs.append(dct)
+# for ii in range(len(res_dirs)):
+for split in range(11):
+    res_dirs = list(lc_src_dir.glob(f"split_{split}_tr_sz_*"))
+    for ii, res_dir in enumerate(res_dirs):
+        ## Get the test scores
+        # file = res_dir/f"train_sz_{ii+1}"/fname
+        file = res_dir/fname
+        with open(str(file), "r") as f:
+            dct = json.load(f)
+        ## Get the train size
+        dpath = fdir/f"../improve_data_dir/ml_data/data.{src}/split_{split}_tr_sz_{ii}_id"
+        # df = pd.read_csv(data_dir/f"train_sz_{ii+1}.csv")
+        df = pd.read_csv(dpath/"rsp.csv")
+        dct["tr_size"] = df.shape[0]
+        dct["split"] = split
+        fs.append(dct)
 
 sc = pd.DataFrame(fs).round(3)
+print("Mean PCC:".format(sc.groupby("tr_size")["pcc"].mean()))
+print("Mean SCC:".format(sc.groupby("tr_size")["scc"].mean()))
 
-# Settings
-dpi = 300
+# # Settings
+# dpi = 300
 
-# Plot params
-legend_fontsize = 12
-# met = 'mean_absolute_error'
-met = "ccp"
-t_set = 'te'
-xtick_scale = 'log2'
-ytick_scale = 'log2'
+# # Plot params
+# legend_fontsize = 12
+# # met = 'mean_absolute_error'
+# met = "ccp"
+# t_set = 'te'
+# xtick_scale = 'log2'
+# ytick_scale = 'log2'
 
-ax = None
-kwargs = {'metric_name': met,
-          'xtick_scale': xtick_scale,
-          'ytick_scale': ytick_scale}
+# ax = None
+# kwargs = {'metric_name': met,
+#           'xtick_scale': xtick_scale,
+#           'ytick_scale': ytick_scale}
 
-ax = lc_plots.plot_lc(x=sc["tr_size"].values, y=sc[met].values,
-                      color="g", **kwargs, ax=ax);
+# ax = lc_plots.plot_lc(x=sc["tr_size"].values, y=sc[met].values,
+#                       color="g", **kwargs, ax=ax);
 
-ax.legend(frameon=True, fontsize=legend_fontsize, loc='best');
-ax.grid(False)
+# ax.legend(frameon=True, fontsize=legend_fontsize, loc='best');
+# ax.grid(False)
 
-plt.savefig(res_dir/'plot.png', dpi=dpi)
+# plt.savefig(res_dir/'plot.png', dpi=dpi)
 
+# ----------------------------------------------------
 # # Plot labels
 # dgb_label = 'dGBDT'
 # hgb_label = 'hGBDT'
