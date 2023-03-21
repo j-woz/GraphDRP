@@ -1,8 +1,12 @@
 #!/bin/bash --login
 
-# --------------------------------------------------
-## Cross-study workflow
-# --------------------------------------------------
+# ===========================================================
+## Cross-study generalization (CSG) workflow - cross-study
+# ===========================================================
+
+# --------------------
+## Workflow settings
+# --------------------
 
 # Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
@@ -22,7 +26,9 @@ INFER_DIR=$MAIN_DATA_DIR/infer
 OUTDIR=$ML_DATA_DIR
 
 
+# -------------
 ## Preprocess
+# -------------
 # Combine tr and vl samples to use for model dev
 SPLITDIR_NAME=splits
 TRAIN_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_tr_vl
@@ -49,11 +55,15 @@ python frm_preprocess.py \
     --outdir $TEST_ML_DATADIR
 
 
+# ------
 ## HPO
+# ------
 # TODO: Here should be HPO to determine the best HPs
 
 
-## Train (and early-stop using val data)
+# --------
+## Train
+# --------
 # Train using tr AND vl samples
 # Early stop using te samples
 # Save model to dir that encodes the tr, vl, and te info in the dir name
@@ -72,7 +82,9 @@ python frm_train.py \
     # --split $split \
 
 
+# --------
 ## Infer
+# --------
 # test_ml_datadir=$ML_DATA_DIR/data."$target_data_name"/full
 model_dir=$MODEL_OUTDIR
 infer_outdir=$INFER_DIR/"$source_data_name-$target_data_name"

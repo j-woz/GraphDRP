@@ -1,13 +1,16 @@
 #!/bin/bash --login
 
+# ================================
+## Learning Curves (LC) workflow
+# ================================
+
+# --------------------
+## Workflow settings
+# --------------------
 cuda=$1
 
-# --------------------------------------------------
-## Learning curves workflow
-# --------------------------------------------------
-
 # Parameters of the experiment/run/workflow
-# TODO: this should be stored as the experiment metadata that we can go back check
+# TODO: this should be stored as the experiment metadata that we can revisit
 # source_data_name="ccle"
 # source_data_name="ctrp"
 # source_data_name="gdsc1"
@@ -29,7 +32,7 @@ split=0
 epochs=30
 # epochs=50
 y_col_name=AUC
-# LC
+# LC settings
 tr_sz_start=0
 # tr_sz_end=0
 tr_sz_end=10
