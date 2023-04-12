@@ -11,11 +11,14 @@
 # Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
 source_data_name="ccle"
-target_data_name=gdsc2
+target_data_name="gdsc2"
 split=5
+# epochs=2
 epochs=10
+y_col_name=AUC
 
 # MAIN_DATA_DIR is the dir that stores all the data (IMPROVE_DATA_DIR, CANDLE_DATA_DIR, else)
+# TODO: The MAIN_DATA_DIR and the sub-directories below should standardized. How?
 MAIN_DATA_DIR=improve_data_dir
 
 # Sub-directories
@@ -38,20 +41,20 @@ python frm_preprocess.py \
     --source_data_name $source_data_name \
     --splitdir_name $SPLITDIR_NAME \
     --split_file_name split_"$split"_tr_id split_"$split"_vl_id \
-    --y_col_name AUC \
+    --y_col_name $y_col_name \
     --outdir $TRAIN_ML_DATADIR
 python frm_preprocess.py \
     --source_data_name $source_data_name \
     --splitdir_name $SPLITDIR_NAME \
     --split_file_name split_"$split"_te_id \
-    --y_col_name AUC \
+    --y_col_name $y_col_name \
     --outdir $VAL_ML_DATADIR
 # Use all samples (i.e., full dataset)
 python frm_preprocess.py \
     --source_data_name $target_data_name \
     --splitdir_name $SPLITDIR_NAME \
     --split_file_name full \
-    --y_col_name AUC \
+    --y_col_name $y_col_name \
     --outdir $TEST_ML_DATADIR
 
 
