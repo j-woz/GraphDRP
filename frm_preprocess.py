@@ -99,6 +99,8 @@ The functions below generate datasets for CSG (data from July 2020) - Start
 # These are globals for all models
 # TODO:
 # Where do these go?
+# Solution:
+# ... 
 raw_datadir_name = "raw_data"
 x_datadir_name = "x_data"
 y_datadir_name = "y_data"
@@ -144,7 +146,9 @@ def scale_fea(xdata, scaler_name='stnd', dtype=np.float32, verbose=False):
 
 
 def load_rsp_data(src_raw_datadir, y_col_name="AUC"):
-    """ Read drug response response file and return a datarame with cancer ids,
+    """
+    IMPROVE-specific func.
+    Read drug response response file and return a datarame with cancer ids,
     drug ids, and drug response values.
     src_raw_datadir : data dir where the raw DRP data is stored
     y_col_name : Drug sensitivity score/metric (e.g., AUC, IC50)
@@ -159,8 +163,11 @@ def load_rsp_data(src_raw_datadir, y_col_name="AUC"):
 
 
 def raw_drp_to_ml_data(args):
-    """ Generate a single ML data file from raw DRP data. The raw DRP data is
-    defined as IMPROVE doc website. """
+    """
+    Model-specific func.
+    Generate a single ML data file from raw DRP data. The raw DRP data is
+    defined as IMPROVE doc website.
+    """
 
     # import ipdb; ipdb.set_trace()
 
@@ -177,12 +184,13 @@ def raw_drp_to_ml_data(args):
     src_raw_datadir = RAW_DATADIR/f"data.{args.source_data_name}"  # folder of specific data source with raw DRP data
 
     # Download raw DRP data (which inludes the data splits)
-    # download = True
-    download = False
+    download = True
+    # download = False
     # TODO:
     # Where this should be specified? config_file?
     if download:
-        ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/CSG_data"
+        # ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/CSG_data"
+        ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/IMP_data"
         data_file_list = [f"data.{args.source_data_name}.zip"]
         for f in data_file_list:
             candle.get_file(fname=f,
@@ -366,6 +374,8 @@ def raw_drp_to_ml_data(args):
 
     # -------------------
     # Create and save PyTorch data
+    # TODO:
+    # should DATA_FILE_NAME be global?
     DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
     pt_data = TestbedDataset(
         root=root,
@@ -407,6 +417,11 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="Output dir to store the generated ML data files.")
+    parser.add_argument(
+        "--receipt",
+        type=str,
+        required=False,
+        help="...")
 
     args = parser.parse_args()
     ml_data_path = raw_drp_to_ml_data(args)
