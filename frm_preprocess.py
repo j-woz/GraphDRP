@@ -20,8 +20,10 @@ import random
 import sys
 
 import candle
-from improve_utils import imp_globals, load_rsp_data, read_df, get_common_samples, load_ge_data
+# from improve_utils import imp_globals, load_rsp_data, read_df, get_common_samples, load_ge_data
 import improve_utils as imp
+# import improve_utils
+from improve_utils import improve_globals as ig
 
 
 """
@@ -143,7 +145,6 @@ def raw_drp_data_to_ml_data(args):
     The raw DRP data is defined in the IMPROVE doc website:
     https://jdacs4c-improve.github.io/docs/content/drp_overview.html#raw-drp-data.
     """
-
     # import ipdb; ipdb.set_trace()
 
     # -------------------
@@ -156,13 +157,16 @@ def raw_drp_data_to_ml_data(args):
     # TODO:
     # What shoud it be and how this should be specified? config_file?
     # main_data_dir = fdir/"improve_data_dir"
-    main_data_dir = Path(args.main_data_dir)
+    ### new ... ig.main_data_dir
+    ### main_data_dir = Path(args.main_data_dir)
 
     # -------------------
     # Specify path for the raw DRP data (download data from ftp?)
     # E.g., improve_data_dir/raw_data/data.ccle
-    raw_data_dir = main_data_dir/imp_globals.raw_data_dir_name  # contains folders "data.{source_data_name}" with raw DRP data
-    src_raw_data_dir = raw_data_dir/f"data.{args.source_data_name}"  # folder of specific data source with raw DRP data
+    ### raw_data_dir = main_data_dir/ig.raw_data_dir_name  # contains folders "data.{source_data_name}" with raw DRP data
+    ### new ... ig.raw_data_dir
+    ### src_raw_data_dir = raw_data_dir/f"data.{args.source_data_name}"  # folder of specific data source with raw DRP data
+    ### new ... not required
 
     # Download raw DRP data (which inludes the data splits)
     # download = True
@@ -183,16 +187,24 @@ def raw_drp_data_to_ml_data(args):
 
     # -------------------
     # Response data (general func for all models)
-    rsp_df = imp.load_rsp_data(src_raw_data_dir, y_col_name=args.y_col_name)  # TODO: use this in all models
+    # TODO: use this in all models
+    ### rsp_df = imp.load_rsp_data(src_raw_data_dir, y_col_name=args.y_col_name)  # TODO: use this in all models
+    ### new ... 
+    import pdb; pdb.set_trace()
+    rsp_df = imp.load_single_drug_response_data_new(
+        source=args.source_data_name,
+        split_file_name=args.split_file_name,
+        y_col_name=args.y_col_name)
 
     # -------------------
     # Cancer data (general func for all models)
-    # ge = read_df(src_raw_data_dir/imp_globals.x_data_dir_name/imp_globals.ge_fname)
-    ge = imp.load_ge_data(src_raw_data_dir)  # TODO: use this in all models
+    # ge = read_df(src_raw_data_dir/ig.x_data_dir_name/ig.ge_fname)
+    ### ge = imp.load_ge_data(src_raw_data_dir)  # TODO: use this in all models
+    ge = imp.load_gene_expression_data(gene_system_identifier="Gene_Symbol") ### new ...
 
     # Retain (canc, drug) response samples for which we have omic data
-    rsp_df, ge = imp.get_common_samples(df1=rsp_df, df2=ge, ref_col=imp_globals.canc_col_name)  # TODO: use this in all models
-    print(rsp_df[[imp_globals.canc_col_name, imp_globals.drug_col_name]].nunique())
+    rsp_df, ge = imp.get_common_samples(df1=rsp_df, df2=ge, ref_col=ig.canc_col_name)  # TODO: use this in all models
+    print(rsp_df[[ig.canc_col_name, ig.drug_col_name]].nunique())
 
     # Use landmark genes (for gene selection)
     # TODO:
@@ -206,7 +218,7 @@ def raw_drp_data_to_ml_data(args):
         genes = ["ge_" + str(g) for g in genes]
         print("Genes count: {}".format(len(set(genes).intersection(set(ge.columns[1:])))))
         genes = list(set(genes).intersection(set(ge.columns[1:])))
-        cols = [imp_globals.canc_col_name] + genes
+        cols = [ig.canc_col_name] + genes
         ge = ge[cols]
 
     # Scale gene expression data
@@ -214,24 +226,24 @@ def raw_drp_data_to_ml_data(args):
     # We might need to save the scaler object (needs to be applied to test/infer data).
     ge_x_data = ge.iloc[:, 1:]
     ge_x_data_scaled = scale_fea(ge_x_data, scaler_name='stnd', dtype=np.float32, verbose=False)
-    ge = pd.concat([ge[[imp_globals.canc_col_name]], ge_x_data_scaled], axis=1)
+    ge = pd.concat([ge[[ig.canc_col_name]], ge_x_data_scaled], axis=1)
 
     # Below is omic data preparation for GraphDRP
     # ge = ge.iloc[:, :1000]  # Take subset of cols (genes)
-    c_dict = {v: i for i, v in enumerate(ge[imp_globals.canc_col_name].values)}  # cell_dict; len(c_dict): 634
+    c_dict = {v: i for i, v in enumerate(ge[ig.canc_col_name].values)}  # cell_dict; len(c_dict): 634
     c_feature = ge.iloc[:, 1:].values  # cell_feature
-    cc = {c_id: ge.iloc[i, 1:].values for i, c_id in enumerate(ge[imp_globals.canc_col_name].values)}  # cell_dict; len(c_dict): 634
+    cc = {c_id: ge.iloc[i, 1:].values for i, c_id in enumerate(ge[ig.canc_col_name].values)}  # cell_dict; len(c_dict): 634
 
     # -------------------
     # Drugs data (general func for all models)
-    # smi = imp.read_df(src_raw_data_dir/imp_globals.x_data_dir_name/imp_globals.smiles_fname)
+    # smi = imp.read_df(src_raw_data_dir/ig.x_data_dir_name/ig.smiles_fname)
     smi = imp.load_smiles_data(src_raw_data_dir)
 
     # Drug featurization for GraphDRP (specific to GraphDRP)
-    d_dict = {v: i for i, v in enumerate(smi[imp_globals.drug_col_name].values)}  # drug_dict; len(d_dict): 311
+    d_dict = {v: i for i, v in enumerate(smi[ig.drug_col_name].values)}  # drug_dict; len(d_dict): 311
     d_smile = smi["SMILES"].values  # drug_smile
     smile_graph = {}  # smile_graph
-    dd = {d_id: s for d_id, s in zip(smi[imp_globals.drug_col_name].values, smi["SMILES"].values)}
+    dd = {d_id: s for d_id, s in zip(smi[ig.drug_col_name].values, smi["SMILES"].values)}
     for smile in d_smile:
         g = smile_to_graph(smile)  # g: [c_size, features, edge_index]
         smile_graph[smile] = g
@@ -298,7 +310,7 @@ def raw_drp_data_to_ml_data(args):
         # Three arrays of size 191049, as the number of responses
         xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
         xd_, xc_ = np.asarray(xd_), np.asarray(xc_)
-        meta = pd.DataFrame(meta, columns=[imp_globals.drug_col_name, imp_globals.canc_col_name, y_col_name])
+        meta = pd.DataFrame(meta, columns=[ig.drug_col_name, ig.canc_col_name, y_col_name])
 
         return xd, xc, y
 
@@ -339,12 +351,12 @@ def parse_args(args):
         type=str,
         default=None,
         required=False,
-        help="Data target name.")
-    parser.add_argument(
-        "--splitdir_name",
-        type=str,
-        required=True,
-        help="Dir that stores the split files (e.g., 'splits', 'lc_splits'.")
+        help="Data target name (not required for GraphDRP).")
+    # parser.add_argument(
+    #     "--splitdir_name",
+    #     type=str,
+    #     required=True,
+    #     help="Dir that stores the split files (e.g., 'splits', 'lc_splits'.")
     parser.add_argument(
         "--split_file_name",
         type=str,
@@ -361,15 +373,21 @@ def parse_args(args):
         type=str,
         required=True,
         help="Output dir to store the generated ML data files (e.g., 'split_0_tr').")
-    parser.add_argument(
-        "--main_data_dir",
-        type=str,
-        required=True,
-        help="Full path to main data dir such as CANDLE_DATADIR.")
+    # parser.add_argument(
+    #     "--main_data_dir",
+    #     type=str,
+    #     required=True,
+    #     help="Full path to main data dir such as CANDLE_DATADIR.")
     parser.add_argument(
         "--receipt",
         type=str,
         required=False,
+        help="...")
+
+    parser.add_argument(
+        "--split",
+        type=int,
+        required=True,
         help="...")
 
     # Model-specific args
