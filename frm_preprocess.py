@@ -188,10 +188,9 @@ def raw_drp_data_to_ml_data(args):
     # -------------------
     # Response data (general func for all models)
     # TODO: use this in all models
-    ### rsp_df = imp.load_rsp_data(src_raw_data_dir, y_col_name=args.y_col_name)  # TODO: use this in all models
+    ### rs = imp.load_rsp_data(src_raw_data_dir, y_col_name=args.y_col_name)  # TODO: use this in all models
     ### new ... 
-    import pdb; pdb.set_trace()
-    rsp_df = imp.load_single_drug_response_data_new(
+    rs = imp.load_single_drug_response_data_new(
         source=args.source_data_name,
         split_file_name=args.split_file_name,
         y_col_name=args.y_col_name)
@@ -201,21 +200,23 @@ def raw_drp_data_to_ml_data(args):
     # ge = read_df(src_raw_data_dir/ig.x_data_dir_name/ig.ge_fname)
     ### ge = imp.load_ge_data(src_raw_data_dir)  # TODO: use this in all models
     ge = imp.load_gene_expression_data(gene_system_identifier="Gene_Symbol") ### new ...
+    ge = ge.reset_index()
 
     # Retain (canc, drug) response samples for which we have omic data
-    rsp_df, ge = imp.get_common_samples(df1=rsp_df, df2=ge, ref_col=ig.canc_col_name)  # TODO: use this in all models
-    print(rsp_df[[ig.canc_col_name, ig.drug_col_name]].nunique())
+    rs, ge = imp.get_common_samples(df1=rs, df2=ge, ref_col=ig.canc_col_name)  # TODO: use this in all models
+    print(rs[[ig.canc_col_name, ig.drug_col_name]].nunique())
 
     # Use landmark genes (for gene selection)
     # TODO:
     # Eventually, lincs genes will provided with the raw DRP data (check with data curation team).
     # Thus, it will be part of CANDLE/IMPROVE functions.
+    import pdb; pdb.set_trace()
     use_lincs = True
     if use_lincs:
         # with open(Path(src_raw_data_dir)/"../landmark_genes") as f:
         with open(fdir/"landmark_genes") as f:
             genes = [str(line.rstrip()) for line in f]
-        genes = ["ge_" + str(g) for g in genes]
+        # genes = ["ge_" + str(g) for g in genes]  # This is for our legacy data
         print("Genes count: {}".format(len(set(genes).intersection(set(ge.columns[1:])))))
         genes = list(set(genes).intersection(set(ge.columns[1:])))
         cols = [ig.canc_col_name] + genes
@@ -225,8 +226,10 @@ def raw_drp_data_to_ml_data(args):
     # TODO:
     # We might need to save the scaler object (needs to be applied to test/infer data).
     ge_x_data = ge.iloc[:, 1:]
-    ge_x_data_scaled = scale_fea(ge_x_data, scaler_name='stnd', dtype=np.float32, verbose=False)
+    ge_x_data_scaled = scale_fea(ge_x_data, scaler_name="stnd", dtype=np.float32, verbose=False)
     ge = pd.concat([ge[[ig.canc_col_name]], ge_x_data_scaled], axis=1)
+    # ge = ge.set_index(ig.canc_col_name)
+    # ge = scale_fea(ge, scaler_name="stnd", dtype=np.float32, verbose=False)
 
     # Below is omic data preparation for GraphDRP
     # ge = ge.iloc[:, :1000]  # Take subset of cols (genes)
@@ -253,12 +256,12 @@ def raw_drp_data_to_ml_data(args):
 
     # -------------------
     # Get data splits and create folder for saving the generated ML data
-    ids = imp.get_data_splits(src_raw_data_dir, args.splitdir_name, args.split_file_name, rsp_df)
+    ids = imp.get_data_splits(src_raw_data_dir, args.splitdir_name, args.split_file_name, rs)
 
     # -------------------
     # Index data
     import ipdb; ipdb.set_trace()
-    rsp_data = imp.get_subset_df(rsp_df, ids)
+    rsp_data = imp.get_subset_df(rs, ids)
     rsp_data.to_csv(root/"rsp.csv", index=False)
 
     # -------------------
