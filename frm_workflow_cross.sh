@@ -17,16 +17,16 @@ split=5
 epochs=10
 y_col_name=AUC
 
-# MAIN_DATA_DIR is the dir that stores all the data (IMPROVE_DATA_DIR, CANDLE_DATA_DIR, else)
-# TODO: The MAIN_DATA_DIR and the sub-directories below should standardized. How?
-MAIN_DATA_DIR=improve_data_dir
+# MAIN_DATADIR is the dir that stores all the data (IMPROVE_DATA_DIR, CANDLE_DATA_DIR, else)
+# TODO: The MAIN_DATADIR and the sub-directories below should standardized. How?
+MAIN_DATADIR=improve_data_dir
 
 # Sub-directories
-ML_DATA_DIR=$MAIN_DATA_DIR/ml_data
-MODEL_DIR=$MAIN_DATA_DIR/models
-INFER_DIR=$MAIN_DATA_DIR/infer
+ML_DATADIR=$MAIN_DATADIR/ml_data
+MODEL_DIR=$MAIN_DATADIR/models
+INFER_DIR=$MAIN_DATADIR/infer
 
-OUTDIR=$ML_DATA_DIR
+OUTDIR=$ML_DATADIR
 
 
 # -------------
@@ -34,9 +34,9 @@ OUTDIR=$ML_DATA_DIR
 # -------------
 # Combine tr and vl samples to use for model dev
 SPLITDIR_NAME=splits
-TRAIN_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_tr_vl
-VAL_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_te
-TEST_ML_DATADIR=$ML_DATA_DIR/data."$target_data_name"/full
+TRAIN_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/split_"$split"_tr_vl
+VAL_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/split_"$split"_te
+TEST_ML_DATADIR=$ML_DATADIR/data."$target_data_name"/full
 python frm_preprocess.py \
     --source_data_name $source_data_name \
     --splitdir_name $SPLITDIR_NAME \
@@ -71,8 +71,8 @@ python frm_preprocess.py \
 # Early stop using te samples
 # Save model to dir that encodes the tr, vl, and te info in the dir name
 # -----
-# train_ml_datadir=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_tr_vl
-# val_ml_datadir=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_te
+# train_ml_datadir=$ML_DATADIR/data."$source_data_name"/split_"$split"_tr_vl
+# val_ml_datadir=$ML_DATADIR/data."$source_data_name"/split_"$split"_te
 # -----
 MODEL_OUTDIR=$MODEL_DIR/"$source_data_name"/split_"$split"/"tr_vl_te"
 python frm_train.py \
@@ -88,7 +88,7 @@ python frm_train.py \
 # --------
 ## Infer
 # --------
-# test_ml_datadir=$ML_DATA_DIR/data."$target_data_name"/full
+# test_ml_datadir=$ML_DATADIR/data."$target_data_name"/full
 model_dir=$MODEL_OUTDIR
 infer_outdir=$INFER_DIR/"$source_data_name-$target_data_name"
 python frm_infer.py \

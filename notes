@@ -84,6 +84,17 @@ CANDLE
 ---------------
 
 
+---------------
+CSG
+---------------
+* Prepare raw data using either cross_study_gen or IMP_data
+* ./frm_preprocess.sh
+
+
+
+
+
+
 
 
 

@@ -38,22 +38,22 @@ tr_sz_start=0
 tr_sz_end=10
 tr_sz_arr=($(seq $tr_sz_start 1 $tr_sz_end))
 
-# MAIN_DATA_DIR is the dir that stores all the data (IMPROVE_DATA_DIR, CANDLE_DATA_DIR, else)
-# TODO: The MAIN_DATA_DIR and the sub-directories below should standardized. How?
-MAIN_DATA_DIR=improve_data_dir
-# MAIN_DATA_DIR=improve_data_dir_lc
+# MAIN_DATADIR is the dir that stores all the data (IMPROVE_DATA_DIR, CANDLE_DATA_DIR, else)
+# TODO: The MAIN_DATADIR and the sub-directories below should standardized. How?
+MAIN_DATADIR=improve_data_dir
+# MAIN_DATADIR=improve_data_dir_lc
 
 # Sub-directories
-ML_DATA_DIR=$MAIN_DATA_DIR/ml_data
-MODEL_DIR=$MAIN_DATA_DIR/models
-INFER_DIR=$MAIN_DATA_DIR/infer
+ML_DATADIR=$MAIN_DATADIR/ml_data
+MODEL_DIR=$MAIN_DATADIR/models
+INFER_DIR=$MAIN_DATADIR/infer
 
-OUTDIR=$ML_DATA_DIR
+OUTDIR=$ML_DATADIR
 
 ## ML datadirs
 # TRAIN_ML_DATADIR, however, can change based on the run (e.g., learning curves)
-VAL_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_vl
-TEST_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_te
+VAL_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/split_"$split"_vl
+TEST_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/split_"$split"_te
 
 
 ## (Arrays in bash)
@@ -72,10 +72,10 @@ TEST_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_te
 # -------------
 SPLITDIR_NAME=lc_splits
 # tr_sz=0
-# TRAIN_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/split_"$split"_tr_sz_"$tr_sz"_id
+# TRAIN_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/split_"$split"_tr_sz_"$tr_sz"_id
 for tr_sz in ${tr_sz_arr[@]}; do
     tr_split_file_name=split_"$split"_tr_sz_"$tr_sz"_id
-    TRAIN_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/$tr_split_file_name
+    TRAIN_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/$tr_split_file_name
     # echo -e "Split $split; train size $tr_sz"
     python frm_preprocess.py \
         --source_data_name $source_data_name \
@@ -114,7 +114,7 @@ python frm_preprocess.py \
 # Save model to dir that encodes the tr and vl info in the dir name
 for tr_sz in ${tr_sz_arr[@]}; do
     tr_split_file_name=split_"$split"_tr_sz_"$tr_sz"_id
-    TRAIN_ML_DATADIR=$ML_DATA_DIR/data."$source_data_name"/$tr_split_file_name
+    TRAIN_ML_DATADIR=$ML_DATADIR/data."$source_data_name"/$tr_split_file_name
     # MODEL_OUTDIR=$MODEL_DIR/"$source_data_name"/split_"$split"/"tr_vl"
     MODEL_OUTDIR=$MODEL_DIR/"$source_data_name"/split_"$split"/tr_sz_"$tr_sz"_vl
     echo -e "Split $split; train size $tr_sz"
