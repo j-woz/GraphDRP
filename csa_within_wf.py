@@ -213,15 +213,15 @@ for source_data_name in data_sources:
         # p1: Preprocess train data
         # train_split_files = list((ig.splits_dir).glob(f"{source_data_name}_split_0_train*.txt"))  # TODO: placeholder for lc analysis
         TRAIN_ML_DATA_DIR = ig.ml_data_dir/source_data_name/f"split_{split}_train"
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         frm_preprocess.main([
             "--source_data_name", str(source_data_name),
             # "--target_data_name", "",  # This might be required in certain models (e.g., IGTD, MCA)
             # "--splitdir_name", str(SPLITDIR_NAME),
-            "--split_file_name", f"{source_data_name}_split_{split}_train.txt",
+            "--split_file_name", f"{source_data_name}_split_{split}_train.txt",  # str or list of strings
             "--y_col_name", y_col_name,
             "--outdir", str(TRAIN_ML_DATA_DIR),
-            # "--main_data_dir", str(MAIN_DATA_DIR),  # no need; availabel in imp
+            # "--main_data_dir", str(MAIN_DATA_DIR),  # no need; available in imp
             # 
             "--split", str(split)
             # "--split_type", str(train),

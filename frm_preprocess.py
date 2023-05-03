@@ -199,18 +199,19 @@ def raw_drp_data_to_ml_data(args):
     # Cancer data (general func for all models)
     # ge = read_df(src_raw_data_dir/ig.x_data_dir_name/ig.ge_fname)
     ### ge = imp.load_ge_data(src_raw_data_dir)  # TODO: use this in all models
+    # import pdb; pdb.set_trace()
     ge = imp.load_gene_expression_data(gene_system_identifier="Gene_Symbol") ### new ...
     ge = ge.reset_index()
+    print(ge[ig.canc_col_name].nunique())  # TODO: there are name duplicates??
 
     # Retain (canc, drug) response samples for which we have omic data
-    rs, ge = imp.get_common_samples(df1=rs, df2=ge, ref_col=ig.canc_col_name)  # TODO: use this in all models
+    rs, ge = imp.get_common_samples(df1=rs, df2=ge, ref_col=ig.canc_col_name)
     print(rs[[ig.canc_col_name, ig.drug_col_name]].nunique())
 
     # Use landmark genes (for gene selection)
     # TODO:
     # Eventually, lincs genes will provided with the raw DRP data (check with data curation team).
     # Thus, it will be part of CANDLE/IMPROVE functions.
-    import pdb; pdb.set_trace()
     use_lincs = True
     if use_lincs:
         # with open(Path(src_raw_data_dir)/"../landmark_genes") as f:
@@ -227,12 +228,14 @@ def raw_drp_data_to_ml_data(args):
     # We might need to save the scaler object (needs to be applied to test/infer data).
     ge_x_data = ge.iloc[:, 1:]
     ge_x_data_scaled = scale_fea(ge_x_data, scaler_name="stnd", dtype=np.float32, verbose=False)
-    ge = pd.concat([ge[[ig.canc_col_name]], ge_x_data_scaled], axis=1)
-    # ge = ge.set_index(ig.canc_col_name)
-    # ge = scale_fea(ge, scaler_name="stnd", dtype=np.float32, verbose=False)
+    import pdb; pdb.set_trace()
+    print(ge.shape)
+    print(ge_x_data_scaled.shape)
+    ge = pd.concat([ge[[ig.canc_col_name]], ge_x_data_scaled], axis=1)  # TODO: 
 
     # Below is omic data preparation for GraphDRP
     # ge = ge.iloc[:, :1000]  # Take subset of cols (genes)
+    import pdb; pdb.set_trace()
     c_dict = {v: i for i, v in enumerate(ge[ig.canc_col_name].values)}  # cell_dict; len(c_dict): 634
     c_feature = ge.iloc[:, 1:].values  # cell_feature
     cc = {c_id: ge.iloc[i, 1:].values for i, c_id in enumerate(ge[ig.canc_col_name].values)}  # cell_dict; len(c_dict): 634

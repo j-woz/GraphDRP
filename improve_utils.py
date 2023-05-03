@@ -4,7 +4,7 @@ import pandas as pd
 from pathlib import Path
 from math import sqrt
 from scipy import stats
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 
 
 fdir = Path(__file__).resolve().parent
@@ -241,6 +241,7 @@ def load_split_file(
     Returns:
         ids (list): list of id integers
     """
+    # TODO: used in the old version of the rsp loader
     if isinstance(split_type, str):
         split_type = [split_type]
 
@@ -553,11 +554,11 @@ def get_data_splits(
     return ids
 
 
-def get_common_samples(df1: pd.DataFrame, df2: pd.DataFrame, ref_col: str):
+def get_common_samples(df1: pd.DataFrame, df2: pd.DataFrame, ref_col: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    IMPROVE-specific func.
-    df1, df2 : dataframes
-    ref_col : the ref column to find the common values
+    Args:
+        df1, df2 (pd.DataFrame): dataframes
+        ref_col (str): the ref column to find the common values
 
     Returns:
         df1, df2
@@ -566,13 +567,12 @@ def get_common_samples(df1: pd.DataFrame, df2: pd.DataFrame, ref_col: str):
         TODO
     """
     # Retain (canc, drug) response samples for which we have omic data
-    # TODO: consider making this an IMPROVE func
     common_ids = list(set(df1[ref_col]).intersection(df2[ref_col]))
     # print(df1.shape)
-    df1 = df1[ df1[improve_globals.canc_col_name].isin(common_ids) ]
+    df1 = df1[ df1[improve_globals.canc_col_name].isin(common_ids) ].reset_index(drop=True)
     # print(df1.shape)
     # print(df2.shape)
-    df2 = df2[ df2[improve_globals.canc_col_name].isin(common_ids) ]
+    df2 = df2[ df2[improve_globals.canc_col_name].isin(common_ids) ].reset_index(drop=True)
     # print(df2.shape)
     return df1, df2
 
