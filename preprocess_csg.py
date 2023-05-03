@@ -1,22 +1,24 @@
-import os
-import csv
-from pubchempy import *
-import numpy as np
-import numbers
-import h5py
-import math
-import pandas as pd
-import json, pickle
 from collections import OrderedDict
+from pathlib import Path
+from pubchempy import *
 from rdkit import Chem
 from rdkit.Chem import MolFromSmiles
-import networkx as nx
 from utils import *
-import random
-import pickle
-import sys
-import matplotlib.pyplot as plt
 import argparse
+import candle
+import csv
+import h5py
+import json, pickle
+import math
+import matplotlib.pyplot as plt
+import networkx as nx
+import numbers
+import numpy as np
+import os
+import pandas as pd
+import pickle
+import random
+import sys
 
 
 folder = "data/"
@@ -127,15 +129,16 @@ def load_drug_smile():
 The following part will prepare the mutation features for the cell.
 """
 
+
 def save_cell_mut_matrix():
     """
-    (ap) Create a binary matrix where 1 indicates that a mutation
-    is present. Rows are CCLs and cols are mutations.
-    PANCANCER_Genetic_feature.csv is a table [714056, 6]. The
-    col "genetic_feature" contains either mutation suffixed with
+    Create a binary matrix where 1 indicates that a mutation is present.
+    Rows are CCLs and cols are mutations.
+    PANCANCER_Genetic_feature.csv is a table [714056, 6].
+    The col "genetic_feature" contains either mutation suffixed with
     "_mut" or CNA prefixes with "cna_"
     """
-    aa = pd.read_csv(folder + "PANCANCER_Genetic_feature.csv")
+    # aa = pd.read_csv(folder + "PANCANCER_Genetic_feature.csv")
     # print("Read PANCANCER_Genetic_feature.csv")
     # print(aa.shape)
     # print(aa[:2])
@@ -153,33 +156,33 @@ def save_cell_mut_matrix():
         mut = item[5]              # mutation (genetic_feature)
         is_mutated = int(item[6])  # whether it's mutated (is_mutated)
 
-        # (ap) Mutations will be stored in columns
+        # Mutations will be stored in columns
         if mut in mut_dict:
             col = mut_dict[mut]
         else:
             col = len(mut_dict)
             mut_dict[mut] = col
 
-        # (ap) CCLs will be stored in rows
+        # CCLs will be stored in rows
         if cell_id in cell_dict:
             row = cell_dict[cell_id]
         else:
             row = len(cell_dict)
             cell_dict[cell_id] = row
 
-        # (ap) append coordinates where mutations are active
+        # Append coordinates where mutations are active
         if is_mutated == 1:
             matrix_list.append((row, col))
 
-    # (ap) Create 2-D array [cells, mutations]
+    # Create 2-D array [cells, mutations]
     cell_feature = np.zeros((len(cell_dict), len(mut_dict)))
 
     # Iterate over a list of (cell, genes) tuples and assign 1 for mutated genes
     for item in matrix_list:
         cell_feature[item[0], item[1]] = 1
 
-    with open('mut_dict', 'wb') as fp:
-        pickle.dump(mut_dict, fp)
+    # with open('mut_dict', 'wb') as fp:
+    #     pickle.dump(mut_dict, fp)
 
     return cell_dict, cell_feature
 
@@ -187,6 +190,12 @@ def save_cell_mut_matrix():
 """
 This part is used to extract the drug - cell interaction strength. it contains IC50, AUC, Max conc, RMSE, Z_score
 """
+
+
+"""
+The functions below generate datasets for CSG (data from July 2020) - Start
+"""
+
 
 def read_df(fpath, sep="\t"):
     assert Path(fpath).exists(), f"File {fpath} was not found."
@@ -528,21 +537,29 @@ def gen_cs_data(args):
         smile_graph=smile_graph)
 
 
+"""
+The functions below generate datasets for CSG (data from July 2020) - End
+"""
+
+
 if __name__ == "__main__":
-    import candle
-    from pathlib import Path
     fdir = Path(__file__).resolve().parent
 
     ftp_fname = fdir/"ftp_file_list"
     with open(ftp_fname, "r") as f:
         data_file_list = f.readlines()
 
-    ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/reproducability/GraphDRP/data"
+    # Original
+    ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data"
+    # CSG
+    ftp_origin = "https://ftp.mcs.anl.gov/pub/candle/public/improve/cross_study_gen/July2020"
+
+    datadir = fdir/"data"
     for f in data_file_list:
         candle.get_file(fname=f.strip(),
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
-                        datadir=fdir/"./data",
+                        datadir=datadir,
                         cache_subdir="common")
 
     parser = argparse.ArgumentParser(description='prepare dataset to train model')
@@ -558,6 +575,8 @@ if __name__ == "__main__":
         required=False,
         default="data_processed",
         help='Data dir name to store the preprocessed data.')
+    # -------------------
+    # That's for CSG analysis
     parser.add_argument(
         '--datadir',
         type=str,
@@ -576,6 +595,7 @@ if __name__ == "__main__":
         required=False,
         default=0,
         help='Split id.')
+    # -------------------
 
     args = parser.parse_args()
 
@@ -596,3 +616,5 @@ if __name__ == "__main__":
         oo = gen_cs_data(args)
     else:
         print("Invalid option, choose 0 -> 4")
+
+    print("Finished pre-processing.")

@@ -1,7 +1,7 @@
 #!/bin/bash --login
 
-src=$1
-datadir=./data/data.$src
+# src=$1
+# datadir=./data/data.$src
 
 # datadir=./data/data.ccle
 # datadir=./data/data.ctrp
@@ -11,12 +11,13 @@ datadir=./data/data.$src
 
 # Create data
 # python preprocess_cs.py --choice 4  --datadir $datadir --which_data cs --split 0
+# python preprocess.py --choice 4 --split 0
 
 n_splits=9
 for sp in $(seq 0 $n_splits); do
     echo "Split $sp out of $n_splits"
     sleep 1
-    python preprocess_cs.py --choice 4  --datadir $datadir --which_data cs --split $sp
+    python preprocess.py --choice 4 --split $sp
     sleep 1
 done
 
