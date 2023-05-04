@@ -136,6 +136,8 @@ def calc_scores(y_true, y_pred):
 epochs = 2
 # epochs = 10
 y_col_name = "auc"
+config_file_name = "csa_params.txt"
+config_file_path = fdir/config_file_name
 
 # Metadata
 # raw_data_dir_name = "raw_data"
@@ -210,27 +212,60 @@ for source_data_name in data_sources:
         #     "--main_data_dir", str(MAIN_DATA_DIR)
         # ])
 
-        # p1: Preprocess train data
+        # p1 (none): Preprocess train data
         # train_split_files = list((ig.splits_dir).glob(f"{source_data_name}_split_0_train*.txt"))  # TODO: placeholder for lc analysis
         TRAIN_ML_DATA_DIR = ig.ml_data_dir/source_data_name/f"split_{split}_train"
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         frm_preprocess.main([
             "--source_data_name", str(source_data_name),
-            # "--target_data_name", "",  # This might be required in certain models (e.g., IGTD, MCA)
-            # "--splitdir_name", str(SPLITDIR_NAME),
             "--split_file_name", f"{source_data_name}_split_{split}_train.txt",  # str or list of strings
             "--y_col_name", y_col_name,
             "--outdir", str(TRAIN_ML_DATA_DIR),
-            # "--main_data_dir", str(MAIN_DATA_DIR),  # no need; available in imp
-            # 
             "--split", str(split)
-            # "--split_type", str(train),
         ])
 
-        # p2: Preprocess val data
-        pass
+        # p2 (none): Preprocess val data
+        VAL_ML_DATADIR = ig.ml_data_dir/source_data_name/f"split_{split}_val"
+        import pdb; pdb.set_trace()
+        frm_preprocess.main([
+            "--source_data_name", str(source_data_name),
+            "--split_file_name", f"{source_data_name}_split_{split}_val.txt",  # str or list of strings
+            "--y_col_name", y_col_name,
+            "--outdir", str(VAL_ML_DATADIR),
+            "--split", str(split)
+        ])
 
-        # p4: Preprocess test data
+        # p4 (none): Preprocess test data
+        TEST_ML_DATADIR = ig.ml_data_dir/source_data_name/f"split_{split}_test"
+        import pdb; pdb.set_trace()
+        frm_preprocess.main([
+            "--source_data_name", str(source_data_name),
+            "--split_file_name", f"{source_data_name}_split_{split}_test.txt",  # str or list of strings
+            "--y_col_name", y_col_name,
+            "--outdir", str(TEST_ML_DATADIR),
+            "--split", str(split)
+        ])
+
+        # p3 (p1, p2): Train model
+        # --------
+        ## Train
+        # --------
+        # Train using tr samples
+        # Early stop using vl samples
+        # Save model to dir that encodes the tr and vl info in the dir name
+        # TODO: consider separate cross-study and within-study results
+        import pdb; pdb.set_trace()
+        MODEL_OUTDIR = ig.models_dir/source_data_name/f"split_{split}"/"tr_vl"
+        frm_train.main([
+            "--config_file", config_file_path,
+            "--epochs", epochs,
+            "--y_col_name", y_col_name,
+            "--train_ml_datadir", TRAIN_ML_DATADIR,
+            "--val_ml_datadir", VAL_ML_DATADIR,
+            "--model_outdir", MODEL_OUTDIR
+        ])
+
+        # p5 (p3, p5): Inference
         pass
 
 
