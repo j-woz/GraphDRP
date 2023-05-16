@@ -21,12 +21,11 @@ from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 from utils import *
 
+import improve_utils as imp
+from improve_utils import improve_globals as ig
 
-# These are globals for all models
-# TODO:
-# Where do these go?
-true_col_name = "True"
-pred_col_name = "Pred"
+
+fdir = Path(__file__).resolve().parent
 
 
 def predicting(model, device, loader):
@@ -47,37 +46,25 @@ def predicting(model, device, loader):
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
 
 
-def launch(modeling, args):
-
+def launch(model_arch, args):
     # import ipdb; ipdb.set_trace()
-    fdir = Path(__file__).resolve().parent
 
     # Model specific params
     test_batch = args.test_batch
 
-    # -----------------------------
-    # Create output dir for inference results
-    # IMPROVE_DATADIR = fdir/"improve_data_dir"
-    # INFER_DIR = IMPROVE_DATADIR/"infer"
-
-    # Outputdir name structure: train_dataset-test_datast
-    # import ipdb; ipdb.set_trace()
-    infer_outdir = fdir/args.infer_outdir
+    # Output dir name structure: train_dataset-test_datast
+    infer_outdir = Path(args.infer_outdir)
     os.makedirs(infer_outdir, exist_ok=True)
-
-    # -----------------------------
-    # Test dataset
-    root_test_data = fdir/args.test_ml_datadir
 
     # -----------------------------
     # Prepare PyG datasets
     DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
-    test_data = TestbedDataset(root=root_test_data, dataset=DATA_FILE_NAME)
+    test_data = TestbedDataset(root=args.test_ml_data_dir, dataset=DATA_FILE_NAME)
 
     # PyTorch dataloaders
-    # Note! Don't shuffle the val_loader
-    test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False)  # Note! Don't shuffle the test_loader
 
+    # -----------------------------
     # CUDA device from env var
     print("CPU/GPU: ", torch.cuda.is_available())
     if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
@@ -88,95 +75,136 @@ def launch(modeling, args):
     else:
         cuda_name = args.cuda_name
 
-    # Load the best model (as determined based val data)
+    # -----------------------------
+    # Select CUDA/CPU device and move model to device
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-    model = modeling().to(device)
-    model_file_name = Path(args.model_dir)/"model.pt"
-    model.load_state_dict(torch.load(model_file_name))
+    model = model_arch().to(device)
+
+    # -----------------------------
+    # Load the best model (as determined based val data)
+    model_path = Path(args.model_dir)/"model.pt"
+    model.load_state_dict(torch.load(model_path))
     model.eval()
+ 
 
-    # Compute raw predictions for val data
+    # -----------------------------
+    # Compute raw predictions
+    # -----------------------------
     # import ipdb; ipdb.set_trace()
-    G_test, P_test = predicting(model, device, test_loader)
-    pred = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})
+    pred_col_name = args.y_col_name + ig.pred_col_name_suffix
+    true_col_name = args.y_col_name + "_true"
+    G_test, P_test = predicting(model, device, test_loader)  # G (groud truth), P (predictions)
+    tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
+    pred_df = pd.DataFrame(P_test, columns=[pred_col_name])  # This includes only predicted values
 
+
+    # -----------------------------
     # Concat raw predictions with the cancer and drug ids, and the true values
-    RSP_FNAME = "rsp.csv"
-    rsp_df = pd.read_csv(root_test_data/RSP_FNAME)
-    pred = pd.concat([rsp_df, pred], axis=1)
-    pred = pred.astype({"AUC": np.float32, "True": np.float32, "Pred": np.float32})
-    assert sum(pred[true_col_name] == pred[args.y_col_name]) == pred.shape[0], \
+    # -----------------------------
+    RSP_FNAME = "response_subset.csv" ###  # TODO: move to improve_utils? ask Yitan?
+    rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
+
+    # Old
+    tp = pd.concat([rsp_df, tp], axis=1)
+    tp = tp.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
+    assert sum(tp[true_col_name] == tp[args.y_col_name]) == tp.shape[0], \
         f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
 
-    # Save the raw predictions on val data
-    pred_fname = "test_preds.csv"
-    pred.to_csv(infer_outdir/pred_fname, index=False)
+    # New
+    mm = pd.concat([rsp_df, pred_df], axis=1)
+    mm = mm.astype({args.y_col_name: np.float32, pred_col_name: np.float32})
 
-    # Get performance scores for val data
+    # Save the raw predictions on val data
+    # pred_fname = "test_preds.csv"
+    pred_fname = "preds.csv"
+    imp.save_preds(mm, args.y_col_name, infer_outdir/pred_fname)
+
+    # -----------------------------
+    # Compute performance scores
+    # -----------------------------
+    # import ipdb; ipdb.set_trace()
     # TODO:
     # Should this be a standard in CANDLE/IMPROVE?
     # Here performance scores/metrics are computed using functions defined in
     # this repo. Consider to use function defined by the framework (e.g., CANDLE)
     # so that all DRP models use same methods to compute scores.
-    ## Method 1 - compute scores using the loaded model and val data
-    mse_test = mse(G_test, P_test)
-    rmse_test = rmse(G_test, P_test)
-    pcc_test = pearson(G_test, P_test)
-    scc_test = spearman(G_test, P_test)
-    test_scores = {"mse": float(mse_test),
-                  "rmse": float(rmse_test),
-                  "pcc": float(pcc_test),
-                  "scc": float(scc_test)}
-    ## Method 2 - get the scores that were ealier computed (in for loop)
-    # val_scores = {"val_loss": float(best_mse),
-    #               "rmse": float(best_rmse),
-    #               "pcc": float(best_pearson),
-    #               "scc": float(best_spearman)}
+    y_true = rsp_df[args.y_col_name].values
+    mse_test = mse(y_true, P_test)
+    rmse_test = rmse(y_true, P_test)
+    pcc_test = pearson(y_true, P_test)
+    scc_test = spearman(y_true, P_test)
+    scores = {"val_loss": float(mse_test),
+              "rmse": float(rmse_test),
+              "pcc": float(pcc_test),
+              "scc": float(scc_test)}
 
     # Performance scores for Supervisor HPO
-    with open(infer_outdir/"test_scores.json", "w", encoding="utf-8") as f:
-        json.dump(test_scores, f, ensure_ascii=False, indent=4)
-
-    print("Scores:\n\t{}".format(test_scores))
-    return test_scores
-
-
-def run(gParameters):
-    print("In Run Function:\n")
-    args = candle.ArgumentStruct(**gParameters)
-    modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
-
-    # Call launch() with specific model arch and args with all HPs
-    scores = launch(modeling, args)
-
-    # Supervisor HPO
-    with open(Path(args.output_dir) / "scores.json", "w", encoding="utf-8") as f:
+    with open(infer_outdir/"scores.json", "w", encoding="utf-8") as f:
         json.dump(scores, f, ensure_ascii=False, indent=4)
 
+    print("Scores:\n\t{}".format(scores))
     return scores
 
 
-def initialize_parameters():
-    """ Initialize the parameters for the GraphDRP benchmark. """
-    print("Initializing parameters\n")
-    graphdrp_bmk = bmk.BenchmarkGraphDRP(
-        filepath=bmk.file_path,
-        defmodel="graphdrp_default_model.txt",
-        # defmodel="graphdrp_model_candle.txt",
-        framework="pytorch",
-        prog="GraphDRP",
-        desc="CANDLE compliant GraphDRP",
-    )
-    gParameters = candle.finalize_parameters(graphdrp_bmk)
-    return gParameters
+def parse_args(args):
+    """ Parse input args. """
+    parser = argparse.ArgumentParser(description="Train model")
+
+    # Args common train and infer scripts
+    parser.add_argument(
+        "--model_arch",
+        type=int,
+        default=0,
+        required=False,
+        help="Integer. 0: GINConvNet, 1: GATNet, 2: GAT_GCN, 3: GCNNet")
+    parser.add_argument(
+        "--y_col_name",
+        type=str,
+        default="auc",
+        required=False,
+        help="Drug sensitivity score to use as the target variable (e.g., IC50, AUC).")
+    parser.add_argument(
+        "--cuda_name",
+        type=str,
+        default="cuda:0",
+        required=False,
+        help="Cuda device (e.g.: cuda:0, cuda:1.")
+
+    # Args specific to infer script
+    parser.add_argument(
+        "--test_ml_data_dir",
+        type=str,
+        required=True,
+        help="...")
+    parser.add_argument(
+        "--model_dir",
+        type=str,
+        required=True,
+        help="Dir of the stored/checkpointed model.")
+    parser.add_argument(
+        "--infer_outdir",
+        type=str,
+        required=True,
+        help="Inference results outdir.")
+
+    # DL hyperparameters
+    parser.add_argument(
+        "--test_batch",
+        type=int,
+        default=256,
+        required=False,
+        help="Input batch size for testing.")
+
+    args = parser.parse_args(args)
+    return args
 
 
-def main():
-    gParameters = initialize_parameters()
-    print(gParameters)
-    scores = run(gParameters)
-    print("Done inference.")
+def main(args):
+    args = parse_args(args)
+    model_arch = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model_arch]
+    scores = launch(model_arch, args)
+    print("\nFinished inference.")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

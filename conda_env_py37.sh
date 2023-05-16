@@ -31,6 +31,8 @@ conda install -c rdkit rdkit --yes
 conda install -c anaconda networkx --yes
 conda install -c conda-forge pyarrow=10.0 --yes
 
+conda install -c pyston psutil --yes
+
 # CANDLE
 pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
 # pip install git+https://github.com/ECP-CANDLE/candle_lib@candle_data_dir

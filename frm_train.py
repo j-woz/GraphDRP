@@ -21,17 +21,15 @@ from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 from utils import *
 
+import improve_utils as imp
+from improve_utils import improve_globals as ig
 
-# These are globals for all models
-# TODO:
-# Where do these go?
-true_col_name = "True"
-pred_col_name = "Pred"
 
+fdir = Path(__file__).resolve().parent
 
 
 def train(model, device, train_loader, optimizer, epoch, log_interval):
-    """ Training function at each epoch. """
+    """ Training of one epoch (all batches). """
     print("Training on {} samples...".format(len(train_loader.dataset)))
     model.train()
     loss_fn = nn.MSELoss()
@@ -60,8 +58,10 @@ def train(model, device, train_loader, optimizer, epoch, log_interval):
 def predicting(model, device, loader):
     """ Method to run predictions/inference.
     The same method is in infer.py
-    TODO: put this in some utils script.
+    TODO: put this in some utils script because it's also used in inference.
     """
+    # TODO: this func assumes that the data contains true labels!
+    # It's not always going to be the case.
     model.eval()
     total_preds = torch.Tensor()
     total_labels = torch.Tensor()
@@ -69,16 +69,14 @@ def predicting(model, device, loader):
     with torch.no_grad():
         for data in loader:
             data = data.to(device)
-            output, _ = model(data)
-            total_preds = torch.cat((total_preds, output.cpu()), 0)
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)
+            output, _ = model(data)  # predictions
+            total_preds = torch.cat((total_preds, output.cpu()), 0) # preds to tensor
+            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0) # labels to tensor
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
 
 
-def launch(modeling, args):
-
+def launch(model_arch, args):
     # import ipdb; ipdb.set_trace()
-    fdir = Path(__file__).resolve().parent
 
     # CANDLE known params
     lr = args.learning_rate
@@ -86,50 +84,34 @@ def launch(modeling, args):
     train_batch = args.batch_size
 
     # Model specific params
-    model_st = modeling.__name__
+    model_st = model_arch.__name__  # model name (string)
     log_interval = args.log_interval
     val_batch = args.val_batch
-    test_batch = args.test_batch
+
+    # Dir to save the trained (converged) model
+    # import ipdb; ipdb.set_trace()
+    model_outdir = Path(args.model_outdir)
+    os.makedirs(model_outdir, exist_ok=True)
+    model_path = model_outdir/"model.pt"  # file name of the model
 
     # -----------------------------
-    # Create output dir
     # TODO:
-    # We need to determine where to dump the following outputs.
+    # Where should we store data?
     # 1. The trained (converged) model
     # 2. Performance scores (as required by HPO Supervisor)
     # 3. Raw predictions of the val data (would be nice but probably not mandatory) 
-    # Currently we use: improve_data_dir/models/DATASET_NAME/split_ID
-    # outdir = Path(args.output_dir)
-    # IMPROVE_DATADIR = fdir/"improve_data_dir"  # This should already exist
-
-    # Fetch data (if needed)
-    # ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"
-    # data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
-
-    # for f in data_file_list:
-    #     candle.get_file(fname=f,
-    #                     origin=os.path.join(ftp_origin, f.strip()),
-    #                     unpack=False, md5_hash=None,
-    #                     cache_subdir=args.cache_subdir )
-
-    # _data_dir = os.path.split(args.cache_subdir)[0]
-    # root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
-
-    # -----------------------------
-    # Dirs of train and val data
-    root_train_data = fdir/args.train_ml_datadir
-    root_val_data = fdir/args.val_ml_datadir
 
     # -----------------------------
     # Prepare PyG datasets
     DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
-    train_data = TestbedDataset(root=root_train_data, dataset=DATA_FILE_NAME)
-    val_data = TestbedDataset(root=root_val_data, dataset=DATA_FILE_NAME)
+    train_data = TestbedDataset(root=args.train_ml_data_dir, dataset=DATA_FILE_NAME)
+    val_data = TestbedDataset(root=args.val_ml_data_dir, dataset=DATA_FILE_NAME)
 
     # PyTorch dataloaders
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)  # Note! Don't shuffle the val_loader
 
+    # -----------------------------
     # CUDA device from env var
     print("CPU/GPU: ", torch.cuda.is_available())
     if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
@@ -140,21 +122,23 @@ def launch(modeling, args):
     else:
         cuda_name = args.cuda_name
 
-    # CUDA/CPU device and optimizer
+    # -----------------------------
+    # Select CUDA/CPU device and move model to device
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-    model = modeling().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # DL optimizer. TODO: should this be specified with CANDLE/IMPROVE?
+    model = model_arch().to(device)
 
-    # Vars to monitor best model based val data
+    # -----------------------------
+    # DL optimizer. TODO: should this be specified with CANDLE/IMPROVE?
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+
+    # -----------------------------
+    # Train
+    # -----------------------------
+    # Vars to monitor the best model based val data
     best_mse = 1000
     best_pearson = 0
     best_epoch = 0
-
-    # Dir to save the trained (converged) model
-    # import ipdb; ipdb.set_trace()
-    model_outdir = fdir/args.model_outdir
-    os.makedirs(model_outdir, exist_ok=True)
-    model_file_name = model_outdir/"model.pt"
 
     # Iterate over epochs
     # import ipdb; ipdb.set_trace()
@@ -162,7 +146,7 @@ def launch(modeling, args):
         train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
 
         # Predict with val data
-        G, P = predicting(model, device, val_loader) # G (groud truth), P (predictions)
+        G, P = predicting(model, device, val_loader)  # G (groud truth), P (predictions)
         ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
 
         # Save best model
@@ -170,7 +154,7 @@ def launch(modeling, args):
         # Early stopping should be done the same way for all models.
         # Should this be replaced with a checkpoint??
         if ret[1] < best_mse:
-            torch.save(model.state_dict(), model_file_name)
+            torch.save(model.state_dict(), model_path)
             # with open(result_file_name, "w") as f:
             #     f.write(",".join(map(str, ret)))
             best_epoch = epoch + 1
@@ -182,46 +166,74 @@ def launch(modeling, args):
         else:
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
 
-    # Load the best model (as determined based val data)
-    # TODO:
-    # What should be the output so that we know exactly all the specific attributes
-    # of this training run (e.g., data source, data split)?
+
+    # -----------------------------
+    # Load saved (best) model
+    # -----------------------------
     del model
-    model = modeling().to(device)
-    model.load_state_dict(torch.load(model_file_name))
+    model = model_arch().to(device)
+    model.load_state_dict(torch.load(model_path))
     model.eval()
 
-    # Compute raw predictions for val data
-    G_val, P_val = predicting(model, device, val_loader)
-    pred = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})
 
     # -----------------------------
-    # Concat raw predictions with the cancer and drug ids, and the true values
+    # Compute raw predictions
+    # -----------------------------
+    # import ipdb; ipdb.set_trace()
+    pred_col_name = args.y_col_name + ig.pred_col_name_suffix
+    true_col_name = args.y_col_name + "_true"
+    G_val, P_val = predicting(model, device, val_loader)
+    tp = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})  # This includes true and predicted values
+    pred_df = pd.DataFrame(P_val, columns=[pred_col_name])  # This includes only predicted values
+
+
+    # -----------------------------
+    # Concatenate raw predictions with the cancer and drug ids, and the true values
+    # -----------------------------
     # TODO:
     # Should this be a standard in CANDLE/IMPROVE?
-    RSP_FNAME = "rsp.csv"
-    rsp_df = pd.read_csv(root_val_data/RSP_FNAME)
-    pred = pd.concat([rsp_df, pred], axis=1)
-    pred = pred.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
-    assert sum(pred[true_col_name] == pred[args.y_col_name]) == pred.shape[0], \
+    RSP_FNAME = "response_subset.csv" ###  # TODO: move to improve_utils? ask Yitan?
+    rsp_df = pd.read_csv(Path(args.val_ml_data_dir)/RSP_FNAME)
+
+    # Old
+    tp = pd.concat([rsp_df, tp], axis=1)
+    tp = tp.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
+    assert sum(tp[true_col_name] == tp[args.y_col_name]) == tp.shape[0], \
         f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
 
+    # New
+    mm = pd.concat([rsp_df, pred_df], axis=1)
+    mm = mm.astype({args.y_col_name: np.float32, pred_col_name: np.float32})
+
     # Save the raw predictions on val data
-    pred_fname = "val_preds.csv"
-    pred.to_csv(model_outdir/pred_fname, index=False)
+    # pred_fname = "val_preds.csv"
+    pred_fname = "preds.csv"
+    imp.save_preds(mm, args.y_col_name, model_outdir/pred_fname)
+
 
     # -----------------------------
-    # Get performance scores for val data
+    # Compute performance scores
+    # -----------------------------
+    # import ipdb; ipdb.set_trace()
     # TODO:
     # Should this be a standard in CANDLE/IMPROVE?
     # Here performance scores/metrics are computed using functions defined in
-    # this repo. Consider to use function defined by the framework (e.g., CANDLE)
-    # so that all DRP models use same methods to compute scores.
-    ## Method 1 - compute scores using the loaded model and val data
-    mse_val = mse(G_val, P_val)
-    rmse_val = rmse(G_val, P_val)
-    pcc_val = pearson(G_val, P_val)
-    scc_val = spearman(G_val, P_val)
+    # this repo. Consider to use funcs from improve_utils.py.
+    ## Method 1 - compute scores using the loaded model
+    # mse_val = mse(G_val, P_val)
+    # rmse_val = rmse(G_val, P_val)
+    # pcc_val = pearson(G_val, P_val)
+    # scc_val = spearman(G_val, P_val)
+    # val_scores = {"val_loss": float(mse_val),
+    #               "rmse": float(rmse_val),
+    #               "pcc": float(pcc_val),
+    #               "scc": float(scc_val)}
+    ## Method 3 - compute scores using the loaded model
+    y_true = rsp_df[args.y_col_name].values
+    mse_val = mse(y_true, P_val)
+    rmse_val = rmse(y_true, P_val)
+    pcc_val = pearson(y_true, P_val)
+    scc_val = spearman(y_true, P_val)
     val_scores = {"val_loss": float(mse_val),
                   "rmse": float(rmse_val),
                   "pcc": float(pcc_val),
@@ -235,7 +247,7 @@ def launch(modeling, args):
     # Performance scores for Supervisor HPO
     # import ipdb; ipdb.set_trace()
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(mse_val))
-    with open(model_outdir/"val_scores.json", "w", encoding="utf-8") as f:
+    with open(model_outdir/"scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     print("Scores:\n\t{}".format(val_scores))
@@ -248,6 +260,7 @@ def run(gParameters):
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
 
     # Call launch() with specific model arch and args with all HPs
+    # TODO: do we really need launch (especially that we already have run)?
     scores = launch(modeling, args)
 
     # Supervisor HPO
@@ -259,26 +272,122 @@ def run(gParameters):
 
 
 def initialize_parameters():
+# def initialize_parameters(args):
     """ Initialize the parameters for the GraphDRP benchmark. """
     print("Initializing parameters\n")
+    # TODO: do we have to create graphdrp.py? Certain models have such file
+    # already exists (i.e., MODEL_NAME.py). We want to little changes to the
+    # original code. Can we call it some other name? candle_benchmark_def.py?
+
     graphdrp_bmk = bmk.BenchmarkGraphDRP(
         filepath=bmk.file_path,
         defmodel="graphdrp_default_model.txt",
-        # defmodel="graphdrp_model_candle.txt",
         framework="pytorch",
         prog="GraphDRP",
-        desc="CANDLE compliant GraphDRP",
+        desc="CANDLE compliant training GraphDRP",
     )
+
     gParameters = candle.finalize_parameters(graphdrp_bmk)
+
     return gParameters
 
 
-def main():
-    gParameters = initialize_parameters()
-    print(gParameters)
-    scores = run(gParameters)
-    print("Done training.")
+def parse_args(args):
+    """ Parse input args. """
+
+    parser = argparse.ArgumentParser(description="Train model")
+
+    # Args common to train and infer scripts
+    parser.add_argument(
+        "--model_arch",
+        type=int,
+        default=0,
+        required=False,
+        help="Integer. 0: GINConvNet, 1: GATNet, 2: GAT_GCN, 3: GCNNet")
+    parser.add_argument(
+        "--y_col_name",
+        type=str,
+        default="auc",
+        required=False,
+        help="Drug sensitivity score to use as the target variable (e.g., IC50, AUC).")
+    parser.add_argument(
+        "--cuda_name",
+        type=str,
+        default="cuda:0",
+        required=False,
+        help="Cuda device (e.g.: cuda:0, cuda:1.")
+
+    # Args specific to train script
+    parser.add_argument(
+        "--train_ml_data_dir",
+        type=str,
+        required=True,
+        help="...")
+    parser.add_argument(
+        "--val_ml_data_dir",
+        type=str,
+        required=True,
+        help="...")
+    parser.add_argument(
+        "--model_outdir",
+        type=str,
+        required=True,
+        help="Output dir to store/checkpoint the trained model.")
+
+    # DL hyperparameters
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=10,
+        required=False,
+        help="Number of epochs.")
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=0.0001,
+        required=False,
+        help="Learning rate.")
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=256,
+        required=False,
+        help="Input batch size for training.")
+    parser.add_argument(
+        "--val_batch",
+        type=int,
+        default=256,
+        required=False,
+        help="Input batch size for validation.")
+    parser.add_argument(
+        "--log_interval",
+        type=int,
+        default=20,
+        required=False,
+        help="Interval for saving o/p.")
+
+    args = parser.parse_args(args)
+    return args
+
+
+def main(args):
+    # import ipdb; ipdb.set_trace()
+
+    ## Using CANDLE
+    # TODO: how should we utilize CANDLE here?
+    # gParameters = initialize_parameters()
+    # print(gParameters)
+    # args = candle.ArgumentStruct(**gParameters)
+    # modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
+    # scores = launch(modeling, gParameters)
+
+    ## Without CANDLE
+    args = parse_args(args)
+    model_arch = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model_arch]
+    scores = launch(model_arch, args)
+
+    print("\nFinished training.")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
