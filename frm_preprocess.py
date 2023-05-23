@@ -368,6 +368,26 @@ def parse_args(args):
         nargs="+",
         required=True,
         help="The path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').")
+    # ------------------
+    parser.add_argument(
+        "--train_split_file_name",
+        type=str,
+        nargs="+",
+        required=True,
+        help="The path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').")
+    parser.add_argument(
+        "--val_split_file_name",
+        type=str,
+        nargs="+",
+        required=True,
+        help="The path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').")
+    parser.add_argument(
+        "--test_split_file_name",
+        type=str,
+        nargs="+",
+        required=True,
+        help="The path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').")
+    # ------------------
     parser.add_argument(
         "--y_col_name",
         type=str,
@@ -383,6 +403,13 @@ def parse_args(args):
         type=str,
         required=False,
         help="...")
+
+    parser.add_argument(
+        "--split_file_name",
+        type=str,
+        nargs="+",
+        required=True,
+        help="The path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').")
 
     args = parser.parse_args(args)
     return args
