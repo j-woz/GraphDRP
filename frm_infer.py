@@ -58,8 +58,12 @@ def launch(model_arch, args):
 
     # -----------------------------
     # Prepare PyG datasets
+    """
     DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
     test_data = TestbedDataset(root=args.test_ml_data_dir, dataset=DATA_FILE_NAME)
+    """
+    test_data_file_name = "test_data"  # TestbedDataset() appends this string with ".pt"
+    test_data = TestbedDataset(root=args.test_ml_data_dir, dataset=test_data_file_name)
 
     # PyTorch dataloaders
     test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False)  # Note! Don't shuffle the test_loader
@@ -101,7 +105,7 @@ def launch(model_arch, args):
     # -----------------------------
     # Concat raw predictions with the cancer and drug ids, and the true values
     # -----------------------------
-    RSP_FNAME = "response_subset.csv" ###  # TODO: move to improve_utils? ask Yitan?
+    RSP_FNAME = "test_response.csv" ###  # TODO: move to improve_utils? ask Yitan?
     rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
 
     # Old
@@ -116,7 +120,7 @@ def launch(model_arch, args):
 
     # Save the raw predictions on val data
     # pred_fname = "test_preds.csv"
-    pred_fname = "preds.csv"
+    pred_fname = "test_preds.csv"
     imp.save_preds(mm, args.y_col_name, infer_outdir/pred_fname)
 
     # -----------------------------
@@ -129,21 +133,23 @@ def launch(model_arch, args):
     # this repo. Consider to use function defined by the framework (e.g., CANDLE)
     # so that all DRP models use same methods to compute scores.
     y_true = rsp_df[args.y_col_name].values
-    mse_test = mse(y_true, P_test)
-    rmse_test = rmse(y_true, P_test)
-    pcc_test = pearson(y_true, P_test)
-    scc_test = spearman(y_true, P_test)
-    scores = {"val_loss": float(mse_test),
+    mse_test = imp.mse(y_true, P_test)
+    rmse_test = imp.rmse(y_true, P_test)
+    pcc_test = imp.pearson(y_true, P_test)
+    scc_test = imp.spearman(y_true, P_test)
+    r2_test = imp.r_square(y_true, P_test)
+    test_scores = {"test_loss": float(mse_test),
               "rmse": float(rmse_test),
               "pcc": float(pcc_test),
-              "scc": float(scc_test)}
+              "scc": float(scc_test),
+              "r2": float(r2_test)}
 
     # Performance scores for Supervisor HPO
-    with open(infer_outdir/"scores.json", "w", encoding="utf-8") as f:
-        json.dump(scores, f, ensure_ascii=False, indent=4)
+    with open(infer_outdir/"test_scores.json", "w", encoding="utf-8") as f:
+        json.dump(test_scores, f, ensure_ascii=False, indent=4)
 
-    print("Scores:\n\t{}".format(scores))
-    return scores
+    print("Scores:\n\t{}".format(test_scores))
+    return test_scores
 
 
 def parse_args(args):

@@ -19,7 +19,8 @@ from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
-from utils import *
+# from utils import *
+from utils import TestbedDataset, DataLoader
 
 import improve_utils as imp
 from improve_utils import improve_globals as ig
@@ -57,7 +58,7 @@ def train(model, device, train_loader, optimizer, epoch, log_interval):
 
 def predicting(model, device, loader):
     """ Method to run predictions/inference.
-    The same method is in infer.py
+    The same method is in frm_infer.py
     TODO: put this in some utils script because it's also used in inference.
     """
     # TODO: this func assumes that the data contains true labels!
@@ -76,7 +77,6 @@ def predicting(model, device, loader):
 
 
 def launch(model_arch, args):
-    # import ipdb; ipdb.set_trace()
 
     # CANDLE known params
     lr = args.learning_rate
@@ -89,23 +89,17 @@ def launch(model_arch, args):
     val_batch = args.val_batch
 
     # Dir to save the trained (converged) model
-    # import ipdb; ipdb.set_trace()
+    model_file_name = "model.pt"  # TODO: this depends on the DL framework
     model_outdir = Path(args.model_outdir)
     os.makedirs(model_outdir, exist_ok=True)
-    model_path = model_outdir/"model.pt"  # file name of the model
-
-    # -----------------------------
-    # TODO:
-    # Where should we store data?
-    # 1. The trained (converged) model
-    # 2. Performance scores (as required by HPO Supervisor)
-    # 3. Raw predictions of the val data (would be nice but probably not mandatory) 
+    model_path = model_outdir/model_file_name  # file name of the model
 
     # -----------------------------
     # Prepare PyG datasets
-    DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
-    train_data = TestbedDataset(root=args.train_ml_data_dir, dataset=DATA_FILE_NAME)
-    val_data = TestbedDataset(root=args.val_ml_data_dir, dataset=DATA_FILE_NAME)
+    train_data_file_name = "train_data"  # TestbedDataset() appends this string with ".pt"
+    val_data_file_name = "val_data"
+    train_data = TestbedDataset(root=args.train_ml_data_dir, dataset=train_data_file_name)
+    val_data = TestbedDataset(root=args.val_ml_data_dir, dataset=val_data_file_name)
 
     # PyTorch dataloaders
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -135,19 +129,19 @@ def launch(model_arch, args):
     # -----------------------------
     # Train
     # -----------------------------
-    # Vars to monitor the best model based val data
+    # Variables to monitor the best model based val data
     best_mse = 1000
     best_pearson = 0
     best_epoch = 0
 
     # Iterate over epochs
-    # import ipdb; ipdb.set_trace()
+    early_stop_counter = 0
     for epoch in range(num_epoch):
         train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
 
         # Predict with val data
         G, P = predicting(model, device, val_loader)  # G (groud truth), P (predictions)
-        ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P)]
+        ret = [imp.rmse(G, P), imp.mse(G, P), imp.pearson(G, P), imp.spearman(G, P)]
 
         # Save best model
         # TODO:
@@ -165,7 +159,11 @@ def launch(model_arch, args):
             print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
         else:
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
+            early_stop_counter += 1
 
+        if early_stop_counter == args.patience:
+            print(f"Terminate training (model did not on val data for {args.patience} epochs).")
+            continue
 
     # -----------------------------
     # Load saved (best) model
@@ -179,78 +177,57 @@ def launch(model_arch, args):
     # -----------------------------
     # Compute raw predictions
     # -----------------------------
-    # import ipdb; ipdb.set_trace()
     pred_col_name = args.y_col_name + ig.pred_col_name_suffix
     true_col_name = args.y_col_name + "_true"
-    G_val, P_val = predicting(model, device, val_loader)
-    tp = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})  # This includes true and predicted values
+    # G_val, P_val = predicting(model, device, val_loader)
+    # tp = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})  # This includes true and predicted values
     pred_df = pd.DataFrame(P_val, columns=[pred_col_name])  # This includes only predicted values
 
 
     # -----------------------------
     # Concatenate raw predictions with the cancer and drug ids, and the true values
     # -----------------------------
-    # TODO:
-    # Should this be a standard in CANDLE/IMPROVE?
-    RSP_FNAME = "response_subset.csv" ###  # TODO: move to improve_utils? ask Yitan?
+    RSP_FNAME = "val_response.csv"  # TODO: move to improve_utils? ask Yitan?
     rsp_df = pd.read_csv(Path(args.val_ml_data_dir)/RSP_FNAME)
 
-    # Old
-    tp = pd.concat([rsp_df, tp], axis=1)
-    tp = tp.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
-    assert sum(tp[true_col_name] == tp[args.y_col_name]) == tp.shape[0], \
-        f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
+    # # Old
+    # tp = pd.concat([rsp_df, tp], axis=1)
+    # tp = tp.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
+    # assert sum(tp[true_col_name] == tp[args.y_col_name]) == tp.shape[0], \
+    #     f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
 
     # New
     mm = pd.concat([rsp_df, pred_df], axis=1)
     mm = mm.astype({args.y_col_name: np.float32, pred_col_name: np.float32})
 
     # Save the raw predictions on val data
-    # pred_fname = "val_preds.csv"
-    pred_fname = "preds.csv"
+    pred_fname = "val_preds.csv"
     imp.save_preds(mm, args.y_col_name, model_outdir/pred_fname)
 
 
     # -----------------------------
     # Compute performance scores
     # -----------------------------
-    # import ipdb; ipdb.set_trace()
-    # TODO:
-    # Should this be a standard in CANDLE/IMPROVE?
-    # Here performance scores/metrics are computed using functions defined in
-    # this repo. Consider to use funcs from improve_utils.py.
-    ## Method 1 - compute scores using the loaded model
-    # mse_val = mse(G_val, P_val)
-    # rmse_val = rmse(G_val, P_val)
-    # pcc_val = pearson(G_val, P_val)
-    # scc_val = spearman(G_val, P_val)
-    # val_scores = {"val_loss": float(mse_val),
-    #               "rmse": float(rmse_val),
-    #               "pcc": float(pcc_val),
-    #               "scc": float(scc_val)}
-    ## Method 3 - compute scores using the loaded model
+    # TODO: Make this a func in improve_utils.py --> calc_scores(y_true, y_pred)
+    # Compute scores using the loaded model
     y_true = rsp_df[args.y_col_name].values
-    mse_val = mse(y_true, P_val)
-    rmse_val = rmse(y_true, P_val)
-    pcc_val = pearson(y_true, P_val)
-    scc_val = spearman(y_true, P_val)
+    mse_val = imp.mse(y_true, P_val)
+    rmse_val = imp.rmse(y_true, P_val)
+    pcc_val = imp.pearson(y_true, P_val)
+    scc_val = imp.spearman(y_true, P_val)
+    r2_val = imp.r_square(y_true, P_val)
     val_scores = {"val_loss": float(mse_val),
                   "rmse": float(rmse_val),
                   "pcc": float(pcc_val),
-                  "scc": float(scc_val)}
-    ## Method 2 - get the scores that were ealier computed (in for loop)
-    # val_scores = {"val_loss": float(best_mse),
-    #               "rmse": float(best_rmse),
-    #               "pcc": float(best_pearson),
-    #               "scc": float(best_spearman)}
+                  "scc": float(scc_val),
+                  "r2": float(r2_val)}
 
     # Performance scores for Supervisor HPO
-    # import ipdb; ipdb.set_trace()
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(mse_val))
-    with open(model_outdir/"scores.json", "w", encoding="utf-8") as f:
+    with open(model_outdir/"val_scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
-    print("Scores:\n\t{}".format(val_scores))
+    print("Validation scores:\n\t{}".format(val_scores))
     return val_scores
 
 
@@ -265,7 +242,7 @@ def run(gParameters):
 
     # Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["val_loss"]))
-    with open(Path(args.output_dir) / "scores.json", "w", encoding="utf-8") as f:
+    with open(Path(args.output_dir) / "val_scores.json", "w", encoding="utf-8") as f:
         json.dump(scores, f, ensure_ascii=False, indent=4)
 
     return scores
@@ -365,6 +342,12 @@ def parse_args(args):
         default=20,
         required=False,
         help="Interval for saving o/p.")
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=20,
+        required=False,
+        help="Number of epochs with no improvement after which training will be stopped.")
 
     args = parser.parse_args(args)
     return args
