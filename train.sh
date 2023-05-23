@@ -4,13 +4,19 @@
 ### THIS IS A TEMPLATE FILE. SUBSTITUTE #PATH# WITH THE MODEL EXECUTABLE.
 #########################################################################
 
+# Example:
+# Without config file
+# ./train.sh 7 candle_data_dir
+# With config file (it is assumed that the config file is located inside CANDLE_DATA_DIR
+# ./train.sh 7 candle_data_dir graphdrp_default_model.txt
 
 # arg 1 CUDA_VISIBLE_DEVICES
 # arg 2 CANDLE_DATA_DIR
 # arg 3 CANDLE_CONFIG
 
 ### Path to your CANDLEized model's main Python script###
-CANDLE_MODEL=/usr/local/GraphDRP/graphdrp_baseline_pytorch.py
+# CANDLE_MODEL=/usr/local/GraphDRP/graphdrp_baseline_pytorch.py
+CANDLE_MODEL=/lambda_stor/data/apartin/projects/IMPROVE/pan-models/GraphDRP/graphdrp_baseline_pytorch.py
 
 if [ $# -lt 2 ] ; then
         echo "Illegal number of parameters"

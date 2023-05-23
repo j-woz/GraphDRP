@@ -8,6 +8,8 @@ from random import shuffle
 from time import time
 import json
 
+from sklearn import metrics
+
 import candle
 import numpy as np
 import pandas as pd
@@ -108,11 +110,14 @@ def launch(modeling, args):
     ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"
     data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
 
+    # CANDLE_DATA_DIR = ./data_processed/mixed_set/processed
+    candle_data_dir_env_var = os.getenv('CANDLE_DATA_DIR')
+    print(f'CANDLE_DATA_DIR: {candle_data_dir_env_var}')
     for f in data_file_list:
         candle.get_file(fname=f,
                         origin=os.path.join(ftp_origin, f.strip()),
                         unpack=False, md5_hash=None,
-                        cache_subdir=args.cache_subdir )
+                        cache_subdir=args.cache_subdir)
 
     _data_dir = os.path.split(args.cache_subdir)[0]
     root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
@@ -140,7 +145,7 @@ def launch(modeling, args):
     # Prepare data loaders
     print("root: {}".format(root))
     file_train = args.train_data
-    file_val = args.test_data
+    file_val = args.val_data
     file_test = args.test_data
     train_data = TestbedDataset(root=root, dataset=file_train)
     val_data = TestbedDataset(root=root, dataset=file_val)
@@ -185,17 +190,19 @@ def launch(modeling, args):
         ret = [rmse(G, P),
                mse(G, P),
                pearson(G, P),
-               spearman(G, P)
+               spearman(G, P),
+               metrics.r2_score(G, P)
         ]
 
-        # Test set scores
-        G_test, P_test = predicting(model, device, test_loader)
-        ret_test = [
-            rmse(G_test, P_test),
-            mse(G_test, P_test),
-            pearson(G_test, P_test),
-            spearman(G_test, P_test),
-        ]
+        # # Test set scores
+        # G_test, P_test = predicting(model, device, test_loader)
+        # ret_test = [
+        #     rmse(G_test, P_test),
+        #     mse(G_test, P_test),
+        #     pearson(G_test, P_test),
+        #     spearman(G_test, P_test),
+        #     metrics.r2_score(G_test, P_test)
+        # ]
 
         train_losses.append(train_loss)
         val_losses.append(ret[1])
@@ -204,19 +211,38 @@ def launch(modeling, args):
         if ret[1] < best_mse:
             torch.save(model.state_dict(), model_file_name)
             with open(result_file_name, "w") as f:
-                f.write(",".join(map(str, ret_test)))
+                f.write(",".join(map(str, ret)))
+                # f.write(",".join(map(str, ret_test)))
             best_epoch = epoch + 1
             best_rmse = ret[0]
             best_mse = ret[1]
             best_pearson = ret[2]
             best_spearman = ret[3]
-            print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
+            best_r2 = ret[4]
+            # print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
+            print(f"MSE improved at epoch {best_epoch}; Best MSE: {round(best_mse, 8)}; Model: {model_st}; Dataset: {dataset}")
         else:
-            print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
+            # print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
+            print(f"No improvement since epoch {best_epoch}; Best MSE: {round(best_mse, 8)}; Model: {model_st}; Dataset: {dataset}")
 
     draw_loss(train_losses, val_losses, loss_fig_name)
     draw_pearson(val_pearsons, pearson_fig_name)
 
+    # # Supervisor HPO
+    # print("\nIMPROVE_RESULT val_loss:\t{}\n".format(best_mse))
+    val_scores = {"total_epochs": int(num_epoch),
+                  "best_epoch": int(best_epoch),
+                  "val_loss": float(best_mse),
+                  "pcc": float(best_pearson),
+                  "scc": float(best_spearman),
+                  "rmse": float(best_rmse),
+                  "r2": float(best_r2)}
+    # with open(outdir / "scores.json", "w", encoding="utf-8") as f:
+    #     json.dump(val_scores, f, ensure_ascii=False, indent=4)
+
+    # ----------------------------
+    # Test predictions and scores (this is not required)
+    # ----------------------------
     # Test set raw predictions
     G_test, P_test = predicting(model, device, test_loader)
     preds = pd.DataFrame({"True": G_test, "Pred": P_test})
@@ -227,16 +253,13 @@ def launch(modeling, args):
     pcc_test = pearson(G_test, P_test)
     scc_test = spearman(G_test, P_test)
     rmse_test = rmse(G_test, P_test)
-    test_scores = {"pcc": pcc_test, "scc": scc_test, "rmse": rmse_test}
+    r2_test = metrics.r2_score(G_test, P_test)
+    test_scores = {"pcc": pcc_test, "scc": scc_test, "rmse": rmse_test, "r2": r2_test}
 
+    # Save test scores
     with open(outdir / f"test_scores_{val_scheme}_{model_st}_{dataset}.json", "w", encoding="utf-8") as f:
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
-
-    # # Supervisor HPO
-    # print("\nIMPROVE_RESULT val_loss:\t{}\n".format(best_mse))
-    val_scores = {"val_loss": float(best_mse), "pcc": float(best_pearson), "scc": float(best_spearman), "rmse": float(best_rmse)}
-    # with open(outdir / "scores.json", "w", encoding="utf-8") as f:
-    #     json.dump(val_scores, f, ensure_ascii=False, indent=4)
+    # ----------------------------
 
     timer.display_timer()
     print("Scores:\n\t{}".format(val_scores))
@@ -278,7 +301,7 @@ def main():
     gParameters = initialize_parameters()
     print(gParameters)
     scores = run(gParameters)
-    print("Done.")
+    print("Finished.")
 
 
 if __name__ == "__main__":
