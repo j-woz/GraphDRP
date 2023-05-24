@@ -24,17 +24,24 @@ lg = Logger(ig.main_data_dir/"csa_full.log")
 print_fn = get_print_func(lg.logger)
 print_fn(f"File path: {fdir}")
 
+### Source and target data sources
+## Set 1 - full analysis
+source_data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+target_data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+## Set 2 - full analysis for CCLE as source
+# source_data_sources = ["CCLE"]
+# target_data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+## Set 3 - only CCLE and source and target
+# source_data_sources = ["CCLE"]
+# target_data_sources = ["CCLE"]
 
-# data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-data_sources = ["CCLE"]
 # split_nums = [0, 5]
 split_nums = [0]
 fea_list = ["ge", "mordred"]
 fea_sep = "."
 seed = 0
 
-
-# Parameters of the experiment/run/workflow
+## Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
 # epochs = 1
 # epochs = 2
@@ -57,7 +64,7 @@ timer = Timer()
 import pdb; pdb.set_trace()
 # Iterate over source datasets
 # Note! The "source_data_name" iterations are independent of each other
-for source_data_name in data_sources:
+for source_data_name in source_data_sources:
 
     # Get the split file paths
     # This parsing assumes splits file names are: SOURCE_split_NUM_[train/val/test].txt
@@ -96,7 +103,7 @@ for source_data_name in data_sources:
             continue
 
         # Iterate over target datasets
-        for target_data_name in data_sources:
+        for target_data_name in target_data_sources:
             print_fn(f"\nSource data: {source_data_name}")
             print_fn(f"Target data: {target_data_name}\n")
 
