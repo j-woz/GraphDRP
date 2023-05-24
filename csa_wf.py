@@ -26,14 +26,14 @@ print_fn(f"File path: {fdir}")
 
 ### Source and target data sources
 ## Set 1 - full analysis
-source_data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-target_data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 2 - full analysis for CCLE as source
-# source_data_sources = ["CCLE"]
-# target_data_sources = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+# source_datasets = ["CCLE"]
+# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - only CCLE and source and target
-# source_data_sources = ["CCLE"]
-# target_data_sources = ["CCLE"]
+# source_datasets = ["CCLE"]
+# target_datasets = ["CCLE"]
 
 # split_nums = [0, 5]
 split_nums = [0]
@@ -64,7 +64,7 @@ timer = Timer()
 import pdb; pdb.set_trace()
 # Iterate over source datasets
 # Note! The "source_data_name" iterations are independent of each other
-for source_data_name in source_data_sources:
+for source_data_name in source_datasets:
 
     # Get the split file paths
     # This parsing assumes splits file names are: SOURCE_split_NUM_[train/val/test].txt
@@ -103,7 +103,7 @@ for source_data_name in source_data_sources:
             continue
 
         # Iterate over target datasets
-        for target_data_name in target_data_sources:
+        for target_data_name in target_datasets:
             print_fn(f"\nSource data: {source_data_name}")
             print_fn(f"Target data: {target_data_name}\n")
 
@@ -134,7 +134,7 @@ for source_data_name in source_data_sources:
             ])
             timer_preprocess.display_timer(print_fn)
 
-            # p3 (p1, p2): Train model
+            # p2 (p1): Train model
             # Train using train samples and early stop using val samples
             TRAIN_ML_DATA_DIR = EXP_ML_DATA_DIR
             VAL_ML_DATA_DIR = EXP_ML_DATA_DIR
@@ -153,7 +153,7 @@ for source_data_name in source_data_sources:
             ])
             timer_train.display_timer(print_fn)
 
-            # p5 (p3, p4): Inference
+            # p3 (p1, p2): Inference
             TEST_ML_DATA_DIR = EXP_ML_DATA_DIR
             infer_outdir = ig.infer_dir/f"{source_data_name}-{target_data_name}"/f"split_{split}"
             # import pdb; pdb.set_trace()
