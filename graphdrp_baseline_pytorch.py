@@ -47,7 +47,7 @@ class Timer:
 
 def train(model, device, train_loader, optimizer, epoch, log_interval):
     """ Training function at each epoch. """
-    print("Training on {} samples...".format(len(train_loader.dataset)))
+    print("Epoch {}. Training on {} samples...".format(epoch, len(train_loader.dataset)))
     model.train()
     loss_fn = nn.MSELoss()
     avg_loss = []
@@ -219,11 +219,9 @@ def launch(modeling, args):
             best_pearson = ret[2]
             best_spearman = ret[3]
             best_r2 = ret[4]
-            # print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
-            print(f"MSE improved at epoch {best_epoch}; Best MSE: {round(best_mse, 8)}; Model: {model_st}; Dataset: {dataset}")
+            print(f"MSE improved at epoch {best_epoch}; Best MSE: {best_mse:.8f}; Model: {model_st}; Dataset: {dataset}")
         else:
-            # print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}; Dataset: {dataset}")
-            print(f"No improvement since epoch {best_epoch}; Best MSE: {round(best_mse, 8)}; Model: {model_st}; Dataset: {dataset}")
+            print(f"No improvement since epoch {best_epoch}; Best MSE: {best_mse:.8f}; Model: {model_st}; Dataset: {dataset}")
 
     draw_loss(train_losses, val_losses, loss_fig_name)
     draw_pearson(val_pearsons, pearson_fig_name)
