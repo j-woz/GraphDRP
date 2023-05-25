@@ -19,7 +19,7 @@
 CANDLE_MODEL=graphdrp_baseline_pytorch.py
 
 # Path to directory containing model executable
-IMPROVE_MODEL_DIR=${IMPROVE_MODEL_DIR:-$( dirname -- "$0" ; ) }
+IMPROVE_MODEL_DIR=${IMPROVE_MODEL_DIR:-$( dirname -- "$0" )}
 
 # Check if executable exists
 CANDLE_MODEL=${IMPROVE_MODEL_DIR}/${CANDLE_MODEL}
