@@ -92,7 +92,7 @@ def launch(model_arch, args):
     # -----------------------------
     pred_col_name = args.y_col_name + ig.pred_col_name_suffix
     true_col_name = args.y_col_name + "_true"
-    # G_test, P_test = predicting(model, device, test_loader)  # G (groud truth), P (predictions)
+    G_test, P_test = predicting(model, device, test_loader)  # G (groud truth), P (predictions)
     # tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
     pred_df = pd.DataFrame(P_test, columns=[pred_col_name])  # This includes only predicted values
 

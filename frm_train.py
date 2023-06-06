@@ -135,7 +135,6 @@ def launch(model_arch, args):
     best_epoch = 0
 
     # Iterate over epochs
-    early_stop_counter = 0
     for epoch in range(num_epoch):
         train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
 
@@ -157,13 +156,14 @@ def launch(model_arch, args):
             best_pearson = ret[2]
             best_spearman = ret[3]
             print(f"RMSE improved at epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
+            early_stop_counter = 0  # create/reset the early stop counter
         else:
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
             early_stop_counter += 1
 
         if early_stop_counter == args.patience:
-            print(f"Terminate training (model did not on val data for {args.patience} epochs).")
-            continue
+            print(f"\nTerminate training (model did not on val data for {args.patience} epochs).\n")
+            break
 
     # -----------------------------
     # Load saved (best) model
@@ -179,7 +179,7 @@ def launch(model_arch, args):
     # -----------------------------
     pred_col_name = args.y_col_name + ig.pred_col_name_suffix
     true_col_name = args.y_col_name + "_true"
-    # G_val, P_val = predicting(model, device, val_loader)
+    G_val, P_val = predicting(model, device, val_loader)
     # tp = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})  # This includes true and predicted values
     pred_df = pd.DataFrame(P_val, columns=[pred_col_name])  # This includes only predicted values
 

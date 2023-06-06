@@ -56,9 +56,9 @@ class GINConvNet(torch.nn.Module):
         # (ap) Determine in_dim
         # TODO:
         # Need to determine in_dim in __init__() and then use this info in forward()
-        self.in_dim = 2944 # original GraphDRP data
+        # self.in_dim = 2944 # original GraphDRP data
         # self.in_dim = 3968 # July2020 data
-        # self.in_dim = 4096 # New benchmark CSA data
+        self.in_dim = 4096 # New benchmark CSA data
         self.fc1_xt = nn.Linear(self.in_dim, output_dim)
         # self.fc1_xt = nn.Linear(3968, output_dim)
 
