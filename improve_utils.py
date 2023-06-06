@@ -63,22 +63,22 @@ improve_globals.source_col_name = "source"           # column name that contains
 improve_globals.pred_col_name_suffix = "_pred"       # suffix to predictions col name (example of final col name: auc_pred)
 
 # Response data file name
-improve_globals.y_file_name = "response.txt"  # response data
+improve_globals.y_file_name = "response.tsv"  # response data
 
 # Cancer sample features file names
-improve_globals.copy_number_fname = "cancer_copy_number.txt"  # cancer feature
-improve_globals.discretized_copy_number_fname = "cancer_discretized_copy_number.txt"  # cancer feature
-improve_globals.dna_methylation_fname = "cancer_DNA_methylation.txt"  # cancer feature
-improve_globals.gene_expression_fname = "cancer_gene_expression.txt"  # cancer feature
-improve_globals.miRNA_expression_fname = "cancer_miRNA_expression.txt"  # cancer feature
-improve_globals.mutation_count_fname = "cancer_mutation_count.txt"  # cancer feature
-improve_globals.mutation_fname = "cancer_mutation.txt"  # cancer feature
-improve_globals.rppa_fname = "cancer_RPPA.txt"  # cancer feature
+improve_globals.copy_number_fname = "cancer_copy_number.tsv"  # cancer feature
+improve_globals.discretized_copy_number_fname = "cancer_discretized_copy_number.tsv"  # cancer feature
+improve_globals.dna_methylation_fname = "cancer_DNA_methylation.tsv"  # cancer feature
+improve_globals.gene_expression_fname = "cancer_gene_expression.tsv"  # cancer feature
+improve_globals.miRNA_expression_fname = "cancer_miRNA_expression.tsv"  # cancer feature
+improve_globals.mutation_count_fname = "cancer_mutation_count.tsv"  # cancer feature
+improve_globals.mutation_fname = "cancer_mutation.tsv"  # cancer feature
+improve_globals.rppa_fname = "cancer_RPPA.tsv"  # cancer feature
 
 # Drug features file names
-improve_globals.smiles_file_name = "drug_SMILES.txt"  # drug feature
-improve_globals.mordred_file_name = "drug_mordred.txt"  # drug feature
-improve_globals.ecfp4_512bit_file_name = "drug_ecfp4_512bit.txt"  # drug feature
+improve_globals.smiles_file_name = "drug_SMILES.tsv"  # drug feature
+improve_globals.mordred_file_name = "drug_mordred.tsv"  # drug feature
+improve_globals.ecfp4_512bit_file_name = "drug_ecfp4_512bit.tsv"  # drug feature
 
 # Globals derived from the ones defined above
 improve_globals.raw_data_dir = improve_globals.main_data_dir/improve_globals.raw_data_dir_name # raw_data

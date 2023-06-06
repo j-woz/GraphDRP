@@ -26,17 +26,20 @@ print_fn(f"File path: {fdir}")
 
 ### Source and target data sources
 ## Set 1 - full analysis
-source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-## Set 2 - full analysis for CCLE as source
-# source_datasets = ["CCLE"]
+# source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+## Set 2 - full analysis for CCLE as source
+source_datasets = ["CCLE"]
+# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+# target_datasets = ["gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - only CCLE and source and target
 # source_datasets = ["CCLE"]
 # target_datasets = ["CCLE"]
 
-# split_nums = [0, 5]
-split_nums = [0]
+# split_nums = []
+split_nums = [4, 7]
+# split_nums = [0]
 fea_list = ["ge", "mordred"]
 fea_sep = "."
 seed = 0
@@ -49,8 +52,8 @@ seed = 0
 # epochs = 50
 # epochs = 100
 epochs = 200
-# y_col_name = "auc"
-y_col_name = "auc1"
+y_col_name = "auc"
+# y_col_name = "auc1"
 config_file_name = "csa_params.txt"
 config_file_path = fdir/config_file_name
 model_arch = 0  # GraphDRP-specific param (0-3: different model architectures)
