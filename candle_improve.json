@@ -1,0 +1,31 @@
+{
+"raw_data_dir_name": ["raw_data" ,"benchmark data"],
+"ml_data_dir_name": ["ml_data"   ,"preprocessed data for a specific ML model"],
+"models_dir_name": ["models"     ,"output from model training"],
+"infer_dir_name": ["infer"       ,"output from model inference (testing)"],
+
+"x_data_dir_name": ["x_data"     ,"feature data"],
+"y_data_dir_name": ["y_data"     ,"target data"],
+"splits_dir_name": ["splits"     ,"splits files"],
+
+"canc_col_name": ["improve_sample_id" ,"column name that contains the cancer sample ids TODO: rename to sample_col_name"],
+"drug_col_name": ["improve_chem_id"   ,"column name that contains the drug ids"],
+"source_col_name": ["source"          ,"column name that contains source/study names (CCLE, GDSCv1, etc.)"],
+"pred_col_name_suffix": ["_pred"      ,"suffix to predictions col name (example of final col name: auc_pred)"],
+
+"y_file_name": ["response.tsv" ,"response data"],
+
+"copy_number_fname": ["cancer_copy_number.tsv" ,"cancer feature"],
+"discretized_copy_number_fname": ["cancer_discretized_copy_number.tsv" ,"cancer feature"],
+"dna_methylation_fname": ["cancer_DNA_methylation.tsv" ,"cancer feature"],
+"gene_expression_fname": ["cancer_gene_expression.tsv" ,"cancer feature"],
+"miRNA_expression_fname": ["cancer_miRNA_expression.tsv" ,"cancer feature"],
+"mutation_count_fname": ["cancer_mutation_count.tsv" ,"cancer feature"],
+"mutation_fname": ["cancer_mutation.tsv" ,"cancer feature"],
+"rppa_fname": ["cancer_RPPA.tsv" ,"cancer feature"],
+
+"smiles_file_name": ["drug_SMILES.tsv" ,"drug feature"],
+"mordred_file_name": ["drug_mordred.tsv" ,"drug feature"],
+"ecfp4_512bit_file_name": ["drug_ecfp4_512bit.tsv" ,"drug feature"]
+}
+
