@@ -1,41 +1,13 @@
+import os
 from pathlib import Path
 
 import candle
+import graphdrp as bmk
 
 file_path = Path(__file__).resolve().parent
 
-additional_definitions = [
-    {
-        "name": "train_split",
-        "nargs": "+",
-        "type": str,
-        "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').",
-    },
-]
 
-required = [
-    "train_data",
-    "val_data",
-    "test_data",
-    "train_split",
-]
-
-
-class BmkParse(candle.Benchmark):
-    def set_locals(self):
-        """Functionality to set variables specific for the benchmark
-        - required: set of required parameters for the benchmark.
-        - additional_definitions: list of dictionaries describing the additional parameters for the
-        benchmark.
-        """
-
-        if required is not None:
-            self.required = set(required)
-        if additional_definitions is not None:
-            self.additional_definitions = additional_definitions
-
-
-def initialize_parameters(default_model="default_preprocess.txt"):
+def initialize_parameters(default_model="csa_params.txt"):
     """Parse execution parameters from file or command line.
 
     Parameters
@@ -50,22 +22,24 @@ def initialize_parameters(default_model="default_preprocess.txt"):
     """
 
     # Build benchmark object
-    bmk = BmkParse(
+    gdrp = bmk.BenchmarkGraphDRP(
         file_path,
         default_model,
         "python",
-        prog="preprocess",
-        desc="Generic pre-processing functionality",
+        prog="pre-process",
+        desc="Generic pre-process functionality",
     )
 
     # Initialize parameters
-    gParameters = candle.finalize_parameters(bmk)
+    gParameters = candle.finalize_parameters(gdrp)
 
     return gParameters
 
 
 def run(params):
     """Execute specified data preprocessing."""
+    root = params["output_dir"]  # args.outdir
+    os.makedirs(root, exist_ok=True)
 
 
 def main():
