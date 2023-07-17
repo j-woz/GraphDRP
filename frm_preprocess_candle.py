@@ -9,7 +9,7 @@ additional_definitions = [
         "name": "train_split",
         "nargs": "+",
         "type": str,
-        "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id')."",
+        "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').",
     },
 ]
 
@@ -19,6 +19,7 @@ required = [
     "test_data",
     "train_split",
 ]
+
 
 class BmkParse(candle.Benchmark):
     def set_locals(self):
@@ -31,7 +32,7 @@ class BmkParse(candle.Benchmark):
         if required is not None:
             self.required = set(required)
         if additional_definitions is not None:
-            self.additional_definitions = additional_definitions + temporary
+            self.additional_definitions = additional_definitions
 
 
 def initialize_parameters(default_model="default_preprocess.txt"):
@@ -65,7 +66,6 @@ def initialize_parameters(default_model="default_preprocess.txt"):
 
 def run(params):
     """Execute specified data preprocessing."""
-
 
 
 def main():
