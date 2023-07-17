@@ -57,10 +57,10 @@ def construct_improve_dir_path(dir_name, dir_path, params):
     """
     new_key = dir_name
     old_key = dir_name + '_name'
-    new_val=dir_path + '/' + params[old_key]
+    new_val = dir_path + '/' + params[old_key]
     print("Appending key:", new_key, new_val)
 
-    params[new_key]=new_val
+    params[new_key] = new_val
 
     return params
 
@@ -77,12 +77,12 @@ def construct_improve_file_path(file_name, dir_path, suffix, new_suffix, value, 
     return params
 
 
-def add_improve_key(key_name, suffix, new_suffix, params):
+def add_improve_key(key_name, old_suffix, new_suffix, params):
     """ Custom function to construct file paths in IMPROVE
         Given a dictionary and a key name, remove the suffix
         and generate a new key with a new suffix appended.
     """
-    new_key = remove_suffix(key_name, suffix)
+    new_key = remove_suffix(key_name, old_suffix)
     new_key = new_key + new_suffix
     params[new_key] = params[key_name]
 

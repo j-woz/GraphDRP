@@ -1,10 +1,10 @@
-import os
+# import os
 import numpy as np
 import pandas as pd
 from pathlib import Path, PosixPath
 from math import sqrt
 from scipy import stats
-from typing import List, Union, Optional, Tuple
+from typing import List, Union, Tuple  # , Optional, Tuple
 
 
 fdir = Path(__file__).resolve().parent
@@ -20,10 +20,8 @@ fdir = Path(__file__).resolve().parent
 # |_______ preprocess.py
 # |_______ improve_utils.py
 # |
-# | 
+# |
 # -----------------------------------------------------------------------------
-
-
 
 # -----------------------------------------------------------------------------
 # Global variables
@@ -35,7 +33,7 @@ improve_globals = types.SimpleNamespace()
 # TODO:
 # This is CANDLE_DATA_DIR (or something...).
 # How this is going to be passed to the code?
-improve_globals.main_data_dir = fdir/"csa_data"
+improve_globals.main_data_dir = fdir + '/' + "csa_data"
 # improve_globals.main_data_dir = fdir/"improve_data_dir"
 # imp_globals.main_data_dir = fdir/"candle_data_dir"
 
@@ -81,32 +79,32 @@ improve_globals.mordred_file_name = "drug_mordred.tsv"  # drug feature
 improve_globals.ecfp4_512bit_file_name = "drug_ecfp4_512bit.tsv"  # drug feature
 
 # Globals derived from the ones defined above
-improve_globals.raw_data_dir = improve_globals.main_data_dir/improve_globals.raw_data_dir_name # raw_data
-improve_globals.ml_data_dir  = improve_globals.main_data_dir/improve_globals.ml_data_dir_name  # ml_data
-improve_globals.models_dir   = improve_globals.main_data_dir/improve_globals.models_dir_name   # models
-improve_globals.infer_dir    = improve_globals.main_data_dir/improve_globals.infer_dir_name    # infer
+improve_globals.raw_data_dir = improve_globals.main_data_dir + '/' + improve_globals.raw_data_dir_name  # raw_data
+improve_globals.ml_data_dir = improve_globals.main_data_dir + '/' + improve_globals.ml_data_dir_name  # ml_data
+improve_globals.models_dir = improve_globals.main_data_dir + '/' + improve_globals.models_dir_name   # models
+improve_globals.infer_dir = improve_globals.main_data_dir + '/' + improve_globals.infer_dir_name    # infer
 # -----
-improve_globals.x_data_dir   = improve_globals.raw_data_dir/improve_globals.x_data_dir_name    # x_data
-improve_globals.y_data_dir   = improve_globals.raw_data_dir/improve_globals.y_data_dir_name    # y_data
-improve_globals.splits_dir   = improve_globals.raw_data_dir/improve_globals.splits_dir_name    # splits
+improve_globals.x_data_dir = improve_globals.raw_data_dir + '/' + improve_globals.x_data_dir_name    # x_data
+improve_globals.y_data_dir = improve_globals.raw_data_dir + '/' + improve_globals.y_data_dir_name    # y_data
+improve_globals.splits_dir = improve_globals.raw_data_dir + '/' + improve_globals.splits_dir_name    # splits
 
 # Response
-improve_globals.y_file_path = improve_globals.y_data_dir/improve_globals.y_file_name           # response.txt
+improve_globals.y_file_path = improve_globals.y_data_dir + '/' + improve_globals.y_file_name           # response.txt
 
 # Cancers
-improve_globals.copy_number_file_path = improve_globals.x_data_dir/improve_globals.copy_number_fname  # cancer_copy_number.txt
-improve_globals.discretized_copy_number_file_path = improve_globals.x_data_dir/improve_globals.discretized_copy_number_fname # cancer_discretized_copy_number.txt
-improve_globals.dna_methylation_file_path = improve_globals.x_data_dir/improve_globals.dna_methylation_fname  # cancer_DNA_methylation.txt
-improve_globals.gene_expression_file_path = improve_globals.x_data_dir/improve_globals.gene_expression_fname  # cancer_gene_expression.txt
-improve_globals.mirna_expression_file_path = improve_globals.x_data_dir/improve_globals.miRNA_expression_fname  # cancer_miRNA_expression.txt
-improve_globals.mutation_count_file_path = improve_globals.x_data_dir/improve_globals.mutation_count_fname # cancer_mutation_count.txt
-improve_globals.mutation_file_path = improve_globals.x_data_dir/improve_globals.mutation_fname # cancer_mutation.txt
-improve_globals.rppa_file_path = improve_globals.x_data_dir/improve_globals.rppa_fname # cancer_RPPA.txt
+improve_globals.copy_number_file_path = improve_globals.x_data_dir + '/' + improve_globals.copy_number_fname  # cancer_copy_number.txt
+improve_globals.discretized_copy_number_file_path = improve_globals.x_data_dir + '/' + improve_globals.discretized_copy_number_fname  # cancer_discretized_copy_number.txt
+improve_globals.dna_methylation_file_path = improve_globals.x_data_dir + '/' + improve_globals.dna_methylation_fname  # cancer_DNA_methylation.txt
+improve_globals.gene_expression_file_path = improve_globals.x_data_dir + '/' + improve_globals.gene_expression_fname  # cancer_gene_expression.txt
+improve_globals.mirna_expression_file_path = improve_globals.x_data_dir + '/' + improve_globals.miRNA_expression_fname  # cancer_miRNA_expression.txt
+improve_globals.mutation_count_file_path = improve_globals.x_data_dir + '/' + improve_globals.mutation_count_fname  # cancer_mutation_count.txt
+improve_globals.mutation_file_path = improve_globals.x_data_dir + '/' + improve_globals.mutation_fname  # cancer_mutation.txt
+improve_globals.rppa_file_path = improve_globals.x_data_dir + '/' + improve_globals.rppa_fname  # cancer_RPPA.txt
 
 # Drugs
-improve_globals.smiles_file_path = improve_globals.x_data_dir/improve_globals.smiles_file_name  # 
-improve_globals.mordred_file_path = improve_globals.x_data_dir/improve_globals.mordred_file_name  # 
-improve_globals.ecfp4_512bit_file_path = improve_globals.x_data_dir/improve_globals.ecfp4_512bit_file_name  # 
+improve_globals.smiles_file_path = improve_globals.x_data_dir + '/' + improve_globals.smiles_file_name  #
+improve_globals.mordred_file_path = improve_globals.x_data_dir + '/' + improve_globals.mordred_file_name  #
+improve_globals.ecfp4_512bit_file_path = improve_globals.x_data_dir + '/' + improve_globals.ecfp4_512bit_file_name  #
 # -----------------------------------------------------------------------------
 
 
@@ -115,13 +113,13 @@ improve_globals.ecfp4_512bit_file_path = improve_globals.x_data_dir/improve_glob
 # -------------------------------------
 
 def load_single_drug_response_data(
-    # source: Union[str, List[str]],
-    source: str,
-    split: Union[int, None]=None,
-    split_type: Union[str, List[str], None]=None,
-    y_col_name: str="auc",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        # source: Union[str, List[str]],
+        source: str,
+        split: Union[int, None] = None,
+        split_type: Union[str, List[str], None] = None,
+        y_col_name: str = "auc",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns datarame with cancer ids, drug ids, and drug response values. Samples
     from the original drug response file are filtered based on the specified
@@ -161,14 +159,14 @@ def load_single_drug_response_data(
 
 
 def load_single_drug_response_data_v2(
-    # source: Union[str, List[str]],
-    source: str,
-    # split: Union[int, None]=None,
-    # split_type: Union[str, List[str], None]=None,
-    split_file_name: Union[str, List[str], None]=None,
-    y_col_name: str="auc",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        # source: Union[str, List[str]],
+        source: str,
+        # split: Union[int, None] = None,
+        # split_type: Union[str, List[str], None] = None,
+        split_file_name: Union[str, List[str], None] = None,
+        y_col_name: str = "auc",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns datarame with cancer ids, drug ids, and drug response values. Samples
     from the original drug response file are filtered based on the specified
@@ -222,7 +220,7 @@ def load_split_ids(split_file_name: Union[str, List[str]]) -> List[int]:
     """
     ids = []
     for fname in split_file_name:
-        fpath = improve_globals.splits_dir/fname
+        fpath = improve_globals.splits_dir + '/' + fname
         assert fpath.exists(), f"split_file_name {fname} not found."
         ids_ = pd.read_csv(fpath, header=None)[0].tolist()
         ids.extend(ids_)
@@ -231,8 +229,8 @@ def load_split_ids(split_file_name: Union[str, List[str]]) -> List[int]:
 
 def load_split_file(
     source: str,
-    split: Union[int, None]=None,
-    split_type: Union[str, List[str], None]=None) -> List[int]:
+    split: Union[int, None] = None,
+        split_type: Union[str, List[str], None] = None) -> List[int]:
     """
     Args:
         source (str): DRP source name (str)
@@ -247,7 +245,7 @@ def load_split_file(
     # Check if the split file exists and load
     ids = []
     for st in split_type:
-        fpath = improve_globals.splits_dir/f"{source}_split_{split}_{st}.txt"
+        fpath = improve_globals.splits_dir + '/' + f"{source}_split_{split}_{st}.txt"
         assert fpath.exists(), f"Splits file not found: {fpath}"
         ids_ = pd.read_csv(fpath, header=None)[0].tolist()
         ids.extend(ids_)
@@ -271,14 +269,15 @@ omic files.
 The level_map dict, in each loader function, encodes the column level and the
 corresponding identifier systems.
 
-For example, in the copy number file the level_map is:  
+For example, in the copy number file the level_map is:
 level_map = {"Entrez":0, "Gene_Symbol": 1, "Ensembl": 2}
 """
+
 
 def set_col_names_in_multilevel_dataframe(
     df: pd.DataFrame,
     level_map: dict,
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol") -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol") -> pd.DataFrame:
     """ Util function that supports loading of the omic data files.
     Returns the input dataframe with the multi-level column names renamed as
     specified by the gene_system_identifier arg.
@@ -298,7 +297,7 @@ def set_col_names_in_multilevel_dataframe(
     level_names = list(level_map.keys())
     level_values = list(level_map.values())
     n_levels = len(level_names)
-    
+
     if isinstance(gene_system_identifier, list) and len(gene_system_identifier) == 1:
         gene_system_identifier = gene_system_identifier[0]
 
@@ -323,9 +322,9 @@ def set_col_names_in_multilevel_dataframe(
 
 
 def load_copy_number_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns copy number data.
 
@@ -359,9 +358,9 @@ def load_copy_number_data(
 
 
 def load_discretized_copy_number_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns discretized copy number data.
 
@@ -388,9 +387,9 @@ def load_discretized_copy_number_data(
 
 
 def load_dna_methylation_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns methylation data.
 
@@ -417,9 +416,9 @@ def load_dna_methylation_data(
 
 
 def load_gene_expression_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns gene expression data.
 
@@ -445,18 +444,18 @@ def load_gene_expression_data(
 
 
 def load_mirna_expression_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     # TODO
     raise NotImplementedError("The function is not implemeted yet.")
     return None
 
 
 def load_mutation_count_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Returns mutation count data.
 
@@ -478,37 +477,35 @@ def load_mutation_count_data(
     df = set_col_names_in_multilevel_dataframe(df, level_map, gene_system_identifier)
     if verbose:
         print(f"Mutation count data: {df.shape}")
-    
+
     return df
 
 
 def load_mutation_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     # TODO
     raise NotImplementedError("The function is not implemeted yet.")
     return None
 
 
 def load_rppa_data(
-    gene_system_identifier: Union[str, List[str]]="Gene_Symbol",
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     # TODO
     raise NotImplementedError("The function is not implemeted yet.")
     return None
-
-
-
 
 # -------------------------------------
 # Drug feature loaders
 # -------------------------------------
 
+
 def load_smiles_data(
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     IMPROVE-specific func.
     Read smiles data.
@@ -527,8 +524,8 @@ def load_smiles_data(
 
 
 def load_mordred_descriptor_data(
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Return Mordred descriptors data.
     """
@@ -540,8 +537,8 @@ def load_mordred_descriptor_data(
 
 
 def load_morgan_fingerprint_data(
-    sep: str="\t",
-    verbose: bool=True) -> pd.DataFrame:
+        sep: str = "\t",
+        verbose: bool = True) -> pd.DataFrame:
     """
     Return Morgan fingerprints data.
     """
@@ -555,7 +552,7 @@ def load_morgan_fingerprint_data(
 # -------------------------------------
 
 def save_preds(df: pd.DataFrame, y_col_name: str,
-               outpath: Union[str, PosixPath], round_decimals: int=4) -> None:
+               outpath: Union[str, PosixPath], round_decimals: int = 4) -> None:
     """ Save model predictions.
     This function throws errors if the dataframe does not include the expected
     columns: canc_col_name, drug_col_name, y_col_name, y_col_name + "_pred"
@@ -564,8 +561,8 @@ def save_preds(df: pd.DataFrame, y_col_name: str,
         df (pd.DataFrame): df with model predictions
         y_col_name (str): drug response col name (e.g., IC50, AUC)
         outpath (str or PosixPath): outdir to save the model predictions df
-        round (int): round response values 
-        
+        round (int): round response values
+
     Returns:
         None
     """
@@ -583,25 +580,22 @@ def save_preds(df: pd.DataFrame, y_col_name: str,
     df.to_csv(outpath, index=False)
     return None
 
-
-
-
-
-
 # ==================================================================
 # Leftovers
 # ==================================================================
+
+
 def get_data_splits(
-    src_raw_data_dir: str,
-    splitdir_name: str,
-    split_file_name: str,
-    rsp_df: pd.DataFrame):
+        src_raw_data_dir: str,
+        splitdir_name: str,
+        split_file_name: str,
+        rsp_df: pd.DataFrame):
     """
     IMPROVE-specific func.
     Read smiles data.
     src_raw_data_dir : data dir where the raw DRP data is stored
     """
-    splitdir = src_raw_data_dir/splitdir_name
+    splitdir = src_raw_data_dir + '/' + splitdir_name
     if len(split_file_name) == 1 and split_file_name[0] == "full":
         # Full dataset (take all samples)
         ids = list(range(rsp_df.shape[0]))
@@ -609,8 +603,8 @@ def get_data_splits(
         # Check if the split file exists and load
         ids = []
         for fname in split_file_name:
-            assert (splitdir/fname).exists(), "split_file_name not found."
-            with open(splitdir/fname) as f:
+            assert (splitdir + '/' + fname).exists(), "split_file_name not found."
+            with open(splitdir + '/' + fname) as f:
                 ids_ = [int(line.rstrip()) for line in f]
                 ids.extend(ids_)
 
@@ -664,9 +658,9 @@ def get_data_splits(
 
 
 def get_common_samples(
-    df1: pd.DataFrame,
-    df2: pd.DataFrame,
-    ref_col: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        df1: pd.DataFrame,
+        df2: pd.DataFrame,
+        ref_col: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Args:
         df1, df2 (pd.DataFrame): dataframes
@@ -681,15 +675,15 @@ def get_common_samples(
     # Retain (canc, drug) response samples for which we have omic data
     common_ids = list(set(df1[ref_col]).intersection(df2[ref_col]))
     # print(df1.shape)
-    df1 = df1[ df1[improve_globals.canc_col_name].isin(common_ids) ].reset_index(drop=True)
+    df1 = df1[df1[improve_globals.canc_col_name].isin(common_ids)].reset_index(drop=True)
     # print(df1.shape)
     # print(df2.shape)
-    df2 = df2[ df2[improve_globals.canc_col_name].isin(common_ids) ].reset_index(drop=True)
+    df2 = df2[df2[improve_globals.canc_col_name].isin(common_ids)].reset_index(drop=True)
     # print(df2.shape)
     return df1, df2
 
 
-def read_df(fpath: str, sep: str=","):
+def read_df(fpath: str, sep: str = ","):
     """
     IMPROVE-specific func.
     Load a dataframe. Supports csv and parquet files.

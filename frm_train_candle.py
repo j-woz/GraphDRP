@@ -1,12 +1,11 @@
 import argparse
-import datetime
+# import datetime
 import json
 import os
 from pathlib import Path
 import sys
-from random import shuffle
-from time import time
-import json
+# from random import shuffle
+# from time import time
 
 import candle
 import numpy as np
@@ -71,8 +70,8 @@ def predicting(model, device, loader):
         for data in loader:
             data = data.to(device)
             output, _ = model(data)  # predictions
-            total_preds = torch.cat((total_preds, output.cpu()), 0) # preds to tensor
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0) # labels to tensor
+            total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
+            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
 
 
@@ -92,7 +91,7 @@ def launch(model_arch, args):
     model_file_name = "model.pt"  # TODO: this depends on the DL framework
     model_outdir = Path(args.model_outdir)
     os.makedirs(model_outdir, exist_ok=True)
-    model_path = model_outdir/model_file_name  # file name of the model
+    model_path = model_outdir + '/' + model_file_name  # file name of the model
 
     # -----------------------------
     # Prepare PyG datasets
@@ -124,7 +123,6 @@ def launch(model_arch, args):
     # -----------------------------
     # DL optimizer. TODO: should this be specified with CANDLE/IMPROVE?
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
 
     # -----------------------------
     # Train
@@ -173,7 +171,6 @@ def launch(model_arch, args):
     model.load_state_dict(torch.load(model_path))
     model.eval()
 
-
     # -----------------------------
     # Compute raw predictions
     # -----------------------------
@@ -182,7 +179,6 @@ def launch(model_arch, args):
     G_val, P_val = predicting(model, device, val_loader)
     # tp = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})  # This includes true and predicted values
     pred_df = pd.DataFrame(P_val, columns=[pred_col_name])  # This includes only predicted values
-
 
     # -----------------------------
     # Concatenate raw predictions with the cancer and drug ids, and the true values
@@ -202,8 +198,7 @@ def launch(model_arch, args):
 
     # Save the raw predictions on val data
     pred_fname = "val_preds.csv"
-    imp.save_preds(mm, args.y_col_name, model_outdir/pred_fname)
-
+    imp.save_preds(mm, args.y_col_name, model_outdir + '/' + pred_fname)
 
     # -----------------------------
     # Compute performance scores
@@ -224,7 +219,7 @@ def launch(model_arch, args):
 
     # Performance scores for Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(mse_val))
-    with open(model_outdir/"val_scores.json", "w", encoding="utf-8") as f:
+    with open(model_outdir + '/' + "val_scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     print("Validation scores:\n\t{}".format(val_scores))
@@ -356,7 +351,7 @@ def parse_args(args):
 def main(args):
     # import ipdb; ipdb.set_trace()
 
-    ## Using CANDLE
+    # Using CANDLE
     # TODO: how should we utilize CANDLE here?
     gParameters = initialize_parameters()
     # print(gParameters)
@@ -364,7 +359,7 @@ def main(args):
     # modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
     # scores = launch(modeling, gParameters)
 
-    ## Without CANDLE
+    # Without CANDLE
     # args = parse_args(args)
     model_arch = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model_arch]
     scores = launch(model_arch, args)
