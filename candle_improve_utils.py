@@ -2,6 +2,8 @@ import json
 import candle
 import os
 from pprint import pprint
+from pathlib import Path
+# from pathlib import PurePath
 
 
 file_path = os.path.dirname(os.path.realpath(__file__))
@@ -60,7 +62,7 @@ def construct_improve_dir_path(dir_name, dir_path, params):
     new_val = dir_path + '/' + params[old_key]
     print("Appending key:", new_key, new_val)
 
-    params[new_key] = new_val
+    params[new_key] = Path(new_val)
 
     return params
 
@@ -72,7 +74,7 @@ def construct_improve_file_path(file_name, dir_path, suffix, new_suffix, value, 
     """
     file = remove_suffix(file_name, suffix)
     file = file + new_suffix
-    params[file] = dir_path + '/' + value
+    params[file] = Path(dir_path / value)
 
     return params
 
