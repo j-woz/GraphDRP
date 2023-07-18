@@ -37,7 +37,13 @@ def initialize_parameters(default_model="csa_params.txt"):
 
 
 def run(params):
-    """Execute specified data preprocessing."""
+    """Execute specified data preprocessing.
+
+    Parameters
+    ----------
+    params: python dictionary
+        A dictionary of Candle keywords and parsed values.
+    """
     root = params["output_dir"]  # args.outdir
     os.makedirs(root, exist_ok=True)
 
