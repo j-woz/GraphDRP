@@ -33,7 +33,7 @@ improve_globals = types.SimpleNamespace()
 # TODO:
 # This is CANDLE_DATA_DIR (or something...).
 # How this is going to be passed to the code?
-improve_globals.main_data_dir = fdir + '/' + "csa_data"
+improve_globals.main_data_dir = Path.joinpath(fdir, "csa_data")
 # improve_globals.main_data_dir = fdir/"improve_data_dir"
 # imp_globals.main_data_dir = fdir/"candle_data_dir"
 
@@ -79,32 +79,35 @@ improve_globals.mordred_file_name = "drug_mordred.tsv"  # drug feature
 improve_globals.ecfp4_512bit_file_name = "drug_ecfp4_512bit.tsv"  # drug feature
 
 # Globals derived from the ones defined above
-improve_globals.raw_data_dir = improve_globals.main_data_dir + '/' + improve_globals.raw_data_dir_name  # raw_data
-improve_globals.ml_data_dir = improve_globals.main_data_dir + '/' + improve_globals.ml_data_dir_name  # ml_data
-improve_globals.models_dir = improve_globals.main_data_dir + '/' + improve_globals.models_dir_name   # models
-improve_globals.infer_dir = improve_globals.main_data_dir + '/' + improve_globals.infer_dir_name    # infer
+improve_globals.raw_data_dir = Path(improve_globals.main_data_dir / improve_globals.raw_data_dir_name)  # raw_data
+improve_globals.ml_data_dir = Path(improve_globals.main_data_dir / improve_globals.ml_data_dir_name)  # ml_data
+improve_globals.models_dir = Path(improve_globals.main_data_dir / improve_globals.models_dir_name)   # models
+improve_globals.infer_dir = Path(improve_globals.main_data_dir / improve_globals.infer_dir_name)    # infer
 # -----
-improve_globals.x_data_dir = improve_globals.raw_data_dir + '/' + improve_globals.x_data_dir_name    # x_data
-improve_globals.y_data_dir = improve_globals.raw_data_dir + '/' + improve_globals.y_data_dir_name    # y_data
-improve_globals.splits_dir = improve_globals.raw_data_dir + '/' + improve_globals.splits_dir_name    # splits
+improve_globals.x_data_dir = Path(improve_globals.raw_data_dir / improve_globals.x_data_dir_name)    # x_data
+improve_globals.y_data_dir = Path(improve_globals.raw_data_dir / improve_globals.y_data_dir_name)    # y_data
+improve_globals.splits_dir = Path(improve_globals.raw_data_dir, improve_globals.splits_dir_name)    # splits
 
 # Response
-improve_globals.y_file_path = improve_globals.y_data_dir + '/' + improve_globals.y_file_name           # response.txt
+improve_globals.y_file_path = Path(improve_globals.y_data_dir / improve_globals.y_file_name)           # response.txt
 
 # Cancers
-improve_globals.copy_number_file_path = improve_globals.x_data_dir + '/' + improve_globals.copy_number_fname  # cancer_copy_number.txt
-improve_globals.discretized_copy_number_file_path = improve_globals.x_data_dir + '/' + improve_globals.discretized_copy_number_fname  # cancer_discretized_copy_number.txt
-improve_globals.dna_methylation_file_path = improve_globals.x_data_dir + '/' + improve_globals.dna_methylation_fname  # cancer_DNA_methylation.txt
-improve_globals.gene_expression_file_path = improve_globals.x_data_dir + '/' + improve_globals.gene_expression_fname  # cancer_gene_expression.txt
-improve_globals.mirna_expression_file_path = improve_globals.x_data_dir + '/' + improve_globals.miRNA_expression_fname  # cancer_miRNA_expression.txt
-improve_globals.mutation_count_file_path = improve_globals.x_data_dir + '/' + improve_globals.mutation_count_fname  # cancer_mutation_count.txt
-improve_globals.mutation_file_path = improve_globals.x_data_dir + '/' + improve_globals.mutation_fname  # cancer_mutation.txt
-improve_globals.rppa_file_path = improve_globals.x_data_dir + '/' + improve_globals.rppa_fname  # cancer_RPPA.txt
+improve_globals.copy_number_file_path = Path(improve_globals.x_data_dir / improve_globals.copy_number_fname)  # cancer_copy_number.txt
+improve_globals.discretized_copy_number_file_path = Path(improve_globals.x_data_dir / improve_globals.discretized_copy_number_fname)  # cancer_discretized_copy_number.txt
+improve_globals.dna_methylation_file_path = Path(improve_globals.x_data_dir / improve_globals.dna_methylation_fname)  # cancer_DNA_methylation.txt
+improve_globals.gene_expression_file_path = Path(improve_globals.x_data_dir / improve_globals.gene_expression_fname)  # cancer_gene_expression.txt
+improve_globals.mirna_expression_file_path = Path(improve_globals.x_data_dir / improve_globals.miRNA_expression_fname)  # cancer_miRNA_expression.txt
+improve_globals.mutation_count_file_path = Path(improve_globals.x_data_dir / improve_globals.mutation_count_fname)  # cancer_mutation_count.txt
+improve_globals.mutation_file_path = Path(improve_globals.x_data_dir / improve_globals.mutation_fname)  # cancer_mutation.txt
+improve_globals.rppa_file_path = Path(improve_globals.x_data_dir / improve_globals.rppa_fname)  # cancer_RPPA.txt
 
 # Drugs
-improve_globals.smiles_file_path = improve_globals.x_data_dir + '/' + improve_globals.smiles_file_name  #
-improve_globals.mordred_file_path = improve_globals.x_data_dir + '/' + improve_globals.mordred_file_name  #
-improve_globals.ecfp4_512bit_file_path = improve_globals.x_data_dir + '/' + improve_globals.ecfp4_512bit_file_name  #
+improve_globals.smiles_file_path = Path(improve_globals.x_data_dir / improve_globals.smiles_file_name)  #
+improve_globals.mordred_file_path = Path(improve_globals.x_data_dir / improve_globals.mordred_file_name)  #
+improve_globals.ecfp4_512bit_file_path = Path(improve_globals.x_data_dir / improve_globals.ecfp4_512bit_file_name)  #
+
+
+print(improve_globals)
 # -----------------------------------------------------------------------------
 
 
@@ -220,7 +223,7 @@ def load_split_ids(split_file_name: Union[str, List[str]]) -> List[int]:
     """
     ids = []
     for fname in split_file_name:
-        fpath = improve_globals.splits_dir + '/' + fname
+        fpath = improve_globals.splits_dir / fname
         assert fpath.exists(), f"split_file_name {fname} not found."
         ids_ = pd.read_csv(fpath, header=None)[0].tolist()
         ids.extend(ids_)
@@ -245,7 +248,7 @@ def load_split_file(
     # Check if the split file exists and load
     ids = []
     for st in split_type:
-        fpath = improve_globals.splits_dir + '/' + f"{source}_split_{split}_{st}.txt"
+        fpath = improve_globals.splits_dir / f"{source}_split_{split}_{st}.txt"
         assert fpath.exists(), f"Splits file not found: {fpath}"
         ids_ = pd.read_csv(fpath, header=None)[0].tolist()
         ids.extend(ids_)
@@ -595,7 +598,7 @@ def get_data_splits(
     Read smiles data.
     src_raw_data_dir : data dir where the raw DRP data is stored
     """
-    splitdir = src_raw_data_dir + '/' + splitdir_name
+    splitdir = src_raw_data_dir / splitdir_name
     if len(split_file_name) == 1 and split_file_name[0] == "full":
         # Full dataset (take all samples)
         ids = list(range(rsp_df.shape[0]))
@@ -603,8 +606,8 @@ def get_data_splits(
         # Check if the split file exists and load
         ids = []
         for fname in split_file_name:
-            assert (splitdir + '/' + fname).exists(), "split_file_name not found."
-            with open(splitdir + '/' + fname) as f:
+            assert (splitdir / fname).exists(), "split_file_name not found."
+            with open(splitdir / fname) as f:
                 ids_ = [int(line.rstrip()) for line in f]
                 ids.extend(ids_)
 
