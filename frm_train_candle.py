@@ -26,6 +26,7 @@ from improve_utils import improve_globals as ig
 
 
 fdir = Path(__file__).resolve().parent
+# file_path = os.path.dirname(os.path.realpath(__file__))
 
 
 def train(model, device, train_loader, optimizer, epoch, log_interval):
@@ -75,21 +76,21 @@ def predicting(model, device, loader):
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
 
 
-def launch(model_arch, args):
+def launch(model_arch, params):
 
     # CANDLE known params
-    lr = args.learning_rate
-    num_epoch = args.epochs
-    train_batch = args.batch_size
+    lr = params['learning_rate']
+    num_epoch = params['epochs']
+    train_batch = params['batch_size']
 
     # Model specific params
     model_st = model_arch.__name__  # model name (string)
-    log_interval = args.log_interval
-    val_batch = args.val_batch
+    log_interval = params['log_interval']
+    val_batch = params['val_batch']
 
     # Dir to save the trained (converged) model
     model_file_name = "model.pt"  # TODO: this depends on the DL framework
-    model_outdir = Path(args.model_outdir)
+    model_outdir = Path(params['model_outdir'])
     os.makedirs(model_outdir, exist_ok=True)
     model_path = model_outdir + '/' + model_file_name  # file name of the model
 
@@ -97,8 +98,8 @@ def launch(model_arch, args):
     # Prepare PyG datasets
     train_data_file_name = "train_data"  # TestbedDataset() appends this string with ".pt"
     val_data_file_name = "val_data"
-    train_data = TestbedDataset(root=args.train_ml_data_dir, dataset=train_data_file_name)
-    val_data = TestbedDataset(root=args.val_ml_data_dir, dataset=val_data_file_name)
+    train_data = TestbedDataset(root=params['train_ml_data_dir'], dataset=train_data_file_name)
+    val_data = TestbedDataset(root=params['val_ml_data_dir'], dataset=val_data_file_name)
 
     # PyTorch dataloaders
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
@@ -113,7 +114,7 @@ def launch(model_arch, args):
         print("CUDA_VISIBLE_DEVICES:", os.getenv("CUDA_VISIBLE_DEVICES"))
         cuda_name = "cuda:0"
     else:
-        cuda_name = args.cuda_name
+        cuda_name = params['cuda_name']
 
     # -----------------------------
     # Select CUDA/CPU device and move model to device
@@ -159,8 +160,8 @@ def launch(model_arch, args):
             print(f"No improvement since epoch {best_epoch}; Best RMSE: {best_mse}; Model: {model_st}")
             early_stop_counter += 1
 
-        if early_stop_counter == args.patience:
-            print(f"Terminate training (model did not on val data for {args.patience} epochs).")
+        if early_stop_counter == params['patience']:
+            print(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
             continue
 
     # -----------------------------
@@ -174,8 +175,8 @@ def launch(model_arch, args):
     # -----------------------------
     # Compute raw predictions
     # -----------------------------
-    pred_col_name = args.y_col_name + ig.pred_col_name_suffix
-    true_col_name = args.y_col_name + "_true"
+    pred_col_name = params['y_col_name'] + ig.pred_col_name_suffix
+    true_col_name = params['y_col_name'] + "_true"
     G_val, P_val = predicting(model, device, val_loader)
     # tp = pd.DataFrame({true_col_name: G_val, pred_col_name: P_val})  # This includes true and predicted values
     pred_df = pd.DataFrame(P_val, columns=[pred_col_name])  # This includes only predicted values
@@ -184,28 +185,28 @@ def launch(model_arch, args):
     # Concatenate raw predictions with the cancer and drug ids, and the true values
     # -----------------------------
     RSP_FNAME = "val_response.csv"  # TODO: move to improve_utils? ask Yitan?
-    rsp_df = pd.read_csv(Path(args.val_ml_data_dir)/RSP_FNAME)
+    rsp_df = pd.read_csv(Path(params['val_ml_data_dir'])/RSP_FNAME)
 
     # # Old
     # tp = pd.concat([rsp_df, tp], axis=1)
-    # tp = tp.astype({args.y_col_name: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
-    # assert sum(tp[true_col_name] == tp[args.y_col_name]) == tp.shape[0], \
-    #     f"Columns {args.y_col_name} and {true_col_name} are the ground truth, and thus, should be the same."
+    # tp = tp.astype({params['y_col_name']: np.float32, true_col_name: np.float32, pred_col_name: np.float32})
+    # assert sum(tp[true_col_name] == tp[params['y_col_name']]) == tp.shape[0], \
+    #     f"Columns {params['y_col_name']} and {true_col_name} are the ground truth, and thus, should be the same."
 
     # New
     mm = pd.concat([rsp_df, pred_df], axis=1)
-    mm = mm.astype({args.y_col_name: np.float32, pred_col_name: np.float32})
+    mm = mm.astype({params['y_col_name']: np.float32, pred_col_name: np.float32})
 
     # Save the raw predictions on val data
     pred_fname = "val_preds.csv"
-    imp.save_preds(mm, args.y_col_name, model_outdir + '/' + pred_fname)
+    imp.save_preds(mm, params['y_col_name'], model_outdir + '/' + pred_fname)
 
     # -----------------------------
     # Compute performance scores
     # -----------------------------
     # TODO: Make this a func in improve_utils.py --> calc_scores(y_true, y_pred)
     # Compute scores using the loaded model
-    y_true = rsp_df[args.y_col_name].values
+    y_true = rsp_df[params['y_col_name']].values
     mse_val = imp.mse(y_true, P_val)
     rmse_val = imp.rmse(y_true, P_val)
     pcc_val = imp.pearson(y_true, P_val)
@@ -226,18 +227,18 @@ def launch(model_arch, args):
     return val_scores
 
 
-def run(gParameters):
+def run(params):
     print("In Run Function:\n")
-    args = candle.ArgumentStruct(**gParameters)
-    modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
+    # args = candle.ArgumentStruct(**gParameters)
+    modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][params['modeling']]
 
     # Call launch() with specific model arch and args with all HPs
     # TODO: do we really need launch (especially that we already have run)?
-    scores = launch(modeling, args)
+    scores = launch(modeling, params)
 
     # Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["val_loss"]))
-    with open(Path(args.output_dir) / "val_scores.json", "w", encoding="utf-8") as f:
+    with open(Path(params['output_dir']) / "val_scores.json", "w", encoding="utf-8") as f:
         json.dump(scores, f, ensure_ascii=False, indent=4)
 
     return scores
@@ -348,24 +349,24 @@ def parse_args(args):
     return args
 
 
-def main(args):
+def main():
     # import ipdb; ipdb.set_trace()
 
     # Using CANDLE
     # TODO: how should we utilize CANDLE here?
     gParameters = initialize_parameters()
     # print(gParameters)
-    args = candle.ArgumentStruct(**gParameters)
+    # args = candle.ArgumentStruct(**gParameters)
     # modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.modeling]
     # scores = launch(modeling, gParameters)
 
     # Without CANDLE
     # args = parse_args(args)
-    model_arch = [GINConvNet, GATNet, GAT_GCN, GCNNet][args.model_arch]
-    scores = launch(model_arch, args)
+    model_arch = [GINConvNet, GATNet, GAT_GCN, GCNNet][gParameters['model_arch']]
+    scores = launch(model_arch, gParameters)
 
     print("\nFinished training.")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
