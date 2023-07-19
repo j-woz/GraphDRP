@@ -13,16 +13,16 @@ additional_definitions = [
      "default": "mixed",
      "choices": ["mixed", "cell", "drug"],
      "type": str,
-     "help": "Validation scheme (data splitting strategy).",},
+     "help": "Validation scheme (data splitting strategy).", },
     {"name": "train_split",
         "nargs": "+",
         "type": str,
-        "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').",},     
+        "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').", },
     # Training / Inference
     {"name": "log_interval",
      "action": "store",
      "type": int,
-     "help": "Interval for saving o/p",},
+     "help": "Interval for saving o/p", },
     {"name": "cuda_name",
      "action": "store",
      "type": str,
@@ -37,8 +37,7 @@ required = [
 ]
 
 
-
-class BenchmarFRM(candle.Benchmark):
+class BenchmarkFRM(candle.Benchmark):
     """ Benchmark for FRM. """
 
     def set_locals(self):
@@ -115,7 +114,6 @@ def predicting(model, device, loader):
             data = data.to(device)
             output, _ = model(data)
             # Is this computationally efficient?
-            total_preds = torch.cat((total_preds, output.cpu()), 0) # preds to tensor
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0) # labels to tensor
+            total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
+            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
-
