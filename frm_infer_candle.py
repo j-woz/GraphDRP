@@ -1,6 +1,6 @@
 import os
 import json
-from pathlib import Path
+
 
 import numpy as np
 import pandas as pd
@@ -8,73 +8,7 @@ import pandas as pd
 import torch
 
 import candle
-import graphdrp as bmk
-
-file_path = Path(__file__).resolve().parent
-
-
-def initialize_parameters(default_model="csa_params.txt"):
-    """Parse execution parameters from file or command line.
-
-    Parameters
-    ----------
-    default_model : string
-        File containing the default parameter definition.
-
-    Returns
-    -------
-    gParameters: python dictionary
-        A dictionary of Candle keywords and parsed values.
-    """
-
-    # Build benchmark object
-    gdrp = bmk.BenchmarkGraphDRP(
-        file_path,
-        default_model,
-        "python",
-        prog="infer",
-        desc="Generic infer functionality",
-    )
-
-    # Initialize parameters
-    gParameters = candle.finalize_parameters(gdrp)
-
-    return gParameters
-
-
-def predicting(model, device, loader):
-    """ Method to run predictions/inference.
-    The same method is in frm_train.py
-    TODO: put this in some utils script. --> graphdrp?
-
-    Parameters
-    ----------
-    model : pytorch model
-        Model to evaluate.
-    device : string
-        Identifier for hardware that will be used to evaluate model.
-    loader : pytorch data loader.
-        Object to load data to evaluate.
-
-    Returns
-    -------
-    total_labels: numpy array
-        Array with ground truth.
-    total_preds: numpy array
-        Array with inferred outputs.
-    """
-    model.eval()
-    total_preds = torch.Tensor()
-    total_labels = torch.Tensor()
-    print("Make prediction for {} samples...".format(len(loader.dataset)))
-    with torch.no_grad():
-        for data in loader:
-            data = data.to(device)
-            output, _ = model(data)
-            # Is this computationally efficient?
-            total_preds = torch.cat((total_preds, output.cpu()), 0)
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)
-    return total_labels.numpy().flatten(), total_preds.numpy().flatten()
+import frm
 
 
 def run(params):
@@ -187,7 +121,7 @@ def run(params):
 
 
 def main():
-    params = initialize_parameters()
+    params = frm.initialize_parameters()
     run(params)
     print("\nFinished inference.")
 
