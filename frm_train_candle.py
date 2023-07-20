@@ -13,7 +13,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-import graphdrp as bmk
+import frm as bmk
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
@@ -26,7 +26,6 @@ from improve_utils import improve_globals as ig
 
 
 fdir = Path(__file__).resolve().parent
-# file_path = os.path.dirname(os.path.realpath(__file__))
 
 
 def train(model, device, train_loader, optimizer, epoch, log_interval):
@@ -92,7 +91,7 @@ def launch(model_arch, params):
     model_file_name = "model.pt"  # TODO: this depends on the DL framework
     model_outdir = Path(params['model_outdir'])
     os.makedirs(model_outdir, exist_ok=True)
-    model_path = model_outdir + '/' + model_file_name  # file name of the model
+    model_path = model_outdir / model_file_name  # file name of the model
 
     # -----------------------------
     # Prepare PyG datasets
@@ -220,7 +219,7 @@ def launch(model_arch, params):
 
     # Performance scores for Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(mse_val))
-    with open(model_outdir + '/' + "val_scores.json", "w", encoding="utf-8") as f:
+    with open(model_outdir / "val_scores.json", "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     print("Validation scores:\n\t{}".format(val_scores))
@@ -252,12 +251,12 @@ def initialize_parameters():
     # already exists (i.e., MODEL_NAME.py). We want to little changes to the
     # original code. Can we call it some other name? candle_benchmark_def.py?
 
-    graphdrp_bmk = bmk.BenchmarkGraphDRP(
+    graphdrp_bmk = bmk.BenchmarkFRM(
         filepath=bmk.file_path,
-        defmodel="graphdrp_default_model.txt",
+        defmodel="frm_default_model.txt",
         framework="pytorch",
-        prog="GraphDRP",
-        desc="CANDLE compliant training GraphDRP",
+        prog="FRM",
+        desc="CANDLE compliant training FRM",
     )
 
     gParameters = candle.finalize_parameters(graphdrp_bmk)

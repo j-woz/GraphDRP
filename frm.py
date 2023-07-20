@@ -27,6 +27,18 @@ additional_definitions = [
      "action": "store",
      "type": str,
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
+    {"name": "train_ml_data_dir",
+     "action": "store",
+     "type": str,
+     "help": "Datadir where train data is stored."},
+    {"name": "val_ml_data_dir",
+     "action": "store",
+     "type": str,
+     "help": "Datadir where val data is stored."},
+    {"name": "test_ml_data_dir",
+     "action": "store",
+     "type": str,
+     "help": "Datadir where test data is stored."},
 ]
 
 required = [
