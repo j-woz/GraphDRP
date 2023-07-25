@@ -6,7 +6,8 @@ from pprint import pprint
 from pathlib import Path
 # from pathlib import PurePath
 from math import sqrt
-from scipy import stats
+from scipy.stats.mstats import pearsonr, spearmanr
+from sklearn.metrics import r2_score, mean_squared_error
 
 import sys, os
 sys.path.insert(0, os.path.expanduser("/Users/cgarciac/projects/UQ/CANDLE/code/repo/CANDLE-lib/candle_lib/"))
@@ -167,28 +168,27 @@ def compute_metrics(y, f, metrics):
     return eval
 
 
-def rmse(y, f):
-    rmse = sqrt(((y - f)**2).mean(axis=0))
-    return rmse
-
-
-def mse(y, f):
-    mse = ((y - f)**2).mean(axis=0)
+def mse(y_true, y_pred):
+    mse = mean_squared_error(y_true, y_pred)
     return mse
 
 
-def pearson(y, f):
-    rp = np.corrcoef(y, f)[0, 1]
+def rmse(y_true, y_pred):
+    rmse = mean_squared_error(y_true, y_pred, squared=False)
+    return rmse
+
+
+def pearson(y_true, y_pred):
+    rp = pearsonr(y_true, y_pred)[0]
     return rp
 
 
-def spearman(y, f):
-    rs = stats.spearmanr(y, f)[0]
+def spearman(y_true, y_pred):
+    rs = spearmanr(y_true, y_pred)[0]
     return rs
 
 
 def r_square(y_true, y_pred):
-    from sklearn.metrics import r2_score
     return r2_score(y_true, y_pred)
 # -----------------------------
 
