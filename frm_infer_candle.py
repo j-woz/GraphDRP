@@ -4,11 +4,13 @@ import json
 import numpy as np
 import pandas as pd
 
+from pprint import pprint
+
 import torch
 
-import candle
 import frm
-import candle_improve_utils as utils
+import candle_improve_utils as improve_utils
+from utils import TestbedDataset, DataLoader
 
 
 def run(params):
@@ -56,7 +58,7 @@ def run(params):
 
     # -----------------------------
     # Move model to device
-    model = model_arch().to(device)
+    model = improve_utils.str2Class(params["model_arch"]).to(device)
 
     # -----------------------------
     # Load the best model (as determined based val data)
@@ -70,7 +72,7 @@ def run(params):
     # -----------------------------
     pred_col_name = params["y_col_name"] + ig.pred_col_name_suffix
     true_col_name = params["y_col_name"] + "_true"
-    G_test, P_test = predicting(model, device, test_loader)  # G (groud truth), P (predictions)
+    G_test, P_test = frm.predicting(model, device, test_loader)  # G (groud truth), P (predictions)
     # tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
     pred_df = pd.DataFrame(P_test, columns=[pred_col_name])  # This includes only predicted values
 
@@ -102,7 +104,7 @@ def run(params):
     # Make this a func in improve_utils.py --> calc_scores(y_true, y_pred)
     y_true = rsp_df[params["y_col_name"]].values
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    test_scores = utils.compute_metrics(y_true, P_test, metrics)
+    test_scores = improve_utils.compute_metrics(y_true, P_test, metrics)
     test_scores["test_loss"] = test_scores["mse"]
 
     # out_json = "test_scores.json"
@@ -115,6 +117,7 @@ def run(params):
 
 def main():
     params = frm.initialize_parameters()
+    pprint(params)
     run(params)
     print("\nFinished inference.")
 

@@ -9,8 +9,6 @@ from math import sqrt
 from scipy.stats.mstats import pearsonr, spearmanr
 from sklearn.metrics import r2_score, mean_squared_error
 
-import sys, os
-sys.path.insert(0, os.path.expanduser("/Users/cgarciac/projects/UQ/CANDLE/code/repo/CANDLE-lib/candle_lib/"))
 import candle
 
 
