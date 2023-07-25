@@ -1,7 +1,6 @@
 import os
 import json
 
-
 import numpy as np
 import pandas as pd
 
@@ -9,6 +8,7 @@ import torch
 
 import candle
 import frm
+import candle_improve_utils as utils
 
 
 def run(params):
@@ -101,16 +101,9 @@ def run(params):
     # TODO: Make this a func in improve_utils.py --> calc_scores(y_true, y_pred)
     # Make this a func in improve_utils.py --> calc_scores(y_true, y_pred)
     y_true = rsp_df[params["y_col_name"]].values
-    mse_test = imp.mse(y_true, P_test)
-    rmse_test = imp.rmse(y_true, P_test)
-    pcc_test = imp.pearson(y_true, P_test)
-    scc_test = imp.spearman(y_true, P_test)
-    r2_test = imp.r_square(y_true, P_test)
-    test_scores = {"test_loss": float(mse_test),
-                   "rmse": float(rmse_test),
-                   "pcc": float(pcc_test),
-                   "scc": float(scc_test),
-                   "r2": float(r2_test)}
+    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
+    test_scores = utils.compute_metrics(y_true, P_test, metrics)
+    test_scores["test_loss"] = test_scores["mse"]
 
     # out_json = "test_scores.json"
     with open(infer_outdir / params["out_json"], "w", encoding="utf-8") as f:

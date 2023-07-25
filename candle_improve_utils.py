@@ -1,9 +1,16 @@
 import json
-import candle
-import os
+#import candle
+import os, sys
+import numpy as np
 from pprint import pprint
 from pathlib import Path
 # from pathlib import PurePath
+from math import sqrt
+from scipy import stats
+
+import sys, os
+sys.path.insert(0, os.path.expanduser("/Users/cgarciac/projects/UQ/CANDLE/code/repo/CANDLE-lib/candle_lib/"))
+import candle
 
 
 file_path = os.path.dirname(os.path.realpath(__file__))
@@ -121,6 +128,69 @@ def build_improve_paths(params):
     params.update(new_dict)
 
     return params
+
+# -----------------------------
+# Metrics
+
+def str2Class(str):
+    return getattr(sys.modules[__name__], str)
+
+
+def compute_metrics(y, f, metrics):
+    """Compute the specified set of metrics.
+
+    Parameters
+    ----------
+    y : tensor
+        Ground truth.
+    f : tensor
+        Evaluation
+    metrics: python list
+        List of metrics to compute.
+
+    Returns
+    -------
+    eval: python dictionary
+        A dictionary of evaluated metrics.
+    """
+    eval = {}
+    for mtstr in metrics:
+        mapstr = mtstr
+        if mapstr == "pcc":
+            mapstr = "pearson"
+        elif mapstr == "scc":
+            mapstr = "spearman"
+        elif mapstr == "r2":
+            mapstr = "r_square"
+        eval[mtstr] = str2Class(mapstr)(y, f)
+
+    return eval
+
+
+def rmse(y, f):
+    rmse = sqrt(((y - f)**2).mean(axis=0))
+    return rmse
+
+
+def mse(y, f):
+    mse = ((y - f)**2).mean(axis=0)
+    return mse
+
+
+def pearson(y, f):
+    rp = np.corrcoef(y, f)[0, 1]
+    return rp
+
+
+def spearman(y, f):
+    rs = stats.spearmanr(y, f)[0]
+    return rs
+
+
+def r_square(y_true, y_pred):
+    from sklearn.metrics import r2_score
+    return r2_score(y_true, y_pred)
+# -----------------------------
 
 
 class ImproveBenchmark(candle.Benchmark):

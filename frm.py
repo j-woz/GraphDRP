@@ -9,6 +9,12 @@ file_path = Path(__file__).resolve().parent
 
 additional_definitions = [
     # Preprocessing
+    {
+        "name": "download",
+        "type": candle.str2bool,
+        "default": False,
+        "help": "Flag to indicate if downloading from FTP site.",
+    },
     {"name": "set",
      "default": "mixed",
      "choices": ["mixed", "cell", "drug"],
