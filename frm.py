@@ -4,6 +4,7 @@ from pathlib import Path
 import torch
 
 import candle
+import candle_improve_utils as improve_utils
 
 file_path = Path(__file__).resolve().parent
 
@@ -51,7 +52,7 @@ required = [
     "train_data",
     "val_data",
     "test_data",
-    "train_split",
+    # "train_split",
 ]
 
 
@@ -67,10 +68,11 @@ class BenchmarkFRM(candle.Benchmark):
         additional_definitions: list of dictionaries describing the additional parameters for the
             benchmark.
         """
+        improve_definitions = improve_utils.parser_from_json("candle_improve.json")
         if required is not None:
             self.required = set(required)
         if additional_definitions is not None:
-            self.additional_definitions = additional_definitions
+            self.additional_definitions = additional_definitions + improve_definitions
 
 
 def initialize_parameters(default_model="frm_default_model.txt"):
@@ -98,6 +100,7 @@ def initialize_parameters(default_model="frm_default_model.txt"):
 
     # Initialize parameters
     gParameters = candle.finalize_parameters(frm)
+    gParameters = improve_utils.build_improve_paths(gParameters)
 
     return gParameters
 
