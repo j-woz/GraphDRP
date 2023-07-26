@@ -61,9 +61,17 @@ additional_definitions = [
      "action": "store",
      "type": str,
      "help": "Datadir to store trained model."},
+    {"name": "model_params",
+     "type": str,
+     "default": "model.pt",
+     "help": "Filename to store trained model."},
     {"name": "pred_fname",
      "type": str,
      "default": "test_preds.csv",
+     "help": "Name of file to store inference results."},
+    {"name": "response_data",
+     "type": str,
+     "default": "test_response.csv",
      "help": "Name of file to store inference results."},
 ]
 

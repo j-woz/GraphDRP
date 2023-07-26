@@ -101,7 +101,7 @@ def run(params):
 
     # Save the raw predictions on val data
     # pred_fname = "test_preds.csv"
-    frm.save_preds(mm, params, params["out_file_path"])
+    improve_utils.save_preds(mm, params, params["out_file_path"])
 
     # -----------------------------
     # Compute performance scores
