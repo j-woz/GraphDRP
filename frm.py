@@ -73,6 +73,10 @@ additional_definitions = [
      "type": str,
      "default": "test_response.csv",
      "help": "Name of file to store inference results."},
+    {"name": "out_json",
+     "type": str,
+     "default": "test_scores.json",
+     "help": "Name of file to store scores."},
 ]
 
 required = [

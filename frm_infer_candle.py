@@ -10,11 +10,18 @@ import torch
 from pathlib import Path
 
 import frm
+from models.gat import GATNet
+from models.gat_gcn import GAT_GCN
+from models.gcn import GCNNet
+from models.ginconv import GINConvNet
 import candle_improve_utils as improve_utils
 from utils import TestbedDataset, DataLoader
 
 frm.required.extend(["test_ml_data_dir", "y_col_name"])
 
+
+def str2Class(str):
+    return globals()[str]()
 
 def run(params):
     """Execute specified model inference.
@@ -28,15 +35,16 @@ def run(params):
     test_batch = params["batch_size"]  # args.test_batch ?
 
     # Output dir name structure: train_dataset-test_datast
-    # infer_outdir = Path(params["output_dir"])  # args.infer_outdir
-    infer_outdir = params["output_dir"]
+    infer_outdir = Path(params["output_dir"])  # args.infer_outdir
+    #infer_outdir = params["output_dir"]
     os.makedirs(infer_outdir, exist_ok=True)
 
     # -----------------------------
     # Prepare PyG datasets
     test_data_file_name = "test_data"  # TestbedDataset() appends this string with ".pt"
     # test_data = TestbedDataset(root=args.test_ml_data_dir, dataset=test_data_file_name)
-    test_ml_data_dir_complete = params["ml_data_dir"] / params["test_ml_data_dir"]
+    #test_ml_data_dir_complete = params["ml_data_dir"] / params["test_ml_data_dir"]
+    test_ml_data_dir_complete = params["test_ml_data_dir"]
     test_data = TestbedDataset(root=test_ml_data_dir_complete, dataset=test_data_file_name)
 
     # PyTorch dataloaders
@@ -64,7 +72,7 @@ def run(params):
 
     # -----------------------------
     # Move model to device
-    model = improve_utils.str2Class(params["model_arch"]).to(device)
+    model = str2Class(params["model_arch"]).to(device)
 
     # -----------------------------
     # Load the best model (as determined based val data)
@@ -87,7 +95,7 @@ def run(params):
     # -----------------------------
     # RSP_FNAME = "test_response.csv"  # TODO: move to improve_utils? ask Yitan?
     # rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
-    rsp_df = pd.read_csv(Path(params["test_data_dir"] + params["response_data"]))
+    rsp_df = pd.read_csv(Path(params["test_ml_data_dir"] + params["response_data"]))
 
     # # Old
     # tp = pd.concat([rsp_df, tp], axis=1)
