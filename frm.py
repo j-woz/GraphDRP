@@ -9,13 +9,24 @@ import candle_improve_utils as improve_utils
 file_path = Path(__file__).resolve().parent
 
 additional_definitions = [
+    {"name": "pred_col_name_suffix",
+     "type": str,
+     "default": "_pred",
+     "help": "Tag to add to predictions when storing the data frame."},
+    {"name": "y_col_name",
+     "type": str,
+     "default": "auc",
+     "help": "Drug sensitivity score to use as the target variable (e.g., IC50, AUC)."},
+    {"name": "model_arch",
+     "default": "GINConvNet",
+     "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
+     "type": str,
+     "help": "Model architecture to run.", },
     # Preprocessing
-    {
-        "name": "download",
-        "type": candle.str2bool,
-        "default": False,
-        "help": "Flag to indicate if downloading from FTP site.",
-    },
+    {"name": "download",
+     "type": candle.str2bool,
+     "default": False,
+     "help": "Flag to indicate if downloading from FTP site.",},
     {"name": "set",
      "default": "mixed",
      "choices": ["mixed", "cell", "drug"],
@@ -46,6 +57,10 @@ additional_definitions = [
      "action": "store",
      "type": str,
      "help": "Datadir where test data is stored."},
+    {"name": "pred_fname",
+     "type": str,
+     "default": "test_preds.csv",
+     "help": "Name of file to store inference results."},
 ]
 
 required = [

@@ -15,4 +15,5 @@ test_data ='test_data'
 train_data = 'train_data'
 val_batch = 1024
 val_data = 'val_data'
+model_arch2 = 'GCNNet'
 

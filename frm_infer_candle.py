@@ -7,10 +7,13 @@ import pandas as pd
 from pprint import pprint
 
 import torch
+from pathlib import Path
 
 import frm
 import candle_improve_utils as improve_utils
 from utils import TestbedDataset, DataLoader
+
+frm.required.extend(["test_ml_data_dir", "y_col_name"])
 
 
 def run(params):
@@ -25,17 +28,20 @@ def run(params):
     test_batch = params["batch_size"]  # args.test_batch ?
 
     # Output dir name structure: train_dataset-test_datast
-    infer_outdir = Path(params["output_dir"])  # args.infer_outdir
+    # infer_outdir = Path(params["output_dir"])  # args.infer_outdir
+    infer_outdir = params["output_dir"]
     os.makedirs(infer_outdir, exist_ok=True)
 
     # -----------------------------
     # Prepare PyG datasets
     test_data_file_name = "test_data"  # TestbedDataset() appends this string with ".pt"
     # test_data = TestbedDataset(root=args.test_ml_data_dir, dataset=test_data_file_name)
-    test_data = TestbedDataset(root=params["test_data_dir"], dataset=test_data_file_name)
+    test_ml_data_dir_complete = params["ml_data_dir"] / params["test_ml_data_dir"]
+    test_data = TestbedDataset(root=test_ml_data_dir_complete, dataset=test_data_file_name)
 
     # PyTorch dataloaders
-    test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False)  # Note! Don't shuffle the test_loader
+    test_loader = DataLoader(test_data, batch_size=test_batch,
+                             shuffle=False)  # Note! Don't shuffle the test_loader
 
     # -----------------------------
     # Determine CUDA/CPU device and configure CUDA device if available
@@ -70,7 +76,7 @@ def run(params):
     # -----------------------------
     # Compute raw predictions
     # -----------------------------
-    pred_col_name = params["y_col_name"] + ig.pred_col_name_suffix
+    pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
     G_test, P_test = frm.predicting(model, device, test_loader)  # G (groud truth), P (predictions)
     # tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
@@ -95,7 +101,7 @@ def run(params):
 
     # Save the raw predictions on val data
     # pred_fname = "test_preds.csv"
-    imp.save_preds(mm, params["y_col_name"], infer_outdir / params["pred_fname"])
+    frm.save_preds(mm, params, params["out_file_path"])
 
     # -----------------------------
     # Compute performance scores
@@ -117,6 +123,8 @@ def run(params):
 
 def main():
     params = frm.initialize_parameters()
+    # Add infer parameter
+    params["out_file_path"] = params["output_dir"] + params["pred_fname"]
     pprint(params)
     run(params)
     print("\nFinished inference.")

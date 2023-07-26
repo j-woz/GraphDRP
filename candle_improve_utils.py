@@ -1,13 +1,13 @@
 import json
-#import candle
-import os, sys
-import numpy as np
+import os
+import sys
+import pandas as pd
 from pprint import pprint
 from pathlib import Path
 # from pathlib import PurePath
-from math import sqrt
 from scipy.stats.mstats import pearsonr, spearmanr
 from sklearn.metrics import r2_score, mean_squared_error
+from typing import Dict, Union
 
 import candle
 
@@ -129,10 +129,14 @@ def build_improve_paths(params):
     return params
 
 # -----------------------------
-# Metrics
+# General utilities
+
 
 def str2Class(str):
     return getattr(sys.modules[__name__], str)
+
+# -----------------------------
+# Metrics
 
 
 def compute_metrics(y_true, y_pred, metrics):
@@ -254,7 +258,40 @@ def r_square(y_true, y_pred):
     """
 
     return r2_score(y_true, y_pred)
+
 # -----------------------------
+# Save Functions
+
+
+def save_preds(df: pd.DataFrame, params: Dict, outpath: Union[str, Path], round_decimals: int = 4) -> None:
+    """ Save model predictions.
+    This function throws errors if the dataframe does not include the expected
+    columns: canc_col_name, drug_col_name, y_col_name, y_col_name + "_pred"
+
+    Args:
+        df (pd.DataFrame): df with model predictions
+        params: dictionary with run configuration
+        outpath (str or PosixPath): outdir to save the model predictions df
+        round (int): round response values
+
+    Returns:
+        None
+    """
+    # Check that the 4 columns exist
+    y_col_name = params["y_col_name"]
+    assert params["canc_col_name"] in df.columns, f"{params['canc_col_name']} was not found in columns."
+    assert params["drug_col_name"] in df.columns, f"{params['drug_col_name']} was not found in columns."
+    assert y_col_name in df.columns, f"{y_col_name} was not found in columns."
+    pred_col_name = y_col_name + f"{params['pred_col_name_suffix']}"
+    assert pred_col_name in df.columns, f"{pred_col_name} was not found in columns."
+
+    # Round
+    df = df.round({y_col_name: round_decimals, pred_col_name: round_decimals})
+
+    # Save preds df
+    # df.to_csv(outpath, index=False)
+    df.to_csv(Path(outpath), index=False)
+    return None
 
 
 class ImproveBenchmark(candle.Benchmark):
