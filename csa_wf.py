@@ -25,20 +25,26 @@ print_fn = get_print_func(lg.logger)
 print_fn(f"File path: {fdir}")
 
 ### Source and target data sources
-## Set 1 - full analysis
+## Set 1 - full analysis (entire csa table)
 # source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-## Set 2 - full analysis for CCLE as source
-source_datasets = ["CCLE"]
-# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+## Set 2 - full analysis for a single source (a single row)
+# source_datasets = ["CCLE"]
+# source_datasets = ["CTRPv2"]
+# source_datasets = ["gCSI"]
+# source_datasets = ["GDSCv1"]
+source_datasets = ["GDSCv2"]
+target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+# target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["gCSI", "GDSCv1", "GDSCv2"]
-## Set 3 - only CCLE and source and target
+## Set 3 - only a single and source and target
 # source_datasets = ["CCLE"]
 # target_datasets = ["CCLE"]
+# source_datasets = ["GDSCv2"]
+# target_datasets = ["gCSI"]
 
-# split_nums = []
-split_nums = [4, 7]
+split_nums = []  # all splits
+# split_nums = [4, 7]
 # split_nums = [0]
 fea_list = ["ge", "mordred"]
 fea_sep = "."
@@ -47,16 +53,17 @@ seed = 0
 ## Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
 # epochs = 1
-# epochs = 2
+epochs = 2
 # epochs = 10
 # epochs = 50
 # epochs = 100
-epochs = 200
+# epochs = 200
 y_col_name = "auc"
 # y_col_name = "auc1"
 config_file_name = "csa_params.txt"
 config_file_path = fdir/config_file_name
 model_arch = 0  # GraphDRP-specific param (0-3: different model architectures)
+cuda_name = "cuda:4"
 
 
 # ===============================================================
@@ -64,7 +71,7 @@ model_arch = 0  # GraphDRP-specific param (0-3: different model architectures)
 # ===============================================================
 
 timer = Timer()
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 # Iterate over source datasets
 # Note! The "source_data_name" iterations are independent of each other
 for source_data_name in source_datasets:
@@ -152,7 +159,7 @@ for source_data_name in source_datasets:
                 "--model_outdir", str(MODEL_OUTDIR),
                 "--model_arch", str(model_arch),  # specific to GraphDRP
                 "--y_col_name", y_col_name,
-                "--cuda_name", "cuda:5"
+                "--cuda_name", str(cuda_name)
             ])
             timer_train.display_timer(print_fn)
 
@@ -168,7 +175,7 @@ for source_data_name in source_datasets:
                 "--infer_outdir", str(infer_outdir),
                 "--model_arch", str(model_arch),  # specific to GraphDRP
                 "--y_col_name", y_col_name,
-                "--cuda_name", "cuda:5"
+                "--cuda_name", str(cuda_name)
             ])
             timer_infer.display_timer(print_fn)
 
