@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import torch
@@ -8,43 +7,57 @@ import candle_improve_utils as improve_utils
 
 file_path = Path(__file__).resolve().parent
 
-additional_definitions = [
-    {"name": "pred_col_name_suffix",
+# IMPROVE params that are relevant to all IMPORVE models
+improve_general_params = [
+    {"name": "main_data_dir",
      "type": str,
-     "default": "_pred",
-     "help": "Tag to add to predictions when storing the data frame."},
-    {"name": "y_col_name",
-     "type": str,
-     "default": "auc",
-     "help": "Drug sensitivity score to use as the target variable (e.g., IC50, AUC)."},
-    {"name": "model_arch",
-     "default": "GINConvNet",
-     "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
-     "type": str,
-     "help": "Model architecture to run.", },
-    # Preprocessing
+     "default": "csa_data",
+     "help": "Main data directory that contains the dataset (e.g., csa_data, lca_data, etc.)."},
+    # ---------
     {"name": "download",
      "type": candle.str2bool,
      "default": False,
-     "help": "Flag to indicate if downloading from FTP site.",},
-    {"name": "set",
-     "default": "mixed",
-     "choices": ["mixed", "cell", "drug"],
+     "help": "Flag to indicate if downloading from FTP site."},
+    # ---------
+    {"name": "y_col_name",
      "type": str,
-     "help": "Validation scheme (data splitting strategy).", },
-    {"name": "train_split",
-        "nargs": "+",
-        "type": str,
-        "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').", },
-    # Training / Inference
-    {"name": "log_interval",
-     "action": "store",
-     "type": int,
-     "help": "Interval for saving o/p", },
-    {"name": "cuda_name",
-     "action": "store",
+     "default": "auc",
+     "help": "Column name in the y data file (e.g., response.tsv), that represents \
+              the target variable that the model predicts. In drug response prediction \
+              problem is can be IC50, AUC, and others."},
+]
+
+improve_preprocess_params = [
+    {"name": "train_data_name",
      "type": str,
-     "help": "Cuda device (e.g.: cuda:0, cuda:1."},
+     "help": "Name of the training dataset (e.g., CCLE, GDSCv2)."},
+    {"name": "val_data_name",
+     "type": str,
+     "help": "Name of the val dataset (e.g., CCLE, GDSCv2)."},
+    {"name": "test_data_name",
+     "type": str,
+     "help": "Name of the test dataset (e.g., CCLE, GDSCv2)."},
+    # ---------
+    {"name": "train_split_file_name",
+     "type": str,
+     "help": "File containing integers, representing row numbers in the y data file \
+              (e.g., response.tsv). These rows/samples will be used for training \
+              (e.g., CCLE_split_0_train.txt, CCLE_split_0_train_size_5.txt)."},
+    {"name": "val_split_file_name",
+     "type": str,
+     "help": "File containing row numbers in the y data file that will be used \
+              val set (e.g., CCLE_split_0_val.txt, CCLE_split_0_val_size_5.txt)."},
+    {"name": "test_split_file_name",
+     "type": str,
+     "help": "File containing row numbers in the y data file that will be used \
+              test set (e.g., CCLE_split_0_test.txt, CCLE_split_0_test_size_5.txt)."},
+    # ---------
+    {"name": "ml_data_outdir",
+     "type": str,
+     "help": "Path to store the generated ML data during the preprocessing step."},
+]
+
+improve_train_params = [
     {"name": "train_ml_data_dir",
      "action": "store",
      "type": str,
@@ -61,28 +74,142 @@ additional_definitions = [
      "action": "store",
      "type": str,
      "help": "Datadir to store trained model."},
-    {"name": "model_params",
+    # ---------
+    {"name": "val_pred_fname",
+     "type": str,
+     "default": "val_preds.csv",
+     "help": "Name of file to store inference results on val data."},
+    {"name": "test_pred_fname",
+     "type": str,
+     "default": "test_preds.csv",
+     "help": "Name of file to store inference results on test data."},
+    # ---------
+    {"name": "val_response_data",
+     "type": str,
+     "default": "val_response.csv",
+     "help": "Name of file that conatins true y values of val set."},
+    {"name": "test_response_data",
+     "type": str,
+     "default": "test_response.csv",
+     "help": "Name of file that conatins true y values of test set."},
+    # ---------
+    {"name": "json_val_scores",
+     "type": str,
+     "default": "val_scores.json",
+     "help": "Name of file to store val scores."},
+    {"name": "json_test_scores",
+     "type": str,
+     "default": "test_scores.json",
+     "help": "Name of file to store test scores."},
+]
+
+improve_infer_params = [
+]
+
+# Params that are specific to this model
+model_specific_params = [
+    {"name": "model_arch",
+     "default": "GINConvNet",
+     "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
+     "type": str,
+     "help": "Model architecture to run."},
+    {"name": "log_interval",
+     "action": "store",
+     "type": int,
+     "help": "Interval for saving o/p"},
+    {"name": "cuda_name",  # TODO: how should we control this?
+     "action": "store",
+     "type": str,
+     "help": "Cuda device (e.g.: cuda:0, cuda:1."},
+    {"name": "model_params",  ## TODO (rename?): why is it called model_params??
      "type": str,
      "default": "model.pt",
      "help": "Filename to store trained model."},
-    {"name": "pred_fname",
-     "type": str,
-     "default": "test_preds.csv",
-     "help": "Name of file to store inference results."},
-    {"name": "response_data",
-     "type": str,
-     "default": "test_response.csv",
-     "help": "Name of file to store inference results."},
-    {"name": "out_json",
-     "type": str,
-     "default": "test_scores.json",
-     "help": "Name of file to store scores."},
 ]
 
+# Combine improve_params and model_specific_params into additional_definitions
+additional_definitions = improve_general_params + \
+    improve_preprocess_params + \
+    improve_train_params + \
+    improve_infer_params + \
+    model_specific_params
+
+# additional_definitions = [
+#     # {"name": "pred_col_name_suffix",  # TODO (removed): this is defined in candle_improve.json
+#     #  "type": str,
+#     #  "default": "_pred",
+#     #  "help": "Tag to add to predictions when storing the data frame."},
+#     # {"name": "y_col_name",  ## improve prm
+#     #  "type": str,
+#     #  "default": "auc",
+#     #  "help": "Drug sensitivity score to use as the target variable (e.g., IC50, AUC)."},
+#     # {"name": "model_arch",  ## model prm
+#     #  "default": "GINConvNet",
+#     #  "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
+#     #  "type": str,
+#     #  "help": "Model architecture to run."},
+#     # Preprocessing
+#     # {"name": "download",  ## improve prm
+#     #  "type": candle.str2bool,
+#     #  "default": False,
+#     #  "help": "Flag to indicate if downloading from FTP site.",},
+#     # {"name": "set",  # TODO (removed): not used with our workflows (used with original GraphDRP)
+#     #  "default": "mixed",
+#     #  "choices": ["mixed", "cell", "drug"],
+#     #  "type": str,
+#     #  "help": "Validation scheme (data splitting strategy).", },
+#     # {"name": "train_split",  # TODO: (renamed): rename to train_split_file_name
+#     #     "nargs": "+",
+#     #     "type": str,
+#     #     "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').", },
+#     # Training / Inference
+#     # {"name": "log_interval",  ## model prm
+#     #  "action": "store",
+#     #  "type": int,
+#     #  "help": "Interval for saving o/p", },
+#     # {"name": "cuda_name",  # model prm. TODO: how should we control this?
+#     #  "action": "store",
+#     #  "type": str,
+#     #  "help": "Cuda device (e.g.: cuda:0, cuda:1."},
+#     # {"name": "train_ml_data_dir",  ## improve prm
+#     #  "action": "store",
+#     #  "type": str,
+#     #  "help": "Datadir where train data is stored."},
+#     # {"name": "val_ml_data_dir",  ## improve prm
+#     #  "action": "store",
+#     #  "type": str,
+#     #  "help": "Datadir where val data is stored."},
+#     # {"name": "test_ml_data_dir",  ## improve prm
+#     #  "action": "store",
+#     #  "type": str,
+#     #  "help": "Datadir where test data is stored."},
+#     # {"name": "model_outdir",  ## improve prm
+#     #  "action": "store",
+#     #  "type": str,
+#     #  "help": "Datadir to store trained model."},
+#     # {"name": "model_params",  # TODO (rename?): why is it called model_params??
+#     #  "type": str,
+#     #  "default": "model.pt",
+#     #  "help": "Filename to store trained model."},
+#     # {"name": "pred_fname",  ## improve prm
+#     #  "type": str,
+#     #  "default": "test_preds.csv",
+#     #  "help": "Name of file to store inference results."},
+#     # {"name": "response_data",  # TODO (renamed): created one for val and one for test.
+#     #  "type": str,
+#     #  "default": "test_response.csv",
+#     #  "help": "Name of file to store inference results."},
+#     # {"name": "json_test_scores",  # TODO (renamed): created one for val and one for test.
+#     #  "type": str,
+#     #  "default": "test_scores.json",
+#     #  "help": "Name of file to store scores."},
+# ]
+
+# TODO (C-ap): not sure these are "required". Check this!
 required = [
-    "train_data",
-    "val_data",
-    "test_data",
+    # "train_data",
+    # "val_data",
+    # "test_data",
     # "train_split",
 ]
 
@@ -99,7 +226,10 @@ class BenchmarkFRM(candle.Benchmark):
         additional_definitions: list of dictionaries describing the additional parameters for the
             benchmark.
         """
-        improve_definitions = improve_utils.parser_from_json("candle_improve.json")
+        # improve_hard_settings_json is a json file that contains hard settings
+        # for IMPROVE that should be modified by model curators (or other users).
+        improve_hard_settings_json = "candle_improve.json"
+        improve_definitions = improve_utils.parser_from_json(improve_hard_settings_json)
         if required is not None:
             self.required = set(required)
         if additional_definitions is not None:
@@ -107,7 +237,7 @@ class BenchmarkFRM(candle.Benchmark):
 
 
 def initialize_parameters(default_model="frm_default_model.txt"):
-    """Parse execution parameters from file or command line.
+    """ Parse execution parameters from file or command line.
 
     Parameters
     ----------
@@ -122,24 +252,27 @@ def initialize_parameters(default_model="frm_default_model.txt"):
 
     # Build benchmark object
     frm = BenchmarkFRM(
-        file_path,
-        default_model,
-        "python",
+        filepath=file_path,
+        defmodel=default_model,
+        framework="python",  # TODO (Q-ap): should this be pytorch?
         prog="frm",
         desc="frm functionality",
     )
 
     # Initialize parameters
+    # TODO (Q-ap): where are all the places that gParameters devided from?
+    # This is important to specify in the docs for model curators.
+    # Is it:  candle_improve.json, frm.py, frm_default_model.txt
     gParameters = candle.finalize_parameters(frm)
-    gParameters = improve_utils.build_improve_paths(gParameters)
+    gParameters = improve_utils.build_improve_paths(gParameters)  # TODO (C-ap): not sure we need this.
 
     return gParameters
 
 
+# TODO: need to decide where this func goes!
 def predicting(model, device, loader):
     """ Method to run predictions/inference.
-    The same method is in frm_train.py
-    TODO: put this in some utils script. --> graphdrp?
+    This is used in *train.py and *infer.py
 
     Parameters
     ----------

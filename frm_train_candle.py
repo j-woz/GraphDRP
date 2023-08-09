@@ -10,15 +10,19 @@ from pprint import pprint
 import torch
 from pathlib import Path
 
-import frm
-from utils import TestbedDataset, DataLoader
+# from utils import TestbedDataset, DataLoader
+from utils import TestbedDataset
+from torch_geometric.data import DataLoader
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
+
+import frm
 import candle_improve_utils as improve_utils
 from candle import build_pytorch_optimizer, get_pytorch_function, keras_default_config
 
+# TODO (Q-ap): is this intended to define the "required" parameters for frm_train_candle?
 frm.required.extend(["train_ml_data_dir", "val_ml_data_dir", "y_col_name"])
 
 
@@ -55,13 +59,14 @@ def train(model, device, train_loader, optimizer, loss_fn, epoch, log_interval):
 
 
 def run(params):
-    """Execute specified model inference.
+    """ Execute specified model training.
 
     Parameters
     ----------
     params: python dictionary
         A dictionary of Candle keywords and parsed values.
     """
+    # -----------------------------
     # Train parameters
     lr = params["learning_rate"]
     num_epoch = params["epochs"]
@@ -69,12 +74,13 @@ def run(params):
     log_interval = params["log_interval"]
     val_batch = params["val_batch"]
 
+    # -----------------------------
+    # [Req]
     # Prepare model output
     #model_outdir = Path(params["ckpt_directory"])
     model_outdir = Path(params["model_outdir"])
     os.makedirs(model_outdir, exist_ok=True)
-    model_path = model_outdir / params["model_params"]
-
+    model_path = model_outdir / params["model_params"] # TODO (Q-ap): why does "model_params" contains the model name file? defined in frm.py
 
     # -----------------------------
     # Prepare PyG datasets
@@ -88,6 +94,7 @@ def run(params):
     val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)  # Note! Don't shuffle the val_loader
 
     # -----------------------------
+    # [Req]
     # Determine CUDA/CPU device and configure CUDA device if available
     cuda_avail = torch.cuda.is_available()
     print("CPU/GPU: ", cuda_avail)
@@ -111,47 +118,55 @@ def run(params):
     model = str2Class(params["model_arch"]).to(device)
 
     # -----------------------------
+    # [Req?]
     # DL optimizer and loss
     keras_defaults = keras_default_config()
     optimizer = build_pytorch_optimizer(
-        model, params["optimizer"], lr, keras_defaults
-    )
+        model=model,
+        optimizer=params["optimizer"],
+        lr=lr,
+        kerasDefaults=keras_defaults
+    )  # Note! Specified in frm_default_model.txt
     loss_fn = get_pytorch_function(params["loss"])
 
     # -----------------------------
     # Train
     # -----------------------------
-    # Variables to monitor the best model based val data
-    best_mse = np.inf
+    metrics = ["mse", "rmse", "pcc", "scc"]
+
+    # Settings for early stop and best model settings
+    best_score = np.inf
     best_epoch = -1
+    early_stop_counter = 0  # define early-stop counter
+    early_stop_metric = "mse"  # metric for early stop
 
     # Iterate over epochs
-    early_stop_counter = 0
     for epoch in range(num_epoch):
         train_loss = train(model, device, train_loader, optimizer, loss_fn, epoch + 1, log_interval)
 
         # Predict with val data
         val_true, val_pred = frm.predicting(model, device, val_loader)  # val_true (groud truth), val_pred (predictions)
-        metrics = ["mse", "rmse", "pcc", "scc"]
         val_scores = improve_utils.compute_metrics(val_true, val_pred, metrics)
 
-        # Save best model
-        # TODO:
-        # Early stopping should be done the same way for all models.
-        # Should this be replaced with a checkpoint??
-        if val_scores["mse"] < best_mse:
+        # Checkpoint the (best) model
+        # TODO (todo-ap):
+        # Can we use CANDLE checkpoint for this?
+        if val_scores[early_stop_metric] < best_score:
             torch.save(model.state_dict(), model_path)
             # with open(result_file_name, "w") as f:
             #     f.write(",".join(map(str, ret)))
             best_epoch = epoch + 1
-            rmse_for_best_mse = val_scores["rmse"]
-            best_mse = val_scores["mse"]
-            pearson_for_best_mse = val_scores["pcc"]
-            spearman_for_best_mse = val_scores["scc"]
-            print(f"MSE improved at epoch {best_epoch}; Best MSE: {best_mse}; Model: {params['model_arch']}")
+            best_score = val_scores[early_stop_metric]
+            # rmse_for_best_mse = val_scores["rmse"]
+            # pearson_for_best_mse = val_scores["pcc"]
+            # spearman_for_best_mse = val_scores["scc"]
+            print(f"{early_stop_metric} improved at epoch {best_epoch}; Best \
+                  {early_stop_metric}: {best_score}; Model: {params['model_arch']}")
+            early_stop_counter = 0  # zero the early-stop counter if the model imroved after the epoch
         else:
-            print(f"No improvement since epoch {best_epoch}; Best MSE: {best_mse}; Model: {params['model_arch']}")
-            early_stop_counter += 1
+            print(f"No improvement since epoch {best_epoch}; Best \
+                  {early_stop_metric}: {best_score}; Model: {params['model_arch']}")
+            early_stop_counter += 1  # increment the counter if the model was not improved after the epoch
 
         if early_stop_counter == params["patience"]:
             print(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
@@ -165,20 +180,21 @@ def run(params):
     model.eval()
 
     # -----------------------------
+    # [Req]
     # Compute raw predictions
-    # -----------------------------
     pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
-    G_val, P_val = frm.predicting(model, device, val_loader)  # G (groud truth), P (predictions)
+    val_true, val_pred = frm.predicting(model, device, val_loader)  # G (groud truth), P (predictions)
     # tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
-    pred_df = pd.DataFrame(P_val, columns=[pred_col_name])  # This includes only predicted values
+    pred_df = pd.DataFrame(val_pred, columns=[pred_col_name])  # This includes only predicted values
 
     # -----------------------------
+    # [Req]
     # Concat raw predictions with the cancer and drug ids, and the true values
-    # -----------------------------
-    # RSP_FNAME = "test_response.csv"  # TODO: move to improve_utils? ask Yitan?
+    # RSP_FNAME = "val_response.csv"
     # rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
-    rsp_df = pd.read_csv(Path(params["val_ml_data_dir"] + params["response_data"]))
+    # TODO (todo-ap): consider to change "val_response_data" to "val_y_data"
+    rsp_df = pd.read_csv(Path(params["val_ml_data_dir"] + params["val_response_data"]))
 
     # # Old
     # tp = pd.concat([rsp_df, tp], axis=1)
@@ -192,19 +208,24 @@ def run(params):
 
     # Save the raw predictions on val data
     # pred_fname = "test_preds.csv"
-    improve_utils.save_preds(mm, params, params["out_file_path"])
+    print(params["val_pred_file_path"])   # used in frm_train*.py
+    print(params["test_pred_file_path"])  # used in frm_train*.py
+    # TODO (todo-ap): params "val_pred_file_path" and "test_pred_file_path" are not properly defined.
+    params["val_pred_file_path"] = params["model_outdir"] + params["val_pred_fname"]
+    print(params["val_pred_file_path"])
+    improve_utils.save_preds(mm, params, params["val_pred_file_path"])
 
     # -----------------------------
     # Compute performance scores
     # -----------------------------
-    y_true = rsp_df[params["y_col_name"]].values
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    val_scores = improve_utils.compute_metrics(y_true, P_val, metrics)
+    y_true = rsp_df[params["y_col_name"]].values
+    val_scores = improve_utils.compute_metrics(y_true, val_pred, metrics)
     val_scores["val_loss"] = val_scores["mse"]
 
     # Performance scores for Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(val_scores["mse"]))
-    with open(model_outdir / "val_scores.json", "w", encoding="utf-8") as f:
+    with open(model_outdir / params["json_val_scores"], "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     print("Validation scores:\n\t{}".format(val_scores))
@@ -212,9 +233,9 @@ def run(params):
 
 
 def main():
-    params = frm.initialize_parameters()
+    params = frm.initialize_parameters(default_model="frm_default_model.txt")
     # Add infer parameter
-    params["out_file_path"] = params["output_dir"] + params["pred_fname"]
+    # params["out_file_path"] = params["output_dir"] + params["val_pred_fname"]  # TODO (Q-ap): why define here and not inside run()??
     pprint(params)
     run(params)
     print("\nFinished training.")
