@@ -8,10 +8,10 @@
 "y_data_dir_name": ["y_data"     ,"target data"],
 "splits_dir_name": ["splits"     ,"splits files"],
 
-"canc_col_name": ["improve_sample_id" ,"column name that contains the cancer sample ids TODO: rename to sample_col_name"],
+"canc_col_name": ["improve_sample_id" ,"column name that contains the cancer sample ids"],
 "drug_col_name": ["improve_chem_id"   ,"column name that contains the drug ids"],
 "source_col_name": ["source"          ,"column name that contains source/study names (CCLE, GDSCv1, etc.)"],
-"pred_col_name_suffix": ["_pred"      ,"suffix to predictions col name (example of final col name: auc_pred)"],
+"pred_col_name_suffix": ["_pred"      ,"suffix to store predictions col name (example of final col name: auc_pred)"],
 
 "y_file_name": ["response.tsv" ,"response data"],
 
