@@ -100,14 +100,18 @@ def add_improve_key(key_name, old_suffix, new_suffix, params):
 def build_improve_paths(params):
 
     # special cases -- no point automating
-    params = construct_improve_dir_path("raw_data_dir", "main_data_dir", params)
-    params = construct_improve_dir_path("ml_data_dir", "main_data_dir", params)
-    params = construct_improve_dir_path("models_dir", "main_data_dir", params)
-    params = construct_improve_dir_path("infer_dir", "main_data_dir", params)
+    # TODO (ap): following the statement above, is there really a need for
+    # construct_improve_dir_path()? The main issue here, is that we need to
+    # specify main_data_dir somewhere. Where? main_data_dir should not be
+    # hard coded into construct_improve_dir_path().
+    params = construct_improve_dir_path("raw_data_dir", params["main_data_dir"], params)
+    params = construct_improve_dir_path("ml_data_dir", params["main_data_dir"], params)
+    params = construct_improve_dir_path("models_dir", params["main_data_dir"], params)
+    params = construct_improve_dir_path("infer_dir", params["main_data_dir"], params)
 
-    params = construct_improve_dir_path("x_data_dir", "raw_data_dir", params)
-    params = construct_improve_dir_path("y_data_dir", "raw_data_dir", params)
-    params = construct_improve_dir_path("splits_dir", "raw_data_dir", params)
+    params = construct_improve_dir_path("x_data_dir", params["main_data_dir"], params)
+    params = construct_improve_dir_path("y_data_dir", params["main_data_dir"], params)
+    params = construct_improve_dir_path("splits_dir", params["main_data_dir"], params)
 
     dir_path = params["x_data_dir"]
     # loop over cancer features
@@ -315,8 +319,12 @@ class ImproveBenchmark(candle.Benchmark):
 def initialize_parameters():
     # Build agent object
 
-    driver = ImproveBenchmark(file_path, 'dummy.txt', 'keras',
-                              prog='CANDLE_example', desc='CANDLE example driver script')
+    driver = ImproveBenchmark(
+        filepath=file_path,
+        defmodel='dummy.txt',
+        framework='keras',
+        prog='CANDLE_example',
+        desc='CANDLE example driver script')
 
     # Initialize parameters
     gParameters = candle.finalize_parameters(driver)
