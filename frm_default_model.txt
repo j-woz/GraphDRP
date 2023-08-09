@@ -1,21 +1,15 @@
 [Global_Params]
 model_name = "FRM"
-batch_size = 1024
+batch_size = 256
 cuda_name = "cuda:7"
 data_url = 'https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP'
 cache_subdir = 'data_processed/mixed_set/processed'
 epochs = 2
 learning_rate = 0.0001
-log_interval = 40
-model_arch = 0
+log_interval = 20
 model_outdir = '.'
-set = 'mixed'
-test_batch = 1024
-test_data ='test_data'
-train_data = 'train_data'
-val_batch = 1024
-val_data = 'val_data'
+test_batch = 256
+val_batch = 256
 optimizer = "adam"
 loss = "mse"
 patience = 20
-
