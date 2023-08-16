@@ -70,10 +70,10 @@ improve_train_params = [
      "action": "store",
      "type": str,
      "help": "Datadir where test data is stored."},
-    {"name": "model_outdir",
-     "action": "store",
-     "type": str,
-     "help": "Datadir to store trained model."},
+    # {"name": "model_outdir",  # Note! we use candle known param ckpt_directory
+    #  "action": "store",
+    #  "type": str,
+    #  "help": "Datadir to store trained model."},
     # ---------
     {"name": "val_pred_fname",
      "type": str,
@@ -121,7 +121,7 @@ model_specific_params = [
      "action": "store",
      "type": str,
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
-    {"name": "model_params",  ## TODO (rename?): why is it called model_params??
+    {"name": "model_params",  ## TODO (rename?): consider making this more descriptive, e.g., model_file_name
      "type": str,
      "default": "model.pt",
      "help": "Filename to store trained model."},

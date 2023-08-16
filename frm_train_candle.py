@@ -84,7 +84,7 @@ def run(params):
     model_outdir = Path(params["ckpt_directory"])
     # model_outdir = Path(params["model_outdir"])
     os.makedirs(model_outdir, exist_ok=True)
-    model_path = model_outdir / params["model_params"] # TODO (Q-ap): why does "model_params" contains the model name file? defined in frm.py
+    model_path = model_outdir / params["model_params"] # TODO: consider changing "model_params" to more descriptive, e.g., model_file_name
 
     # -----------------------------
     # Prepare PyG datasets
