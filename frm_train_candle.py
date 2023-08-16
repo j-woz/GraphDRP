@@ -22,8 +22,12 @@ import frm
 import candle_improve_utils as improve_utils
 from candle import build_pytorch_optimizer, get_pytorch_function, keras_default_config
 
-# TODO (Q-ap): is this intended to define the "required" parameters for frm_train_candle?
-frm.required.extend(["train_ml_data_dir", "val_ml_data_dir", "y_col_name"])
+# Params that are required to be specified in order to execute the train script (no default values)
+# TODO: consider setting req_train_args elsewhere and then loading it into this script. Similarly we can specify
+# req_preprocess_args and req_infer_args
+# req_train_args = ["train_ml_data_dir", "val_ml_data_dir", "y_col_name"]  # there is default for y_col_name (auc)
+req_train_args = ["train_ml_data_dir", "val_ml_data_dir"]
+frm.required.extend(req_train_args)
 
 
 def str2Class(str):
