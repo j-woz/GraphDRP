@@ -97,6 +97,10 @@ improve_train_params = [
     #  "type": str,
     #  "default": "test_scores.json",
     #  "help": "Name of file to store test scores."},
+    {"name": "model_params",  ## TODO (rename?): consider making this more descriptive, e.g., model_file_name
+     "type": str,
+     "default": "model.pt",
+     "help": "Filename to store trained model."},
 ]
 
 improve_infer_params = [
@@ -121,10 +125,6 @@ model_specific_params = [
      "action": "store",
      "type": str,
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
-    {"name": "model_params",  ## TODO (rename?): consider making this more descriptive, e.g., model_file_name
-     "type": str,
-     "default": "model.pt",
-     "help": "Filename to store trained model."},
 ]
 
 # Combine improve_params and model_specific_params into additional_definitions
