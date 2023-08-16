@@ -211,11 +211,8 @@ def run(params):
 
     # Save the raw predictions on val data
     # pred_fname = "test_preds.csv"
-    # print(params["val_pred_file_path"])   # used in frm_train*.py
-    # print(params["test_pred_file_path"])  # used in frm_train*.py
-    # TODO (todo-ap): params "val_pred_file_path" and "test_pred_file_path" are not properly defined.
     params["val_pred_file_path"] = model_outdir/params["val_pred_file_name"]
-    print(params["val_pred_file_path"])
+    # print(params["val_pred_file_path"])
     improve_utils.save_preds(mm, params, params["val_pred_file_path"])
 
     # -----------------------------
@@ -228,7 +225,7 @@ def run(params):
 
     # Performance scores for Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(val_scores["mse"]))
-    with open(model_outdir / params["json_val_scores"], "w", encoding="utf-8") as f:
+    with open(model_outdir/params["json_val_scores"], "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     print("Validation scores:\n\t{}".format(val_scores))
@@ -238,7 +235,9 @@ def run(params):
 def main():
     params = frm.initialize_parameters(default_model="frm_default_model.txt")
     # Add infer parameter
-    # params["out_file_path"] = params["output_dir"] + params["val_pred_fname"]  # TODO (Q-ap): why define here and not inside run()??
+    # TODO: we use val_pred_file_path and test_pred_file_path, both defined as hard settings in improve_candle.json.
+    # Do we still need out_file_path?
+    # params["out_file_path"] = params["output_dir"] + params["val_pred_fname"]  
     pprint(params)
     run(params)
     print("\nFinished training.")

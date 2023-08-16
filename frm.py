@@ -269,7 +269,9 @@ def initialize_parameters(default_model="frm_default_model.txt"):
     return gParameters
 
 
-# TODO: need to decide where this func goes!
+# TODO: While the implmenetation of this func is model-specific, we may want
+# to require that all models have this func defined for their models. Also,
+# we need to decide where this func should be located.
 def predicting(model, device, loader):
     """ Method to run predictions/inference.
     This is used in *train.py and *infer.py
