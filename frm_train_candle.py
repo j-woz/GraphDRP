@@ -81,8 +81,8 @@ def run(params):
     # -----------------------------
     # [Req]
     # Prepare model output
-    #model_outdir = Path(params["ckpt_directory"])
-    model_outdir = Path(params["model_outdir"])
+    model_outdir = Path(params["ckpt_directory"])
+    # model_outdir = Path(params["model_outdir"])
     os.makedirs(model_outdir, exist_ok=True)
     model_path = model_outdir / params["model_params"] # TODO (Q-ap): why does "model_params" contains the model name file? defined in frm.py
 
