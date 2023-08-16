@@ -197,8 +197,7 @@ def run(params):
     # Concat raw predictions with the cancer and drug ids, and the true values
     # RSP_FNAME = "val_response.csv"
     # rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
-    # TODO (todo-ap): consider to change "val_response_data" to "val_y_data"
-    rsp_df = pd.read_csv(Path(params["val_ml_data_dir"] + params["val_response_data"]))
+    rsp_df = pd.read_csv(params["val_ml_data_dir"] + params["val_y_data_file_name"])
 
     # # Old
     # tp = pd.concat([rsp_df, tp], axis=1)
@@ -212,10 +211,10 @@ def run(params):
 
     # Save the raw predictions on val data
     # pred_fname = "test_preds.csv"
-    print(params["val_pred_file_path"])   # used in frm_train*.py
-    print(params["test_pred_file_path"])  # used in frm_train*.py
+    # print(params["val_pred_file_path"])   # used in frm_train*.py
+    # print(params["test_pred_file_path"])  # used in frm_train*.py
     # TODO (todo-ap): params "val_pred_file_path" and "test_pred_file_path" are not properly defined.
-    params["val_pred_file_path"] = params["model_outdir"] + params["val_pred_fname"]
+    params["val_pred_file_path"] = model_outdir/params["val_pred_file_name"]
     print(params["val_pred_file_path"])
     improve_utils.save_preds(mm, params, params["val_pred_file_path"])
 

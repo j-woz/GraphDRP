@@ -26,6 +26,13 @@
 
 "smiles_file_name": ["drug_SMILES.tsv" ,"drug feature"],
 "mordred_file_name": ["drug_mordred.tsv" ,"drug feature"],
-"ecfp4_512bit_file_name": ["drug_ecfp4_512bit.tsv" ,"drug feature"]
+"ecfp4_512bit_file_name": ["drug_ecfp4_512bit.tsv" ,"drug feature"],
+
+"val_pred_file_name": ["val_preds.csv", "Name of file to store inference results on val data."],
+"test_pred_file_name": ["test_preds.csv", "Name of file to store inference results on test data."],
+"val_y_data_file_name": ["val_response.csv", "Name of file that conatins true y values of val set."],
+"test_y_data_file_name": ["test_response.csv", "Name of file that conatins true y values of test set."],
+"json_val_scores": ["val_scores.json", "Name of file to store val scores."],
+"json_test_scores": ["test_scores.json", "Name of file to store test scores."]
 }
 
