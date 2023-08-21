@@ -11,54 +11,13 @@ from typing import Dict, Union
 
 import candle
 
-
 file_path = os.path.dirname(os.path.realpath(__file__))
 
-
-required = []
-
-
-def remove_suffix(text, suffix):
-    if suffix and text.endswith(suffix):
-        return text[:-len(suffix)]
-    return text
+required = []  # for candle.Benchmark
 
 
-def parser_from_json(json_file):
-    """ Custom parser to read a json file and return the list of included keywords.
-        Special case for True/False since these are not handled correctly by the default
-        python command line parser.
-        All keywords defined in json files are subsequently available to be overwritten
-        from the command line, using the CANDLE command line parser.
-    Parameters
-    ----------
-    json_file: File to be parsed
-
-    Return
-    ----------
-    new_defs: Dictionary of parameters
-
-    """
-    file = open(json_file,)
-    params = json.load(file)
-    new_defs = []
-    for key in params:
-        if params[key][0] == "True" or params[key][0] == "False":
-            new_def = {'name': key,
-                       'type': (type(candle.str2bool(params[key][0]))),
-                       'default': candle.str2bool(params[key][0]),
-                       'help': params[key][1]
-                       }
-        else:
-            new_def = {'name': key,
-                       'type': (type(params[key][0])),
-                       'default': params[key][0],
-                       'help': params[key][1]
-                       }
-        new_defs.append(new_def)
-
-    return new_defs
-
+# -----------------------------
+# IMPROVE utils
 
 def construct_improve_dir_path(dir_name, dir_path, params):
     """ Custom function to construct directory paths in IMPROVE
@@ -132,16 +91,58 @@ def build_improve_paths(params):
 
     return params
 
+
 # -----------------------------
-# General utilities
+# General utils
+
+def remove_suffix(text, suffix):
+    if suffix and text.endswith(suffix):
+        return text[:-len(suffix)]
+    return text
 
 
 def str2Class(str):
     return getattr(sys.modules[__name__], str)
 
-# -----------------------------
-# Metrics
 
+def parser_from_json(json_file):
+    """ Custom parser to read a json file and return the list of included keywords.
+        Special case for True/False since these are not handled correctly by the default
+        python command line parser.
+        All keywords defined in json files are subsequently available to be overwritten
+        from the command line, using the CANDLE command line parser.
+    Parameters
+    ----------
+    json_file: File to be parsed
+
+    Return
+    ----------
+    new_defs: Dictionary of parameters
+
+    """
+    file = open(json_file,)
+    params = json.load(file)
+    new_defs = []
+    for key in params:
+        if params[key][0] == "True" or params[key][0] == "False":
+            new_def = {'name': key,
+                       'type': (type(candle.str2bool(params[key][0]))),
+                       'default': candle.str2bool(params[key][0]),
+                       'help': params[key][1]
+                       }
+        else:
+            new_def = {'name': key,
+                       'type': (type(params[key][0])),
+                       'default': params[key][0],
+                       'help': params[key][1]
+                       }
+        new_defs.append(new_def)
+
+    return new_defs
+
+
+# -----------------------------
+# Metrics (RMSE, etc.)
 
 def compute_metrics(y_true, y_pred, metrics):
     """Compute the specified set of metrics.
@@ -263,9 +264,9 @@ def r_square(y_true, y_pred):
 
     return r2_score(y_true, y_pred)
 
-# -----------------------------
-# Save Functions
 
+# -----------------------------
+# Save functions
 
 def save_preds(df: pd.DataFrame, params: Dict, outpath: Union[str, Path], round_decimals: int = 4) -> None:
     """ Save model predictions.
@@ -298,6 +299,12 @@ def save_preds(df: pd.DataFrame, params: Dict, outpath: Union[str, Path], round_
     return None
 
 
+# -----------------------------
+# CANDLE class and initialize_parameters
+# Note: this is used here to load the IMPROVE hard settings from candle_imporve.json
+# TODO: some of the IMPROVE hard settings are specific to the DRP problem. We may consider
+#       renaming it. E.g. candle_improve_drp.json.
+
 class ImproveBenchmark(candle.Benchmark):
 
     def set_locals(self):
@@ -307,8 +314,11 @@ class ImproveBenchmark(candle.Benchmark):
         benchmark.
         """
 
+        # improve_hard_settings_file_name is a json file that contains settings
+        # for IMPROVE that should not be modified by model curators/users.
         print('Additional definitions built from json files')
-        additional_definitions = parser_from_json("candle_improve.json")
+        improve_hard_settings_file_name = "candle_improve.json"  # TODO: this may be defined somewhere else
+        additional_definitions = parser_from_json(improve_hard_settings_file_name)
         print(additional_definitions, flush=True)
         if required is not None:
             self.required = set(required)

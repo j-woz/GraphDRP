@@ -7,9 +7,10 @@ import candle_improve_utils as improve_utils
 
 file_path = Path(__file__).resolve().parent
 
+
 # IMPROVE params that are relevant to all IMPORVE models
 improve_general_params = [
-    {"name": "main_data_dir",
+    {"name": "main_data_dir",  # TODO: need to determine where this will be defined!
      "type": str,
      "default": "csa_data",
      "help": "Main data directory that contains the dataset (e.g., csa_data, lca_data, etc.)."},
@@ -214,6 +215,12 @@ required = [
 ]
 
 
+# -----------------------------
+# CANDLE class and initialize_parameters
+# Note: this is used here to load the IMPROVE hard settings from candle_imporve.json
+# TODO: some of the IMPROVE hard settings are specific to the DRP problem. We may consider
+#       renaming it. E.g. candle_improve_drp.json.
+
 class BenchmarkFRM(candle.Benchmark):
     """ Benchmark for FRM. """
 
@@ -226,10 +233,10 @@ class BenchmarkFRM(candle.Benchmark):
         additional_definitions: list of dictionaries describing the additional parameters for the
             benchmark.
         """
-        # improve_hard_settings_json is a json file that contains hard settings
-        # for IMPROVE that should be modified by model curators (or other users).
-        improve_hard_settings_json = "candle_improve.json"
-        improve_definitions = improve_utils.parser_from_json(improve_hard_settings_json)
+        # improve_hard_settings_file_name is a json file that contains settings
+        # for IMPROVE that should not be modified by model curators/users.
+        improve_hard_settings_file_name = "candle_improve.json"  # TODO: this may be defined somewhere else
+        improve_definitions = improve_utils.parser_from_json(improve_hard_settings_file_name)
         if required is not None:
             self.required = set(required)
         if additional_definitions is not None:
