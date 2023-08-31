@@ -25,20 +25,10 @@ improve_general_params = [
      "default": "auc",
      "help": "Column name in the y data file (e.g., response.tsv), that represents \
               the target variable that the model predicts. In drug response prediction \
-              problem is can be IC50, AUC, and others."},
+              problem it can be IC50, AUC, and others."},
 ]
 
 improve_preprocess_params = [
-    {"name": "train_data_name",
-     "type": str,
-     "help": "Name of the training dataset (e.g., CCLE, GDSCv2)."},
-    {"name": "val_data_name",
-     "type": str,
-     "help": "Name of the val dataset (e.g., CCLE, GDSCv2)."},
-    {"name": "test_data_name",
-     "type": str,
-     "help": "Name of the test dataset (e.g., CCLE, GDSCv2)."},
-    # ---------
     {"name": "train_split_file_name",
      "type": str,
      "help": "File containing integers, representing row numbers in the y data file \
@@ -53,7 +43,7 @@ improve_preprocess_params = [
      "help": "File containing row numbers in the y data file that will be used \
               test set (e.g., CCLE_split_0_test.txt, CCLE_split_0_test_size_5.txt)."},
     # ---------
-    {"name": "ml_data_outdir",
+    {"name": "preprocess_outdir",
      "type": str,
      "help": "Path to store the generated ML data during the preprocessing step."},
 ]
@@ -67,41 +57,22 @@ improve_train_params = [
      "action": "store",
      "type": str,
      "help": "Datadir where val data is stored."},
-    # {"name": "model_outdir",  # Note! we use candle known param ckpt_directory
-    #  "action": "store",
-    #  "type": str,
-    #  "help": "Datadir to store trained model."},
-    # ---------
-    # {"name": "val_pred_file_name",
-    #  "type": str,
-    #  "default": "val_preds.csv",
-    #  "help": "Name of file to store inference results on val data."},
-    # {"name": "test_pred_file_name",
-    #  "type": str,
-    #  "default": "test_preds.csv",
-    #  "help": "Name of file to store inference results on test data."},
-    # ---------
-    # {"name": "val_y_data_file_name",
-    #  "type": str,
-    #  "default": "val_response.csv",
-    #  "help": "Name of file that conatins true y values of val set."},
-    # {"name": "test_y_data_file_name",
-    #  "type": str,
-    #  "default": "test_response.csv",
-    #  "help": "Name of file that conatins true y values of test set."},
-    # ---------
-    # {"name": "json_val_scores",
-    #  "type": str,
-    #  "default": "val_scores.json",
-    #  "help": "Name of file to store val scores."},
-    # {"name": "json_test_scores",
-    #  "type": str,
-    #  "default": "test_scores.json",
-    #  "help": "Name of file to store test scores."},
-    {"name": "model_params",  ## TODO (rename?): consider making this more descriptive, e.g., model_file_name
+    {"name": "y_data_file_name",
+      "type": str,
+      "default": "y_data.csv",
+      "help": "Name of file that contains true y values."},
+    {"name": "model_params",
      "type": str,
      "default": "model.pt",
-     "help": "Filename to store trained model."},
+     "help": "Filename to store trained model parameters."},
+    {"name": "model_eval",
+     "type": str,
+     "default": "test_response.csv",
+     "help": "Name of file to store inference results."},
+    {"name": "json_scores",
+     "type": str,
+     "default": "test_scores.json",
+     "help": "Name of file to store scores."},
 ]
 
 improve_infer_params = [
@@ -134,77 +105,6 @@ additional_definitions = improve_general_params + \
     improve_train_params + \
     improve_infer_params + \
     model_specific_params
-
-# additional_definitions = [
-#     # {"name": "pred_col_name_suffix",  # TODO (removed): this is defined in candle_improve.json
-#     #  "type": str,
-#     #  "default": "_pred",
-#     #  "help": "Tag to add to predictions when storing the data frame."},
-#     # {"name": "y_col_name",  ## improve prm
-#     #  "type": str,
-#     #  "default": "auc",
-#     #  "help": "Drug sensitivity score to use as the target variable (e.g., IC50, AUC)."},
-#     # {"name": "model_arch",  ## model prm
-#     #  "default": "GINConvNet",
-#     #  "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
-#     #  "type": str,
-#     #  "help": "Model architecture to run."},
-#     # Preprocessing
-#     # {"name": "download",  ## improve prm
-#     #  "type": candle.str2bool,
-#     #  "default": False,
-#     #  "help": "Flag to indicate if downloading from FTP site.",},
-#     # {"name": "set",  # TODO (removed): not used with our workflows (used with original GraphDRP)
-#     #  "default": "mixed",
-#     #  "choices": ["mixed", "cell", "drug"],
-#     #  "type": str,
-#     #  "help": "Validation scheme (data splitting strategy).", },
-#     # {"name": "train_split",  # TODO: (renamed): rename to train_split_file_name
-#     #     "nargs": "+",
-#     #     "type": str,
-#     #     "help": "path to the file that contains the split ids (e.g., 'split_0_tr_id',  'split_0_vl_id').", },
-#     # Training / Inference
-#     # {"name": "log_interval",  ## model prm
-#     #  "action": "store",
-#     #  "type": int,
-#     #  "help": "Interval for saving o/p", },
-#     # {"name": "cuda_name",  # model prm. TODO: how should we control this?
-#     #  "action": "store",
-#     #  "type": str,
-#     #  "help": "Cuda device (e.g.: cuda:0, cuda:1."},
-#     # {"name": "train_ml_data_dir",  ## improve prm
-#     #  "action": "store",
-#     #  "type": str,
-#     #  "help": "Datadir where train data is stored."},
-#     # {"name": "val_ml_data_dir",  ## improve prm
-#     #  "action": "store",
-#     #  "type": str,
-#     #  "help": "Datadir where val data is stored."},
-#     # {"name": "test_ml_data_dir",  ## improve prm
-#     #  "action": "store",
-#     #  "type": str,
-#     #  "help": "Datadir where test data is stored."},
-#     # {"name": "model_outdir",  ## improve prm
-#     #  "action": "store",
-#     #  "type": str,
-#     #  "help": "Datadir to store trained model."},
-#     # {"name": "model_params",  # TODO (rename?): why is it called model_params??
-#     #  "type": str,
-#     #  "default": "model.pt",
-#     #  "help": "Filename to store trained model."},
-#     # {"name": "pred_fname",  ## improve prm
-#     #  "type": str,
-#     #  "default": "test_preds.csv",
-#     #  "help": "Name of file to store inference results."},
-#     # {"name": "response_data",  # TODO (renamed): created one for val and one for test.
-#     #  "type": str,
-#     #  "default": "test_response.csv",
-#     #  "help": "Name of file to store inference results."},
-#     # {"name": "json_test_scores",  # TODO (renamed): created one for val and one for test.
-#     #  "type": str,
-#     #  "default": "test_scores.json",
-#     #  "help": "Name of file to store scores."},
-# ]
 
 # TODO (C-ap): not sure these are "required". Check this!
 required = [
