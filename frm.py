@@ -9,7 +9,7 @@ if os.getenv("IMPROVE_DATA_DIR") is None:
 os.environ["CANDLE_DATA_DIR"] = os.environ["IMPROVE_DATA_DIR"]
 
 from collections import deque
-from typing import Deque, Dict, List, Tuple
+from typing import Deque, Dict, List, Tuple, Union
 from typing import TypeAlias
 
 import torch
@@ -20,7 +20,7 @@ str2bool = candle.str2bool
 
 file_path = Path(__file__).resolve().parent
 
-DataPathDict: TypeAlias = dict[str, Path]
+RawDataPathDict: TypeAlias = dict[str, Path]
 
 # IMPROVE params that are relevant to all IMPROVE models
 improve_basic_conf = [
@@ -160,93 +160,122 @@ def check_path_and_files(folder_name: str, file_list: List, inpath: Path) -> Pat
     return outpath
 
 
-def raw_data_available(params: Dict, mode: str) -> DataPathDict:
-    """Sweep the expected raw data folder and check that needed files are available
+def raw_data_available_csa(params: Dict) -> RawDataPathDict:
+    """
+    Sweep the expected raw data folder and check that files needed for cross-study analysis (CSA) are available.
 
     :param Dict params: Dictionary of parameters read
-    :param string mode: String to specify the type of directory structure expected in raw_data
 
-    :return: Path to directories requested (depending on mode) in str:Path dictionary.
-    :rtype: DataPathDict
+    :return: Path to directories requested stored in dictionary with str key str and Path value.
+    :rtype: RawDataPathDict
     """
-    if mode == "cross_study":
-        # Expected
-        # raw_data -> {splits, x_data, y_data}
-        # Make sure that main path exists
-        mainpath = Path(os.environ["IMPROVE_DATA_DIR"])
-        assert mainpath.exists()
-        # Make sure that the raw data directory exists
-        inpath = mainpath / "raw_data"
-        assert inpath.exists()
-        # Make sure that the data subdirectories exist
-        xpath = check_path_and_files("x_data", params["x_data"], inpath)
-        ypath = check_path_and_files("y_data", params["y_data"], inpath)
-        # Make sure that the splits exist ?
-        spath = check_path_and_files("splits", [], inpath)
+    # Expected
+    # raw_data -> {splits, x_data, y_data}
+    # Make sure that main path exists
+    mainpath = Path(os.environ["IMPROVE_DATA_DIR"])
+    if mainpath.exists() == False:
+        raise Exception(f"ERROR ! {mainpath} not found.\n")
+    # Make sure that the raw data directory exists
+    inpath = mainpath / "raw_data"
+    if inpath.exists() == False:
+        raise Exception(f"ERROR ! {inpath} not found.\n")
+    # Make sure that the data subdirectories exist
+    xpath = check_path_and_files("x_data", params["x_data"], inpath)
+    ypath = check_path_and_files("y_data", params["y_data"], inpath)
+    # Make sure that the splits exist ?
+    spath = check_path_and_files("splits", [], inpath)
 
-        return {"x_data": xpath, "y_data": ypath, "splits": spath}
-
-    else:
-        raise Exception("ERROR ! Mode for raw data specification is not defined.\n")
-
-    return None
+    return {"x_data": xpath, "y_data": ypath, "splits": spath}
 
 
-def directory_tree_from_parameters(
+def directory_tree_from_parameters_csa(
     params: Dict,
-    mode: str,
     step: str = "pre-process",
-) -> Tuple[DataPathDict, Deque]:
+) -> Tuple[Deque, Union[RawDataPathDict, None]]:
     """
-    Check input data directory and construct output directory trees from parameters.
+    Check input data and construct output directory trees from parameters for cross-study analysis (CSA).
+
+    Input and output structure depends on step.
+    For pre-process step, input structure is represented by RawDataPathDict.
+    In other steps, raw input is None and the output queue contains input and output paths.
 
     :param Dict params: Dictionary of parameters read
-    :param string mode: String to specify the type of directory structure to construct in pre-processing.
-    :param string step: String to specify if this is needed during pre-processing or training.
+    :param string step: String to specify if this is applied during pre-process, train or test.
 
-    :return: Paths and info about raw data input and processed data output directories.
-    :rtype: ((Path, Path, Path), Deque)
+    :return: Paths and info about processed data output directories and raw data input.
+    :rtype: (Deque, (Path, Path, Path))
     """
-
-    if mode == "cross_study":
+    inpath_dict = None
+    if step == "pre-process":
         # Check that raw data is available
-        inpath_dict = raw_data_available(params, mode="cross_study")
-        # Create subdirectory if it does not exist
-        # Structure:
-        # ml_data -> {source_data-target_data} -> {split_id}
-        mainpath = Path(os.environ["IMPROVE_DATA_DIR"]) # Already checked
-        outpath = mainpath / "ml_data"
+        inpath_dict = raw_data_available_csa(params)
+    # Create subdirectory if it does not exist
+    # Structure:
+    # ml_data -> {source_data-target_data} -> {split_id}
+    mainpath = Path(os.environ["IMPROVE_DATA_DIR"]) # Already checked
+    outpath = mainpath / "ml_data"
+    os.makedirs(outpath, exist_ok=True)
+    # If used during train or test structure is slightly different
+    # ml_data -> models -> {source_data-target_data} -> {split_id}
+    inpath = outpath
+    if step == "train": # Create structured output path
+        outpath = outpath / "models"
         os.makedirs(outpath, exist_ok=True)
-        # If used during training structure is slightly different
-        # ml_data -> models -> {source_data-target_data} -> {split_id}
-        if step == "train":
-            outpath = outpath / "models"
-            os.makedirs(outpath, exist_ok=True)
-        print("Preparing to store output under: ", outpath)
-        # Create queue of cross study combinations to process
-        split_queue = deque()
-        for sdata in params["source_data"]:
-            for tdata in params["target_data"]:
-                tag = sdata + "-" + tdata
-                tagpath = outpath / tag
-                os.makedirs(tagpath, exist_ok=True)
-                if len(params["split_id"]) == 0:
-                    # Need a defined split id
-                    raise Exception(f"ERROR ! No split id has been defined.\n")
-                else:
-                    for id in params["split_id"]:
-                        index = "split_" + str(id)
-                        splitpath = tagpath / index
-                        os.makedirs(splitpath, exist_ok=True)
-                        tid = -1 # Used to indicate all splits
-                        if sdata == tdata:
-                            tid = id # Need to limit to the defined split id
-                        split_queue.append((DataSplit(sdata, tdata, id, tid), splitpath))
-        return inpath_dict, split_queue
-    else:
-        raise Exception("ERROR ! Pre-processing mode is not defined.\n")
+    elif step == "test": # Check that expected input path exists
+        inpath = inpath / "models"
+        if inpath.exists() == False:
+            raise Exception(f"ERROR ! {inpath} not found.\n")
+        outpath = inpath
+    print("Preparing to store output under: ", outpath)
 
-    return None
+    # Create queue of cross study combinations to process and check inputs
+    split_queue = deque()
+    for sdata in params["source_data"]:
+        for tdata in params["target_data"]:
+            tag = sdata + "-" + tdata
+            tagpath = outpath / tag
+            inpath = inpath / tag
+            if step != "pre-process" and inpath.exists() == False:
+                raise Exception(f"ERROR ! {inpath} not found.\n")
+            elif step != "test":
+                os.makedirs(tagpath, exist_ok=True)
+
+            # From this point on the depth of the path does not increase
+            itagpath = inpath
+            otagpath = tagpath
+
+            if len(params["split_id"]) == 0:
+                # Need a defined split id
+                raise Exception(f"ERROR ! No split id has been defined.\n")
+            else:
+                for id in params["split_id"]:
+                    index = "split_" + str(id)
+                    outpath = otagpath / index
+                    inpath = itagpath / index
+                    if step != "pre-process" and inpath.exists() == False:
+                        raise Exception(f"ERROR ! {inpath} not found.\n")
+                    elif step != "test":
+                        os.makedirs(outpath, exist_ok=True)
+
+                    tid = -1 # Used to indicate all splits
+                    if sdata == tdata:
+                        tid = id # Need to limit to the defined split id
+                    if step == "train": # Check existence of x_data and y_data
+                        for stg in ["train", "val", "test"]:
+                            fname = f"{stg}_{params['y_data_suffix']}.csv"
+                            ydata = inpath / fname
+                            if ydata.exists() == False:
+                                raise Exception(f"ERROR ! Ground truth data '{ydata}' not found.\n")
+                            fname = f"{stg}_{params['x_data_suffix']}.pt"
+                            xdata = inpath / "processed" / fname
+                            if xdata.exists() == False:
+                                raise Exception(f"ERROR ! Feature data '{xdata}' not found.\n")
+                    elif step == "test": # Check existence of trained model
+                        trmodel = inpath / params["model_params"]
+                        if trmodel.exists() == False:
+                            raise Exception(f"ERROR ! Trained model '{trmodel}' not found.\n")
+                    split_queue.append((DataSplit(sdata, tdata, id, tid), inpath, outpath))
+    return split_queue, inpath_dict
 
 
 # -----------------------------

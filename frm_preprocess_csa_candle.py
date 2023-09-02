@@ -86,7 +86,7 @@ def check_parameter_consistency(params: Dict):
 
 
 
-def load_drug_data(inpath_dict: frm.DataPathDict,
+def load_drug_data(inpath_dict: frm.RawDataPathDict,
                    x_file_name: str,
                    index = None,
                    columns = None,
@@ -123,7 +123,7 @@ def load_drug_data(inpath_dict: frm.DataPathDict,
 
 
 
-def load_response_data(inpath_dict: frm.DataPathDict,
+def load_response_data(inpath_dict: frm.RawDataPathDict,
         y_file_name: str,
         source: str,
         split_id: int,
@@ -224,7 +224,7 @@ def set_col_names_in_multilevel_dataframe(
     return df
 
 
-def load_cell_data(inpath_dict: frm.DataPathDict,
+def load_cell_data(inpath_dict: frm.RawDataPathDict,
         x_file_name: str,
         canc_col_name = "improve_sample_id",
         gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
@@ -349,9 +349,9 @@ def run(params: Dict):
     # ------------------------------------------
     # Check/Construct output directory structure
     # ------------------------------------------
-    inpathd, tobuildq = frm.directory_tree_from_parameters(params, mode="cross_study", step= "pre-process")
+    tobuildq, inpathd = frm.directory_tree_from_parameters_csa(params, step = "pre-process")
     # inpathd is dictionary with folder_name: path components
-    # Each element of the queue contains a tuple ((source, target, split_id), path)
+    # Each element of the queue contains a tuple ((source, target, split_id), ipath, opath)
     print(tobuildq)
 
     # -------------------
