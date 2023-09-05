@@ -21,7 +21,8 @@ from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 
-from graphdrp_train_improve import gdrp_model_conf, gdrp_data_conf, save_preds, str2Class
+from graphdrp_preprocess_improve import gdrp_data_conf
+from graphdrp_train_improve import gdrp_model_conf, save_preds, str2Class
 
 filepath = Path(__file__).resolve().parent
 

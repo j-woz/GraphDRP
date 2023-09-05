@@ -22,6 +22,8 @@ from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 
+from graphdrp_preprocess_improve import gdrp_data_conf
+
 filepath = Path(__file__).resolve().parent
 
 # Params that are specific to graphDRP model
@@ -41,18 +43,6 @@ gdrp_model_conf = [
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
 ]
 
-gdrp_data_conf = [
-    {"name": "canc_col_name",
-     "default": "improve_sample_id",
-     "type": str,
-     "help": "Column name that contains the cancer sample ids.",
-    },
-    {"name": "drug_col_name",
-     "default": "improve_chem_id",
-     "type": str,
-     "help": "Column name that contains the drug ids.",
-    },
-]
 
 req_train_args = ["model_arch", "model_outdir", "train_ml_data_dir", "val_ml_data_dir", "train_data", "val_data"]
 
