@@ -247,6 +247,7 @@ def run(params):
     # -----------------------------
     if params["ckpt_directory"] is None:
         params["ckpt_directory"] = params["model_outdir"]
+    initial_epoch = 0
     ckpt = CandleCkptPyTorch(params)
     ckpt.set_model({"model": model, "optimizer": optimizer})
     J = ckpt.restart(model)
@@ -266,7 +267,7 @@ def run(params):
     early_stop_metric = "mse"  # metric for early stop
 
     # Iterate over epochs
-    for epoch in range(num_epoch):
+    for epoch in range(initial_epoch, num_epoch):
         train_loss = train(model, device, train_loader, optimizer, loss_fn, epoch + 1, log_interval)
         ckpt.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
 
