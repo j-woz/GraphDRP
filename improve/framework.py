@@ -11,7 +11,7 @@ if os.getenv("IMPROVE_DATA_DIR") is None:
 os.environ["CANDLE_DATA_DIR"] = os.environ["IMPROVE_DATA_DIR"]
 
 from pathlib import Path
-from typing import List, TypeAlias
+from typing import List, Set, TypeAlias
 
 import torch
 
@@ -114,13 +114,13 @@ improve_test_conf = [
 
 
 # Combine improve configuration into additional_definitions
-additional_definitions = improve_basic_conf + \
+frm_additional_definitions = improve_basic_conf + \
     improve_preprocess_conf + \
     improve_train_conf + \
     improve_test_conf
 
 # Required
-required = []
+frm_required = []
 
 class ImproveBenchmark(candle.Benchmark):
     """ Benchmark for Improve Models. """
@@ -134,19 +134,23 @@ class ImproveBenchmark(candle.Benchmark):
         additional_definitions: list of dictionaries describing the additional parameters for the
             benchmark.
         """
-        if required is not None:
-            self.required = set(required)
-        if additional_definitions is not None:
-            self.additional_definitions = additional_definitions
+        if frm_required is not None:
+            self.required.update(set(frm_required)) # This considers global framework required arguments
+        if frm_additional_definitions is not None:
+            self.additional_definitions.extend(frm_additional_definitions) # This considers global framework definitions
 
 
-def initialize_parameters(filepath, default_model="frm_default_model.txt"):
+def initialize_parameters(filepath, default_model="frm_default_model.txt", additional_definitions=None, required=None):
     """ Parse execution parameters from file or command line.
 
     Parameters
     ----------
     default_model : string
         File containing the default parameter definition.
+    additional_definitions : List
+        List of additional definitions from calling script.
+    required: Set
+        Required arguments from calling script.
 
     Returns
     -------
@@ -161,6 +165,8 @@ def initialize_parameters(filepath, default_model="frm_default_model.txt"):
         framework="pytorch",
         prog="frm",
         desc="Framework functionality in improve",
+        additional_definitions=additional_definitions,
+        required=required,
     )
 
     gParameters = candle.finalize_parameters(frm)

@@ -54,11 +54,7 @@ gdrp_data_conf = [
     },
 ]
 
-frm.additional_definitions.extend(gdrp_model_conf + gdrp_data_conf)
-
-
 req_train_args = ["model_arch", "model_outdir", "train_ml_data_dir", "val_ml_data_dir", "train_data", "val_data"]
-frm.required.extend(req_train_args)
 
 
 def str2Class(str):
@@ -356,7 +352,11 @@ def run(params):
 
 
 def main():
-    params = frm.initialize_parameters(filepath, default_model="graphdrp_default_model.txt")
+    params = frm.initialize_parameters(filepath,
+                                       default_model="graphdrp_default_model.txt",
+                                       additional_definitions = gdrp_model_conf + gdrp_data_conf,
+                                       required = req_train_args,
+                                      )
     run(params)
     print("\nFinished training of graphDRP model.")
 

@@ -94,7 +94,12 @@ def run(params):
 
 
 def main():
-    params = csa.frm.initialize_parameters(filepath, default_model="csa_graphdrp_default_model.txt")
+    params = csa.frm.initialize_parameters(filepath,
+                                       default_model="csa_graphdrp_default_model.txt",
+                                       additional_definitions = csa.csa_conf,
+                                       required = csa.req_csa_args,
+                                      )
+
     run(params)
     print("\nFinished CSA GraphDRP training.")
 

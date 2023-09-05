@@ -35,9 +35,7 @@ csa_conf = [
     },
 ]
 
-frm.additional_definitions.extend(csa_conf)
-req_args = [l["name"] for l in csa_conf]
-frm.required.extend(req_args)
+req_csa_args = [elem["name"] for elem in csa_conf]
 
 
 class DataSplit:
