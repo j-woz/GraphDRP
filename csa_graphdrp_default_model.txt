@@ -12,4 +12,4 @@ drug_col_name = "improve_chem_id"
 y_col_name = "auc"
 gene_system_identifier = ["Gene_Symbol"]
 use_lincs = True
-model_name = "FRM_CSA"
+model_name = "CSA_GraphDRP"

@@ -1,16 +1,23 @@
 [Global_Params]
+model_name = "GraphDRP"
+model_arch = "GINConvNet"
 batch_size = 256
-cache_subdir = 'data_processed/mixed_set/processed'
 cuda_name = "cuda:7"
-data_url = 'https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP'
 epochs = 2
 learning_rate = 0.0001
-log_interval = 40
-modeling = 0
-model_name = 'GraphDRP'
-set = 'mixed'
+log_interval = 20
+ckpt_save_interval = 5
+model_outdir = "./out/"
 test_batch = 256
-test_data ='test_data'
-train_data = 'train_data'
 val_batch = 256
-val_data = 'val_data'
+optimizer = "adam"
+loss = "mse"
+patience = 20
+test_data ="test_response.csv"
+train_data = "train_response.csv"
+val_data = "val_response.csv"
+canc_col_name = "improve_sample_id"
+drug_col_name = "improve_chem_id"
+y_col_name = "auc"
+
+
