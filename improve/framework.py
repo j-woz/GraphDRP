@@ -1,6 +1,7 @@
 """Basic Definitions of IMPROVE Framework."""
 
 import os
+import argparse
 
 # Check that environmental variable "IMPROVE_DATA_DIR" has been specified
 if os.getenv("IMPROVE_DATA_DIR") is None:
@@ -34,6 +35,11 @@ improve_basic_conf = [
      "default": "_pred",
      "help": "Suffix to add to column name in data framework to identify predictions \
               made by the model"
+    },
+    {"name": "model_outdir",
+     "type": str,
+     "default": "./out/",
+     "help": "Path to save model results.",
     },
 ]
 
@@ -76,6 +82,21 @@ improve_train_conf = [
      "type": str,
      "default": "scores",
      "help": "Suffix to use for name of file to store scores."},
+    {"name": "val_batch",
+     "type": int,
+     "default": argparse.SUPPRESS,
+     "help": "Validation batch size.",
+    },
+    {"name": "test_batch",
+     "type": int,
+     "default": argparse.SUPPRESS,
+     "help": "Test batch size.",
+    },
+    {"name": "patience",
+     "type": int,
+     "default": argparse.SUPPRESS,
+     "help": "Iterattions to wait for validation metrics getting worse before stopping training.",
+    },
 ]
 
 # Parameters that are relevant to all IMPROVE testing scripts

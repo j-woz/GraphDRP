@@ -1,8 +1,7 @@
-"""Functionality for Training one GraphDRP Model."""
+"""Functionality for Training a GraphDRP Model."""
 
 from pathlib import Path
 import os
-
 import json
 
 import numpy as np
@@ -58,10 +57,6 @@ gdrp_data_conf = [
 frm.additional_definitions.extend(gdrp_model_conf + gdrp_data_conf)
 
 
-# Params that are required to be specified in order to execute the train script (no default values)
-# TODO: consider setting req_train_args elsewhere and then loading it into this script. Similarly we can specify
-# req_preprocess_args and req_infer_args
-# req_train_args = ["train_ml_data_dir", "val_ml_data_dir", "y_col_name"]  # there is default for y_col_name (auc)
 req_train_args = ["model_arch", "model_outdir", "train_ml_data_dir", "val_ml_data_dir", "train_data", "val_data"]
 frm.required.extend(req_train_args)
 
