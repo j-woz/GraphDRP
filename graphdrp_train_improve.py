@@ -68,7 +68,7 @@ def str2Class(str):
 
 def check_data_available(params: Dict) -> frm.DataPathDict:
     """
-    Sweep the expected input paths and check that files needed training are available.
+    Sweep the expected input paths and check that files needed in training are available.
 
     :param Dict params: Dictionary of parameters read
 
@@ -180,8 +180,8 @@ def run(params):
     # ------------------------------------------------------
     # [Req]
     indtd, outdtd = check_data_available(params)
-    # indtd is dictionary with stage: path components
-    # outdtd is dictionary with output_type: path components
+    # indtd is dictionary with input_description: path components
+    # outdtd is dictionary with output_description: path components
 
     # -----------------------------
     # Train parameters
@@ -309,7 +309,7 @@ def run(params):
     # Compute raw predictions
     pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
-    val_true, val_pred = frm.predicting(model, device, val_loader)  # G (groud truth), P (predictions)
+    val_true, val_pred = frm.predicting(model, device, val_loader)  # (groud truth), (predictions)
     # tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
     pred_df = pd.DataFrame(val_pred, columns=[pred_col_name])  # This includes only predicted values
 
