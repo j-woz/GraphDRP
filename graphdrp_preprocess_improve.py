@@ -218,9 +218,12 @@ def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_n
         xc = [] # To collect cell features
         y = [] # To collect responses
         # To collect missing or corrupted data
-        nan_rsp_list = []
-        miss_cell = []
-        miss_drug = []
+        # nan_rsp_list = []
+        # miss_cell = []
+        # miss_drug = []
+        count_nan_rsp = 0
+        count_miss_cell = 0
+        count_miss_drug = 0
         # Convert to indices for rapid lookup
         df_drug = df_drug.set_index([drug_col_name])
         df_cell = df_drug.set_index([canc_col_name])
@@ -229,21 +232,28 @@ def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_n
                 print(i)
             drug, cell, rsp = df_response.iloc[i, :].values.tolist()
             if np.isnan(rsp):
-                nan_rsp_list.append(rsp)
+                # nan_rsp_list.append(rsp)
+                count_nan_rsp += 1
             # If drug and cell features are available
             try: # Look for drug
                 drug_features = df_drug.loc[drug]
             except KeyError: # drug not found
-                miss_drug.append(drug)
+                # miss_drug.append(drug)
+                count_miss_drug += 1
             else: # Look for cell
                 try:
                     cell_features = df_cell.loc[cell]
                 except KeyError: # cell not found
-                    miss_cell.append(cell)
+                    # miss_cell.append(cell)
+                    count_miss_cell += 1
                 else: # Both drug and cell were found
                     xd.append(drug_features[1:].values) # xd contains list of drug feature vectors
                     xc.append(cell_features[1:].values) # xc contains list of cell feature vectors
                     y.append(rsp)
+
+        print("Number of NaN responses: ", count_nan_rsp)
+        print("Number of drugs not found: ", count_miss_drug)
+        print("Number of cells not found: ", count_miss_cell)
 
         xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
 
