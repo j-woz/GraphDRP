@@ -3,8 +3,13 @@
 from pathlib import Path
 from typing import Dict
 
+import numpy as np
+import pandas as pd
+
 from improve import framework as frm
 from improve import dataloader as dtl
+from improve.utils import TestbedDataset
+from improve.rdkit_utils import build_graph_dict_from_smiles_collection
 
 filepath = Path(__file__).resolve().parent
 
@@ -148,7 +153,6 @@ def load_response_data(inpath_dict: frm.DataPathDict,
         source: str,
         split_id: int,
         stage: str,
-        y_col_name: str = "auc",
         canc_col_name = "improve_sample_id",
         drug_col_name = "improve_chem_id",
         sep: str = "\t",
@@ -164,7 +168,6 @@ def load_response_data(inpath_dict: frm.DataPathDict,
         source: DRP source name.
         split_id : Split id. If -1, use all data. Note that this assumes that split_id has been constructed to take into account all the data sources.
         stage: Type of split to read. One of the following: 'train', 'val', 'test'.
-        y_col_name: Name of drug response measure/score (e.g., AUC, IC50)
         canc_col_name: Column name that contains the cancer sample ids. Default: "improve_sample_id".
         drug_col_name: Column name that contains the drug ids. Default: "improve_chem_id".
         sep: Separator used in data file.
@@ -199,6 +202,54 @@ def load_response_data(inpath_dict: frm.DataPathDict,
     return df
 
 
+def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_name):
+        """ Returns drug and cancer feature data, and response values.
+        Args:
+            df_response: drug response dataframe. This already has been filtered to three columns: drug_id, cell_id and drug_response.
+            df_drug: drug features dataframe.
+            df_cell: cell features dataframe.
+            drug_col_name: Column name that contains the drug ids.
+            canc_col_name: Column name that contains the cancer sample ids.
+
+        Returns: Numpy arrays with drug features, cell features and responses
+            xd, xc, y
+        """
+        xd = [] # To collect drug features
+        xc = [] # To collect cell features
+        y = [] # To collect responses
+        # To collect missing or corrupted data
+        nan_rsp_list = []
+        miss_cell = []
+        miss_drug = []
+        # Convert to indices for rapid lookup
+        df_drug = df_drug.set_index([drug_col_name])
+        df_cell = df_drug.set_index([canc_col_name])
+        for i in range(df.shape[0]):  # tuples of (drug name, cell id, response)
+            if i > 0 and (i%15000 == 0):
+                print(i)
+            drug, cell, rsp = df_response.iloc[i, :].values.tolist()
+            if np.isnan(rsp):
+                nan_rsp_list.append(rsp)
+            # If drug and cell features are available
+            try: # Look for drug
+                drug_features = df_drug.loc[drug]
+            except KeyError: # drug not found
+                miss_drug.append(drug)
+            else: # Look for cell
+                try:
+                    cell_features = df_cell.loc[cell]
+                except KeyError: # cell not found
+                    miss_cell.append(cell)
+                else: # Both drug and cell were found
+                    xd.append(drug_features[1:].values) # xd contains list of drug feature vectors
+                    xc.append(cell_features[1:].values) # xc contains list of cell feature vectors
+                    y.append(rsp)
+
+        xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
+
+        return xd, xc, y
+
+
 def run(params):
     """Execute data pre-processing for graphDRP model.
 
@@ -221,12 +272,25 @@ def run(params):
     # outdtd is dictionary with output_description: path components
 
     # -------------------
+    # Load drug data
+    # -------------------
+    # Soft coded for smiles for now
+    fname = indtd["x_data"] / params["drug_file"]
+    if fname.exists() == False:
+        raise Exception(f"ERROR ! Drug data from {fname} file not found.\n")
+    df_drug = dtl.load_drug_data(fname,
+                           columns=["improve_chem_id", "smiles"],
+                          )
+
+    smile_graphs = build_graphs_from_smiles_collection(df_drug["smiles"].values)
+
+    # -------------------
     # Load cancer data
     # -------------------
     fname = indtd["x_data"] / params["cell_file"]
     if fname.exists() == False:
         raise Exception(f"ERROR ! Cancer data from {fname} file not found.\n")
-    df_x = dtl.load_cell_data(fname,
+    df_cell = dtl.load_cell_data(fname,
                           params["canc_col_name"],
                           params["gene_system_identifier"],
                          )
@@ -236,27 +300,17 @@ def run(params):
         with open(filepath/"landmark_genes") as f: # AWFUL that this is not in data site but in code repo
             genes = [str(line.rstrip()) for line in f]
         # genes = ["ge_" + str(g) for g in genes]  # This is for legacy data
-        genes = dtl.common_elements(genes, df_x.columns[1:])
+        genes = dtl.common_elements(genes, df_cell.columns[1:])
         cols = [params["canc_col_name"]] + genes
-        df_x = df_x[cols]
+        df_cell = df_cell[cols]
 
-    # -------------------
-    # Load drug data
-    # -------------------
-    # Soft coded for smiles for now
-    fname = indtd["x_data"] / params["drug_file"]
-    if fname.exists() == False:
-        raise Exception(f"ERROR ! Drug data from {fname} file not found.\n")
-    df_x2 = dtl.load_drug_data(fname,
-                           columns=["improve_chem_id", "smiles"],
-                          )
 
     # -------------------------------------------
     # Construct ML data for every stage
     # -------------------------------------------
     stages = ["train", "val", "test"]
-    df_x_cs = {}
-    df_y_cs = {}
+    df_cell_s = {}
+    df_y_s = {}
 
     for st in stages:
         print(f"Building stage: {st}")
@@ -271,19 +325,34 @@ def run(params):
                                     source,
                                     split_id,
                                     st,
-                                    params["y_col_name"],
                                     params["canc_col_name"],
                                     params["drug_col_name"],
                           )
         # Retain (canc, drug) response samples for which omic data is available
-        df_y_cs[st], df_x_cs[st] = dtl.get_common_samples(df1=df_y,
-                                                          df2=df_x,
+        df_y_s[st], df_cell_s[st] = dtl.get_common_samples(df1=df_y,
+                                                          df2=df_cell,
                                                           ref_col=params["canc_col_name"])
-        print(df_y_cs[st][[params["canc_col_name"], params["drug_col_name"]]].nunique())
+        print(df_y_s[st][[params["canc_col_name"], params["drug_col_name"]]].nunique())
+
+    # Normalize features using training set (or training and validation sets?)
+
+
+    for st in stages:
+        # Sub-select desired response column (y_col_name)
+        # And reduce response dataframe to 3 columns: drug_id, cell_id and selected_drug_response
+        df_y = df_y_s[st][[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
+        xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell_s[st], params["drug_col_name"], params["canc_col_name"])
+        print("stage ", st, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
+        # Save the processed (all) data as PyTorch dataset
+        TestbedDataset(root=outdtd["preprocess"],
+                       dataset=st + "_" + params["x_data_suffix"],
+                       xd=xd,
+                       xt=xc,
+                       y=y,
+                       smile_graph=smile_graphs)
         # Save the subset of y data
         fname = f"{st}_{params['y_data_suffix']}.csv"
-        df_y_cs[st].to_csv(outdtd["preprocess"] / fname, index=False)
-
+        df_y_s[st].to_csv(outdtd["preprocess"] / fname, index=False)
 
     #load_drug_data(stage)
     #preprocess()
@@ -295,8 +364,6 @@ def run(params):
 
     #combine_data() # Filter, extract features and build combination ?
     #store_testbed() # PyTorch dataset
-
-        
 
 
 
