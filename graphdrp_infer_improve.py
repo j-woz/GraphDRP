@@ -14,7 +14,7 @@ from torch_geometric.data import DataLoader
 
 from improve import framework as frm
 
-from improve.utils import TestbedDataset
+from improve.torch_utils import TestbedDataset
 from improve.metrics import compute_metrics
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN

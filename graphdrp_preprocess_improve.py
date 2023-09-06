@@ -8,7 +8,7 @@ import pandas as pd
 
 from improve import framework as frm
 from improve import dataloader as dtl
-from improve.utils import TestbedDataset
+from improve.torch_utils import TestbedDataset
 from improve.rdkit_utils import build_graph_dict_from_smiles_collection
 
 filepath = Path(__file__).resolve().parent
