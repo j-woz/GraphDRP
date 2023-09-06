@@ -302,7 +302,7 @@ def run(params):
     fname = indtd["x_data"] / params["cell_file"]
     if fname.exists() == False:
         raise Exception(f"ERROR ! Cancer data from {fname} file not found.\n")
-    df_cell = dtl.load_cell_data(fname,
+    df_cell_all = dtl.load_cell_data(fname,
                           params["canc_col_name"],
                           params["gene_system_identifier"],
                          )
@@ -312,17 +312,15 @@ def run(params):
         with open(filepath/"landmark_genes") as f: # AWFUL that this is not in data site but in code repo
             genes = [str(line.rstrip()) for line in f]
         # genes = ["ge_" + str(g) for g in genes]  # This is for legacy data
-        genes = dtl.common_elements(genes, df_cell.columns[1:])
+        genes = dtl.common_elements(genes, df_cell_all.columns[1:])
         cols = [params["canc_col_name"]] + genes
-        df_cell = df_cell[cols]
+        df_cell_all = df_cell_all[cols]
 
 
     # -------------------------------------------
     # Construct ML data for every stage
     # -------------------------------------------
     stages = ["train", "val", "test"]
-    df_cell_s = {}
-    df_y_s = {}
 
     for st in stages:
         print(f"Building stage: {st}")
@@ -332,7 +330,7 @@ def run(params):
         # -----------------------------
         # Load y data according to stage
         # ------------------------------
-        df_y = load_response_data(indtd,
+        df_response = load_response_data(indtd,
                                     params["response_file"],
                                     source,
                                     split_id,
@@ -341,19 +339,23 @@ def run(params):
                                     params["drug_col_name"],
                           )
         # Retain (canc, drug) response samples for which omic data is available
-        df_y_s[st], df_cell_s[st] = dtl.get_common_samples(df1=df_y,
-                                                          df2=df_cell,
-                                                          ref_col=params["canc_col_name"])
-        print(df_y_s[st][[params["canc_col_name"], params["drug_col_name"]]].nunique())
+        df_y, df_cell = dtl.get_common_samples(df1=df_response,
+                                               df2=df_cell_all,
+                                               ref_col=params["canc_col_name"])
+        print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
-    # Normalize features using training set (or training and validation sets?)
+        # Normalize features using training set -> ToDo: implement this
+        #if st == "train":
+            # Normalize
+            # Store normalization object
+        #else:
+            # Use previous normalization object
 
-
-    for st in stages:
         # Sub-select desired response column (y_col_name)
-        # And reduce response dataframe to 3 columns: drug_id, cell_id and selected_drug_response
-        df_y = df_y_s[st][[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
-        xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell_s[st], params["drug_col_name"], params["canc_col_name"])
+        # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
+        df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
+        # Combine data
+        xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell, params["drug_col_name"], params["canc_col_name"])
         print("stage ", st, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
         # Save the processed (all) data as PyTorch dataset
         TestbedDataset(root=outdtd["preprocess"],
@@ -364,19 +366,7 @@ def run(params):
                        smile_graph=smile_graphs)
         # Save the subset of y data
         fname = f"{st}_{params['y_data_suffix']}.csv"
-        df_y_s[st].to_csv(outdtd["preprocess"] / fname, index=False)
-
-    #load_drug_data(stage)
-    #preprocess()
-    #preprocess_MLmodel_specific()
-
-    #load_cell_data()
-    #preprocess()
-    #preprocess_MLmodel_specific()
-
-    #combine_data() # Filter, extract features and build combination ?
-    #store_testbed() # PyTorch dataset
-
+        df_y.to_csv(outdtd["preprocess"] / fname, index=False)
 
 
 def main():
