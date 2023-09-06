@@ -65,16 +65,16 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
         if itestdfpath.exists() == False:
             itestdfpath = None
             message = (
-                       f"Data frame with original testing response data: {params['test_data_df']} not found." \\
+                       f"Data frame with original testing response data: {params['test_data_df']} not found." \
                        + " Will continue but will only store partial (available) data frame.\n"
             )
             warnings.warn(message, RuntimeWarning)
     else:
         message = (
-                   f"Data frame with original testing response data not specified (no 'test_data_df' keyword)." \\
+                   f"Data frame with original testing response data not specified (no 'test_data_df' keyword)." \
                        + " Will continue but will only store partial (available) data frame.\n"
             )
-            warnings.warn(message, RuntimeWarning)
+        warnings.warn(message, RuntimeWarning)
 
     # Create output directory. Do not complain if it exists.
     opath = Path(params["model_outdir"])

@@ -95,16 +95,16 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
         if ivaldfpath.exists() == False:
             ivaldfpath = None
             message = (
-                       f"Data frame with original validation response data: {params['val_data_df']} not found." \\
+                       f"Data frame with original validation response data: {params['val_data_df']} not found." \
                        + " Will continue but will only store partial (available) data frame.\n"
             )
             warnings.warn(message, RuntimeWarning)
     else:
         message = (
-                   f"Data frame with original validation response data not specified (no 'val_data_df' keyword)." \\
+                   f"Data frame with original validation response data not specified (no 'val_data_df' keyword)." \
                        + " Will continue but will only store partial (available) data frame.\n"
             )
-            warnings.warn(message, RuntimeWarning)
+        warnings.warn(message, RuntimeWarning)
 
     # Create output directory. Do not complain if it exists.
     opath = Path(params["model_outdir"])

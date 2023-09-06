@@ -19,7 +19,7 @@ val_data_processed = "val_data.pt"
 test_data_df = "test_response.csv"
 val_data_df = "val_response.csv"
 train_ml_data_dir = "./out/"
-var_ml_data_dir = "./out/"
+val_ml_data_dir = "./out/"
 test_ml_data_dir = "./out/"
 
 [Preprocess]
