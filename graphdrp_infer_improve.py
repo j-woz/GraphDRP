@@ -121,7 +121,7 @@ def run(params):
     test_data_file_name = params["test_data_processed"]
     if test_data_file_name.endswith(".pt"):
         test_data_file_name = test_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    test_data = TestbedDataset(root=indtd["test"], dataset=test_data_file_name)
+    test_data = TestbedDataset(root=params["test_ml_data_dir"], dataset=test_data_file_name) # TestbedDataset() requires strings
 
     # PyTorch dataloaders
     test_loader = DataLoader(test_data, batch_size=test_batch,
