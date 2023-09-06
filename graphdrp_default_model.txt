@@ -13,12 +13,14 @@ val_batch = 256
 optimizer = "adam"
 loss = "mse"
 patience = 20
-test_data ="test_response.csv"
-train_data = "train_response.csv"
-val_data = "val_response.csv"
-canc_col_name = "improve_sample_id"
-drug_col_name = "improve_chem_id"
-y_col_name = "auc"
+test_data_processed ="test_data.pt"
+train_data_processed = "train_data.pt"
+val_data_processed = "val_data.pt"
+test_data_df = "test_response.csv"
+val_data_df = "val_response.csv"
+train_ml_data_dir = "./out/"
+var_ml_data_dir = "./out/"
+test_ml_data_dir = "./out/"
 
 [Preprocess]
 x_data = ["cancer_gene_expression.tsv", "drug_SMILES.tsv"]
@@ -30,4 +32,8 @@ gene_system_identifier = ["Gene_Symbol"]
 use_lincs = True
 data_set = "gCSI"
 split_id = 0
+canc_col_name = "improve_sample_id"
+drug_col_name = "improve_chem_id"
+y_col_name = "auc"
+
 

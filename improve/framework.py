@@ -18,6 +18,8 @@ import torch
 import candle
 str2bool = candle.str2bool
 
+SUPPRESS = argparse.SUPPRESS
+
 DataPathDict: TypeAlias = dict[str, Path]
 
 
@@ -74,6 +76,14 @@ improve_train_conf = [
      "action": "store",
      "type": str,
      "help": "Datadir where val data is stored."},
+    {"name": "train_data_processed",
+     "action": "store",
+     "type": str,
+     "help": "Name of pytorch processed train data file."},
+    {"name": "val_data_processed",
+     "action": "store",
+     "type": str,
+     "help": "Name of pytorch processed val data file."},
     {"name": "model_eval_suffix",
      "type": str,
      "default": "predicted",
@@ -87,11 +97,6 @@ improve_train_conf = [
      "default": argparse.SUPPRESS,
      "help": "Validation batch size.",
     },
-    {"name": "test_batch",
-     "type": int,
-     "default": argparse.SUPPRESS,
-     "help": "Test batch size.",
-    },
     {"name": "patience",
      "type": int,
      "default": argparse.SUPPRESS,
@@ -104,12 +109,19 @@ improve_test_conf = [
     {"name": "test_ml_data_dir",
      "action": "store",
      "type": str,
-     "help": "Datadir where test data is stored."},
-    {"name": "have_ground_truth",
-     "type": candle.str2bool,
-     "default": True,
-     "help": "Flag to indicate if ground truth is available."
+     "help": "Datadir where test data is stored."
     },
+    {"name": "test_data_processed",
+     "action": "store",
+     "type": str,
+     "help": "Name of pytorch processed test data file."
+    },
+    {"name": "test_batch",
+     "type": int,
+     "default": argparse.SUPPRESS,
+     "help": "Test batch size.",
+    },
+
 ]
 
 

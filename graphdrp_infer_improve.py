@@ -26,8 +26,15 @@ from graphdrp_train_improve import gdrp_model_conf, save_preds, str2Class
 
 filepath = Path(__file__).resolve().parent
 
+gdrp_test_conf = [
+    {"name": "test_data_df",
+     "default": frm.SUPPRESS,
+     "type": str,
+     "help": "Data frame with original test response data."
+    },
+]
 
-req_infer_args = ["model_arch", "model_outdir", "test_ml_data_dir", "test_data"]
+req_infer_args = ["model_arch", "model_outdir", "test_ml_data_dir", "test_data_processed"]
 
 
 def check_data_available(params: Dict) -> frm.DataPathDict:
@@ -95,7 +102,7 @@ def run(params):
 
     # PyTorch dataloaders
     test_loader = DataLoader(test_data, batch_size=test_batch,
-                             shuffle=False)  # Note! Don't shuffle the test_loader
+                             shuffle=False)  # Note! Don't shuffle the test_loader or results will be corrupted
 
     # -----------------------------
     # [Req]
@@ -167,7 +174,7 @@ def run(params):
 def main():
     params = frm.initialize_parameters(filepath,
                                        default_model="graphdrp_default_model.txt",
-                                       additional_definitions = gdrp_model_conf + gdrp_data_conf,
+                                       additional_definitions = gdrp_model_conf + gdrp_data_conf + gdrp_test_conf,
                                        required = req_infer_args,
                                       )
     run(params)

@@ -3,6 +3,7 @@
 from pathlib import Path
 import os
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -43,8 +44,15 @@ gdrp_model_conf = [
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
 ]
 
+gdrp_train_conf = [
+    {"name": "val_data_df",
+     "default": frm.SUPPRESS,
+     "type": str,
+     "help": "Data frame with original validation response data."
+    },
+]
 
-req_train_args = ["model_arch", "model_outdir", "train_ml_data_dir", "val_ml_data_dir", "train_data", "val_data"]
+req_train_args = ["model_arch", "model_outdir", "train_ml_data_dir", "val_ml_data_dir", "train_data_processed", "val_data_processed"]
 
 
 def str2Class(str):
@@ -62,28 +70,54 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     :rtype: DataPathDict
     """
     # Expected
-    # train_mld_data_dir / train_data
-    # val_mld_data_dir / val_data
+    # train_ml_data_dir / processed / train_data_processed
+    # train_data_processed --> it has pt extension and is located inside a 'processed' folder
+    # train_ml_data_dir / processed / train_data_processed
+    # train_data_processed --> it has pt extension and is located inside a 'processed' folder
     # Make sure that the train data exists
-    itrainpath = Path(params["train_ml_data_dir"]) / params["train_data"]
+    itrainpath = Path(params["train_ml_data_dir"]) / "processed"
     if itrainpath.exists() == False:
-        raise Exception(f"ERROR ! Training data {itrainpath} not found.\n")
-    # Make sure that the train data exists
-    ivalpath = Path(params["val_ml_data_dir"]) / params["val_data"]
+        raise Exception(f"ERROR ! Processed training data folder {itrainpath} not found.\n")
+    itrain = itrainpath / params["train_data_processed"]
+    if itrain.exists() == False:
+        raise Exception(f"ERROR ! Processed training data {itrain} not found.\n")
+    # Make sure that the val data exists
+    ivalpath = Path(params["val_ml_data_dir"]) / "processed"
     if ivalpath.exists() == False:
-        raise Exception(f"ERROR ! Validation data {ivalpath} not found.\n")
+        raise Exception(f"ERROR ! Processed validation data folder {ivalpath} not found.\n")
+    ival = ivalpath / params["val_data_processed"]
+    if ival.exists() == False:
+        raise Exception(f"ERROR ! Processed validation data {ival} not found.\n")
+    # Check if validation data frame exists
+    ivaldfpath = None
+    if "val_data_df" in params:
+        ivaldfpath = Path(params["val_ml_data_dir"]) / params["val_data_df"]
+        if ivaldfpath.exists() == False:
+            message = (
+                       f"Data frame with original validation response data: {params['val_data_df']} not found." \\
+                       + " Will continue but will only store partial (available) data frame.\n"
+            )
+            warnings.warn(message, RuntimeWarning)
+    else:
+        message = (
+                   f"Data frame with original validation response data not specified (no 'val_data_df' keyword)." \\
+                       + " Will continue but will only store partial (available) data frame.\n"
+            )
+            warnings.warn(message, RuntimeWarning)
 
     # Create output directory. Do not complain if it exists.
     opath = Path(params["model_outdir"])
     os.makedirs(opath, exist_ok=True)
     modelpath = opath / params["model_params"]
     fname = f"val_{params['model_eval_suffix']}.csv"
+    if ivaldfpath is None:
+        fname = f"val_{params['model_eval_suffix']}_partial.csv"
     predpath = opath / fname
     fname = f"val_{params['json_scores_suffix']}.json"
     scorespath = opath / fname
 
     # Return in DataPathDict structure
-    inputdtd = {"train": itrainpath, "val": ivalpath}
+    inputdtd = {"train": itrainpath, "val": ivalpath, "df": ivaldfpath}
     outputdtd = {"model": modelpath, "pred": predpath, "scores": scorespath}
 
     return inputdtd, outputdtd
@@ -179,22 +213,19 @@ def run(params):
 
     # -----------------------------
     # Prepare PyG datasets
-    #train_data_file_name = f"train_{params['x_data_suffix']}" # TestbedDataset() appends this string with ".pt"
-    #val_data_file_name = f"val_{params['x_data_suffix']}"
-    #train_data_file_name = params["train_data"]
-    #if train_data_file_name.endswith(".pt"):
-    #    train_data_file_name = train_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    #val_data_file_name = params["val_data"]
-    #if val_data_file_name.endswith(".pt"):
-    #    val_data_file_name = val_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    #train_data = TestbedDataset(root=params["train_ml_data_dir"], dataset=train_data_file_name)
-    #val_data = TestbedDataset(root=params["val_ml_data_dir"], dataset=val_data_file_name)
-    train_data = TestbedDataset(root=params["train_ml_data_dir"], dataset="train_data")
-    val_data = TestbedDataset(root=params["val_ml_data_dir"], dataset="val_data")
+    train_data_file_name = params["train_data_processed"]
+    if train_data_file_name.endswith(".pt"):
+        train_data_file_name = train_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
+    val_data_file_name = params["val_data_processed"]
+    if val_data_file_name.endswith(".pt"):
+        val_data_file_name = val_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
+    train_data = TestbedDataset(root=params["train_ml_data_dir"], dataset=train_data_file_name)
+    val_data = TestbedDataset(root=params["val_ml_data_dir"], dataset=val_data_file_name)
 
     # PyTorch dataloaders
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)  # Note! Don't shuffle the val_loader
+    # Note! Don't shuffle the val_loader or results will be corrupted
+    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
 
     # -----------------------------
     # [Req]
@@ -229,7 +260,7 @@ def run(params):
         optimizer=params["optimizer"],
         lr=lr,
         kerasDefaults=keras_defaults
-    )  # Note! Specified in frm_default_model.txt
+    )  # Note! Specified in graphdrp_default_model.txt
     loss_fn = get_pytorch_function(params["loss"])
 
     # -----------------------------
@@ -287,7 +318,6 @@ def run(params):
     # Load the (best) saved model (as determined based on val data)
     del model
     model = str2Class(params["model_arch"]).to(device)
-    #model.load_state_dict(torch.load(model_path))
     model.load_state_dict(torch.load(outdtd["model"]))
     model.eval()
 
@@ -297,44 +327,44 @@ def run(params):
     pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
     val_true, val_pred = frm.predicting(model, device, val_loader)  # (groud truth), (predictions)
-    # tp = pd.DataFrame({true_col_name: G_test, pred_col_name: P_test})  # This includes true and predicted values
-    pred_df = pd.DataFrame(val_pred, columns=[pred_col_name])  # This includes only predicted values
 
     # -----------------------------
-    # [Req]
-    # Concat raw predictions with the cancer and drug ids, and the true values
-    # RSP_FNAME = "val_response.csv"
-    # rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
-    #rsp_df = pd.read_csv(params["val_ml_data_dir"] + params["val_y_data_file_name"])
-    rsp_df = pd.read_csv(indtd["val"])
-    mm = pd.concat([rsp_df, pred_df], axis=1)
-    mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
+    # Attempt to concat raw predictions with the cancer and drug ids, and the true values
+    if indtd["df"] is not None:
+        rsp_df = pd.read_csv(indtd["df"])
 
-    # Save the raw predictions on val data
-    # pred_fname = "test_preds.csv"
-    #params["val_pred_file_path"] = model_outdir/params["val_pred_file_name"]
-    # print(params["val_pred_file_path"])
-    #improve_utils.save_preds(mm, params, params["val_pred_file_path"])
-    save_preds(mm,
+        pred_df = pd.DataFrame(val_pred, columns=[pred_col_name])  # This includes only predicted values
+
+        mm = pd.concat([rsp_df, pred_df], axis=1)
+        mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
+
+        # Save the raw predictions on val data
+        # Note that there is no guarantee that the results effectively correspond to
+        # this pre-processing parameters or the specified data frame
+        # since the data is being read from a processed pt file (no from original data frame)
+        save_preds(mm,
                params["canc_col_name"],
                params["drug_col_name"],
                params["y_col_name"],
                params["pred_col_name_suffix"],
                outdtd["pred"],
-              )
+        )
+        y_true = rsp_df[params["y_col_name"]].values # Read from data frame
+    else: # Save only ground truth and predictions since cancer and drug ids are not available
+        df_ = pd.DataFrame({true_col_name: val_true, pred_col_name: val_pred})  # This includes true and predicted values
+        # Save preds df
+        df_.to_csv(outdtd["pred"], index=False)
+        y_true = val_true
 
     # -----------------------------
     # Compute performance scores
     # -----------------------------
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    y_true = rsp_df[params["y_col_name"]].values
     val_scores = compute_metrics(y_true, val_pred, metrics)
     val_scores["val_loss"] = val_scores["mse"]
 
     # Performance scores for Supervisor HPO
     print("\nIMPROVE_RESULT val_loss:\t{}\n".format(val_scores["mse"]))
-    #with open(model_outdir/params["json_val_scores"], "w", encoding="utf-8") as f:
-    #    json.dump(val_scores, f, ensure_ascii=False, indent=4)
     with open(outdtd["scores"], "w", encoding="utf-8") as f:
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
@@ -345,11 +375,11 @@ def run(params):
 def main():
     params = frm.initialize_parameters(filepath,
                                        default_model="graphdrp_default_model.txt",
-                                       additional_definitions = gdrp_model_conf + gdrp_data_conf,
+                                       additional_definitions = gdrp_model_conf + gdrp_data_conf + gdrp_train_conf,
                                        required = req_train_args,
                                       )
     run(params)
-    print("\nFinished training of graphDRP model.")
+    print("\nFinished training GraphDRP model.")
 
 
 if __name__ == "__main__":
