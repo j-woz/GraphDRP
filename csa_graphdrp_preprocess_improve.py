@@ -9,13 +9,20 @@ import pandas as pd
 
 from improve import csa
 from improve import dataloader as dtl
-from graphdrp_preprocess_improve import gdrp_data_conf, req_preprocess_args
+from graphdrp_preprocess_improve import (
+    gdrp_data_conf,
+    req_preprocess_args,
+    check_parameter_consistency,
+    raw_data_available
+)
 
 filepath = Path(__file__).resolve().parent
 
 not_used_from_model = ["data_set", "split_id"]
 
 required_csa = list(set(csa.req_csa_args).union(set(req_preprocess_args)).difference(set(not_used_from_model)))
+
+#def common_data():
 
 
 def run(params: Dict):
@@ -27,7 +34,18 @@ def run(params: Dict):
         A dictionary of Candle keywords and parsed values.
     """
 
-########## Use graphdrp_preprocess_improve......
+    # --------------------------------------------
+    # Check consistency of parameter specification
+    # --------------------------------------------
+    check_parameter_consistency(params)
+
+    # ------------------------------------------
+    # Check/Construct output directory structure
+    # ------------------------------------------
+    tobuildq, inpathd = csa.directory_tree_from_parameters(params, raw_data_available, step = "preprocess")
+    # inpathd is dictionary with folder_name: path components
+    # Each element of the queue contains a tuple ((source, target, split_id), ipath, opath)
+    print(tobuildq)
 
 
 def main():

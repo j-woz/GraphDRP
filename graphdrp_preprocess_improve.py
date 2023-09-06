@@ -262,32 +262,25 @@ def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_n
         return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
 
 
-def run(params):
-    """Execute data pre-processing for graphDRP model.
+def common_data(params: Dict, inputdtd: frm.DataPathDict):
+    """Construct common feature data frames.
 
     Parameters
     ----------
     params: python dictionary
-        A dictionary of Candle keywords and parsed values.
+        A dictionary of Candle/Improve keywords and parsed values.
+    inputdtd: python dictionary
+        Path to directories requested stored in dictionary with str key str and Path value.
+
+    Returns
+    -------
+    drug and cell dataframes and smiles graphs
     """
-    # --------------------------------------------
-    # Check consistency of parameter specification
-    # --------------------------------------------
-    check_parameter_consistency(params)
-
-    # ------------------------------------------------------
-    # Check data availability and create output directory
-    # ------------------------------------------------------
-    # [Req]
-    indtd, outdtd = check_data_available(params)
-    # indtd is dictionary with input_description: path components
-    # outdtd is dictionary with output_description: path components
-
     # -------------------
     # Load drug data
     # -------------------
     # Soft coded for smiles for now
-    fname = indtd["x_data"] / params["drug_file"]
+    fname = inputdtd["x_data"] / params["drug_file"]
     if fname.exists() == False:
         raise Exception(f"ERROR ! Drug data from {fname} file not found.\n")
     df_drug = dtl.load_drug_data(fname,
@@ -299,7 +292,7 @@ def run(params):
     # -------------------
     # Load cancer data
     # -------------------
-    fname = indtd["x_data"] / params["cell_file"]
+    fname = inputdtd["x_data"] / params["cell_file"]
     if fname.exists() == False:
         raise Exception(f"ERROR ! Cancer data from {fname} file not found.\n")
     df_cell_all = dtl.load_cell_data(fname,
@@ -316,6 +309,36 @@ def run(params):
         cols = [params["canc_col_name"]] + genes
         df_cell_all = df_cell_all[cols]
 
+    return df_drug, df_cell_all, smile_graphs
+
+
+def run(params):
+    """Execute data pre-processing for graphDRP model.
+
+    Parameters
+    ----------
+    params: python dictionary
+        A dictionary of Candle/Improve keywords and parsed values.
+    """
+    # --------------------------------------------
+    # Check consistency of parameter specification
+    # --------------------------------------------
+    check_parameter_consistency(params)
+
+    # ------------------------------------------------------
+    # Check data availability and create output directory
+    # ------------------------------------------------------
+    # [Req]
+    indtd, outdtd = check_data_available(params)
+    # indtd is dictionary with input_description: path components
+    # outdtd is dictionary with output_description: path components
+
+
+    # ------------------------------------------------------
+    # Construct data frames for drug and cell features
+    # ------------------------------------------------------
+    # [Req]
+    df_drug, df_cell_all, smile_graphs = common_data(params, indtd)
 
     # -------------------------------------------
     # Construct ML data for every stage
