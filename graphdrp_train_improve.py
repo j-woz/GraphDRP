@@ -220,8 +220,10 @@ def run(params):
     val_data_file_name = params["val_data_processed"]
     if val_data_file_name.endswith(".pt"):
         val_data_file_name = val_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    train_data = TestbedDataset(root=params["train_ml_data_dir"], dataset=train_data_file_name)
-    val_data = TestbedDataset(root=params["val_ml_data_dir"], dataset=val_data_file_name)
+    #train_data = TestbedDataset(root=params["train_ml_data_dir"], dataset=train_data_file_name)
+    #val_data = TestbedDataset(root=params["val_ml_data_dir"], dataset=val_data_file_name)
+    train_data = TestbedDataset(root=indtd["train"], dataset=train_data_file_name)
+    val_data = TestbedDataset(root=indtd["val"], dataset=val_data_file_name)
 
     # PyTorch dataloaders
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
