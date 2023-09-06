@@ -3,6 +3,7 @@
 from pathlib import Path
 import os
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -47,11 +48,33 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     :rtype: DataPathDict
     """
     # Expected
-    # test_mld_data_dir / test_data
+    # test_ml_data_dir / processed / test_data_processed
+    # test_data_processed --> it has pt extension and is located inside a 'processed' folder
     # Make sure that the test data exists
-    itestpath = Path(params["test_ml_data_dir"]) / params["test_data"]
+    itestpath = Path(params["test_ml_data_dir"]) / "processed"
     if itestpath.exists() == False:
-        raise Exception(f"ERROR ! Testing data {intestpath} not found.\n")
+        raise Exception(f"ERROR ! Processed testing data folder {itestpath} not found.\n")
+    itest = itestpath / params["test_data_processed"]
+    if itest.exists() == False:
+        raise Exception(f"ERROR ! Processed testing data {itest} not found.\n")
+
+    # Check if validation data frame exists
+    itestdfpath = None
+    if "test_data_df" in params:
+        itestdfpath = Path(params["test_ml_data_dir"]) / params["test_data_df"]
+        if itestdfpath.exists() == False:
+            itestdfpath = None
+            message = (
+                       f"Data frame with original testing response data: {params['test_data_df']} not found." \\
+                       + " Will continue but will only store partial (available) data frame.\n"
+            )
+            warnings.warn(message, RuntimeWarning)
+    else:
+        message = (
+                   f"Data frame with original testing response data not specified (no 'test_data_df' keyword)." \\
+                       + " Will continue but will only store partial (available) data frame.\n"
+            )
+            warnings.warn(message, RuntimeWarning)
 
     # Create output directory. Do not complain if it exists.
     opath = Path(params["model_outdir"])
@@ -60,12 +83,14 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     if modelpath.exists() == False:
         raise Exception(f"ERROR ! Trained model {modelpath} not found.\n")
     fname = f"test_{params['model_eval_suffix']}.csv"
+    if itestdfpath is None:
+        fname = f"test_{params['model_eval_suffix']}_partial.csv"
     predpath = opath / fname
     fname = f"test_{params['json_scores_suffix']}.json"
     scorespath = opath / fname
 
     # Return in DataPathDict structure
-    inputdtd = {"test": itestpath, "model": modelpath}
+    inputdtd = {"test": itestpath, "model": modelpath, "df": itestdfpath}
     outputdtd = {"pred": predpath, "scores": scorespath}
 
     return inputdtd, outputdtd
@@ -93,12 +118,10 @@ def run(params):
 
     # -----------------------------
     # Prepare PyG datasets
-    #test_data_file_name = "test_data"  # TestbedDataset() appends this string with ".pt"
-    ## test_data = TestbedDataset(root=args.test_ml_data_dir, dataset=test_data_file_name)
-    ##test_ml_data_dir_complete = params["ml_data_dir"] / params["test_ml_data_dir"]
-    #test_ml_data_dir_complete = params["test_ml_data_dir"]
-    #test_data = TestbedDataset(root=test_ml_data_dir_complete, dataset=test_data_file_name)
-    test_data = TestbedDataset(root=params["test_ml_data_dir"], dataset="test_data")
+    test_data_file_name = params["test_data_processed"]
+    if test_data_file_name.endswith(".pt"):
+        test_data_file_name = test_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
+    test_data = TestbedDataset(root=indtd["test"], dataset=test_data_file_name)
 
     # PyTorch dataloaders
     test_loader = DataLoader(test_data, batch_size=test_batch,
@@ -138,29 +161,39 @@ def run(params):
     pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
     test_true, test_pred = frm.predicting(model, device, test_loader)  # (groud truth), (predictions)
-    pred_df = pd.DataFrame(test_pred, columns=[pred_col_name])  # This includes only predicted values
 
     # -----------------------------
-    # Concat raw predictions with the cancer and drug ids, and the true values
-    # -----------------------------
-    rsp_df = pd.read_csv(indtd["test"])
-    mm = pd.concat([rsp_df, pred_df], axis=1)
-    mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
+    # Attempt to concat raw predictions with the cancer and drug ids, and the true values
+    if indtd["df"] is not None:
+        rsp_df = pd.read_csv(indtd["df"])
 
-    # Save the raw predictions on val data
-    save_preds(mm,
+        pred_df = pd.DataFrame(test_pred, columns=[pred_col_name])  # This includes only predicted values
+
+        mm = pd.concat([rsp_df, pred_df], axis=1)
+        mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
+
+        # Save the raw predictions on val data
+        # Note that there is no guarantee that the results effectively correspond to
+        # this pre-processing parameters or the specified data frame
+        # since the data is being read from a processed pt file (no from original data frame)
+        save_preds(mm,
                params["canc_col_name"],
                params["drug_col_name"],
                params["y_col_name"],
                params["pred_col_name_suffix"],
                outdtd["pred"],
-              )
+        )
+        y_true = rsp_df[params["y_col_name"]].values
+    else: # Save only ground truth and predictions since cancer and drug ids are not available
+        df_ = pd.DataFrame({true_col_name: test_true, pred_col_name: test_pred})  # This includes true and predicted values
+        # Save preds df
+        df_.to_csv(outdtd["pred"], index=False)
+        y_true = test_true
 
     # -----------------------------
     # Compute performance scores
     # -----------------------------
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    y_true = rsp_df[params["y_col_name"]].values
     test_scores = compute_metrics(y_true, test_pred, metrics)
     test_scores["test_loss"] = test_scores["mse"]
 

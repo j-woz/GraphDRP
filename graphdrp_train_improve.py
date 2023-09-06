@@ -93,6 +93,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     if "val_data_df" in params:
         ivaldfpath = Path(params["val_ml_data_dir"]) / params["val_data_df"]
         if ivaldfpath.exists() == False:
+            ivaldfpath = None
             message = (
                        f"Data frame with original validation response data: {params['val_data_df']} not found." \\
                        + " Will continue but will only store partial (available) data frame.\n"
