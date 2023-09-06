@@ -8,16 +8,6 @@ from typing import Callable, Deque, Dict, Tuple, Union
 import improve.framework as frm
 
 csa_conf = [
-    {"name": "x_data",
-     "nargs": "+",
-     "type": str,
-     "help": "List of feature files.",
-    },
-    {"name": "y_data",
-     "nargs": "+",
-     "type": str,
-     "help": "List of output files.",
-    },
     {"name": "source_data",
      "nargs": "+",
      "type": str,
