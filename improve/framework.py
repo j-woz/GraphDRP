@@ -15,10 +15,12 @@ from typing import List, Set, TypeAlias
 
 import torch
 
+SUPPRESS = argparse.SUPPRESS
+
 import candle
 str2bool = candle.str2bool
+finalize_parameters = candle.finalize_parameters
 
-SUPPRESS = argparse.SUPPRESS
 
 DataPathDict: TypeAlias = dict[str, Path]
 

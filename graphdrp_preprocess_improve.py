@@ -72,9 +72,9 @@ gdrp_data_conf = [
 
 ]
 
-req_aux = [elem["name"] for elem in gdrp_data_conf]
+req_preprocess_args = [elem["name"] for elem in gdrp_data_conf]
 
-req_preprocess_args = req_aux.extend(["y_col_name", "model_outdir"])
+req_preprocess_args.extend(["y_col_name", "model_outdir"])
 
 
 def check_parameter_consistency(params: Dict):
