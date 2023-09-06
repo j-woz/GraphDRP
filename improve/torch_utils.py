@@ -1,5 +1,4 @@
 import os
-import numpy as np
 from torch_geometric.data import InMemoryDataset
 from torch_geometric import data as DATA
 import torch
@@ -37,7 +36,7 @@ class TestbedDataset(InMemoryDataset):
         # print(ss.keys())
         # print(dd.x.shape)
         # print(dd.c_size)
-        print("Loaded pre-processed data.\n")
+        print("PyTorch Dataset initialized.\n")
 
     @property
     def raw_file_names(self):
@@ -76,21 +75,15 @@ class TestbedDataset(InMemoryDataset):
             labels = y[i]   # response
             # convert SMILES to molecular representation using rdkit
             c_size, features, edge_index = smile_graph[smiles]
-            #print("len features: ", len(features))
-            #print("len edge_index: ", len(edge_index))
-            #features = np.array(features)
-            #edge_index = np.array(edge_index)
-            #print("After conversion -> features shape: ", features.shape)
-            #print("After conversion -> edge_index shape: ", edge_index.shape)
             # make the graph ready for PyTorch Geometrics GCN algorithms:
             GCNData = DATA.Data(
-                x=torch.Tensor(np.array(features)),
-                edge_index=torch.LongTensor(np.array(edge_index)).transpose(1, 0),
-                y=torch.FloatTensor(np.array([labels])))
+                x=torch.Tensor(features),
+                edge_index=torch.LongTensor(edge_index).transpose(1, 0),
+                y=torch.FloatTensor([labels]))
 
             # require_grad of cell-line for saliency map
             if self.saliency_map == True:
-                GCNData.target = torch.tensor(np.array([target]),
+                GCNData.target = torch.tensor([target],
                                               dtype=torch.float,
                                               requires_grad=True)
             else:

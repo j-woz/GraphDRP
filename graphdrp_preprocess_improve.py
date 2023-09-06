@@ -357,7 +357,7 @@ def run(params):
         print("stage ", st, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
         # Save the processed (all) data as PyTorch dataset
         TestbedDataset(root=outdtd["preprocess"],
-                       dataset=st + "_" + params["x_data_suffix"],
+                       dataset=st + "_" + params["data_suffix"],
                        xd=xd,
                        xt=xc,
                        y=y,
