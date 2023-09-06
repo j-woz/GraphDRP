@@ -1,5 +1,6 @@
 """Functionality for Preprocessing Data for Training a GraphDRP Model."""
 
+import os
 from pathlib import Path
 from typing import Dict
 
@@ -64,7 +65,7 @@ gdrp_data_conf = [
      "help": "Gene identifier system to use. Options: 'Entrez', 'Gene_Symbol', 'Ensembl', 'all', or any list combination.",
     },
     {"name": "use_lincs",
-     "type": csa.frm.str2bool,
+     "type": frm.str2bool,
      "default": True,
      "help": "Flag to indicate if using landmark genes.",
     },
@@ -226,8 +227,8 @@ def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_n
         count_miss_drug = 0
         # Convert to indices for rapid lookup
         df_drug = df_drug.set_index([drug_col_name])
-        df_cell = df_drug.set_index([canc_col_name])
-        for i in range(df.shape[0]):  # tuples of (drug name, cell id, response)
+        df_cell = df_cell.set_index([canc_col_name])
+        for i in range(df_response.shape[0]):  # tuples of (drug name, cell id, response)
             if i > 0 and (i%15000 == 0):
                 print(i)
             drug, cell, rsp = df_response.iloc[i, :].values.tolist()
@@ -247,17 +248,18 @@ def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_n
                     # miss_cell.append(cell)
                     count_miss_cell += 1
                 else: # Both drug and cell were found
-                    xd.append(drug_features[1:].values) # xd contains list of drug feature vectors
-                    xc.append(cell_features[1:].values) # xc contains list of cell feature vectors
+                    xd.append(drug_features.values) # xd contains list of drug feature vectors
+                    xc.append(cell_features.values) # xc contains list of cell feature vectors
                     y.append(rsp)
 
         print("Number of NaN responses: ", count_nan_rsp)
         print("Number of drugs not found: ", count_miss_drug)
         print("Number of cells not found: ", count_miss_cell)
+        # Reset index
+        df_drug = df_drug.reset_index()
+        df_cell = df_cell.reset_index()
 
-        xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
-
-        return xd, xc, y
+        return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
 
 
 def run(params):
@@ -292,7 +294,7 @@ def run(params):
                            columns=["improve_chem_id", "smiles"],
                           )
 
-    smile_graphs = build_graphs_from_smiles_collection(df_drug["smiles"].values)
+    smile_graphs = build_graph_dict_from_smiles_collection(df_drug["smiles"].values)
 
     # -------------------
     # Load cancer data

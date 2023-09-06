@@ -1,5 +1,9 @@
 "Utilities from rdkit Package"
 
+"""Functionality depending on rdkit."""
+
+import numpy as np
+
 from rdkit import Chem
 import networkx as nx
 
