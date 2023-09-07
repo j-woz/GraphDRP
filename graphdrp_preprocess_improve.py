@@ -72,7 +72,7 @@ gdrp_data_conf = [
 
 ]
 
-req_preprocess_args = [elem["name"] for elem in gdrp_data_conf]
+req_preprocess_args = [ll["name"] for ll in gdrp_data_conf]
 
 req_preprocess_args.extend(["y_col_name", "model_outdir"])
 
