@@ -284,22 +284,16 @@ def determine_device(cuda_name_from_params):
     return device
 
 
-def build_data_loaders(train_dir, train_data, train_batch, val_dir, val_data, val_batch):
-    train_data_file_name = train_data
-    if train_data_file_name.endswith(".pt"):
-        train_data_file_name = train_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    val_data_file_name = val_data
-    if val_data_file_name.endswith(".pt"):
-        val_data_file_name = val_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    train_data = TestbedDataset(root=train_dir, dataset=train_data_file_name) # TestbedDataset() requires strings
-    val_data = TestbedDataset(root=val_dir, dataset=val_data_file_name) # TestbedDataset() requires strings
+def build_PT_data_loader(datadir: str, datafname: str, batch: int, shuffle: bool):
+    data_file_name = datafname
+    if data_file_name.endswith(".pt"):
+        data_file_name = data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
 
-    # PyTorch dataloaders
-    train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
-    # Note! Don't shuffle the val_loader or results will be corrupted
-    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
+    dataset = TestbedDataset(root=datadir, dataset=data_file_name) # TestbedDataset() requires strings
 
-    return train_loader, val_loader
+    # PyTorch dataloader
+    loader = DataLoader(dataset, batch_size=batch, shuffle=shuffle)
+    return loader
 
 
 def evaluate_model(model_arch, device, modelpath, val_loader):
@@ -393,12 +387,16 @@ def run(params):
 
     # -----------------------------
     # Prepare PyTorch dataloaders
-    train_loader, val_loader = build_data_loaders(params["train_ml_data_dir"],
-                                                  params["train_data_processed"],
-                                                  params["batch_size"],
-                                                  params["val_ml_data_dir"],
-                                                  params["val_data_processed"],
-                                                  params["val_batch"])
+    train_loader = build_PT_data_loader(params["train_ml_data_dir"],
+                                        params["train_data_processed"],
+                                        params["batch_size"],
+                                        shuffle=True)
+
+    # Note! Don't shuffle the val_loader or results will be corrupted
+    val_loader = build_PT_data_loader(params["val_ml_data_dir"],
+                                        params["val_data_processed"],
+                                        params["val_batch"],
+                                        shuffle=False)
 
     # -----------------------------
     # Train
