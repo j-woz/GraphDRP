@@ -305,7 +305,7 @@ def evaluate_model(model_arch, device, modelpath, val_loader):
     return val_true, val_pred
 
 
-def store_predictions_df(params, indtd, outdtd, val_true, val_pred):
+def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
     pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
     # -----------------------------
@@ -313,7 +313,7 @@ def store_predictions_df(params, indtd, outdtd, val_true, val_pred):
     if indtd["df"] is not None:
         rsp_df = pd.read_csv(indtd["df"])
 
-        pred_df = pd.DataFrame(val_pred, columns=[pred_col_name])  # This includes only predicted values
+        pred_df = pd.DataFrame(y_pred, columns=[pred_col_name])  # This includes only predicted values
 
         mm = pd.concat([rsp_df, pred_df], axis=1)
         mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
@@ -329,14 +329,16 @@ def store_predictions_df(params, indtd, outdtd, val_true, val_pred):
                params["pred_col_name_suffix"],
                outdtd["pred"],
         )
-        y_true = rsp_df[params["y_col_name"]].values # Read from data frame
+        y_true_return = rsp_df[params["y_col_name"]].values # Read from data frame
+        print("Stored orig drug, cell and evaluation in: ", outdtd["pred"])
     else: # Save only ground truth and predictions since cancer and drug ids are not available
-        df_ = pd.DataFrame({true_col_name: val_true, pred_col_name: val_pred})  # This includes true and predicted values
+        df_ = pd.DataFrame({true_col_name: y_true, pred_col_name: y_pred})  # This includes true and predicted values
         # Save preds df
         df_.to_csv(outdtd["pred"], index=False)
-        y_true = val_true
+        y_true_return = y_true
+        print("Stored only evaluation in: ", outdtd["pred"])
 
-    return y_true
+    return y_true_return
 
 
 def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):

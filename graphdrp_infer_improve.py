@@ -214,10 +214,10 @@ def run(params):
     # If data frame found, then y_true is read from data frame and returned
     # Otherwise, only a partial data frame is stored (with test_true and test_pred)
     # and y_true is equal to pytorch loaded test_true
-    y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
+    y_true = store_predictions_df(params, indtd, outdtd, test_true, test_pred)
     # Compute performance scores
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    test_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd)
+    test_scores = compute_performace_scores(y_true, test_pred, metrics, outdtd, "test")
 
     return test_scores
 
