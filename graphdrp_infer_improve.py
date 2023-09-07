@@ -22,8 +22,15 @@ from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 
-from graphdrp_preprocess_improve import gdrp_data_conf
-from graphdrp_train_improve import gdrp_model_conf, save_preds, str2Class
+from graphdrp_train_improve import (
+    gdrp_data_conf,
+    gdrp_model_conf,
+    determine_device,
+    build_PT_data_loader,
+    evaluate_model,
+    store_predictions_df,
+    compute_performace_scores,
+)
 
 filepath = Path(__file__).resolve().parent
 
@@ -113,95 +120,17 @@ def run(params):
     # outdtd is dictionary with output_description: path components
 
     # -----------------------------
-    # Infer parameters
-    test_batch = params["test_batch"]
-
-    # -----------------------------
-    # Prepare PyG datasets
-    test_data_file_name = params["test_data_processed"]
-    if test_data_file_name.endswith(".pt"):
-        test_data_file_name = test_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    test_data = TestbedDataset(root=params["test_ml_data_dir"], dataset=test_data_file_name) # TestbedDataset() requires strings
-
-    # PyTorch dataloaders
-    test_loader = DataLoader(test_data, batch_size=test_batch,
-                             shuffle=False)  # Note! Don't shuffle the test_loader or results will be corrupted
-
-    # -----------------------------
     # [Req]
     # Determine CUDA/CPU device and configure CUDA device if available
-    cuda_avail = torch.cuda.is_available()
-    print("CPU/GPU: ", cuda_avail)
-    if cuda_avail:  # GPU available
-        # -----------------------------
-        # CUDA device from env var
-        cuda_env_visible = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_env_visible is not None:
-            # Note! When one or multiple device numbers are passed via CUDA_VISIBLE_DEVICES,
-            # the values in python script are reindexed and start from 0.
-            print("CUDA_VISIBLE_DEVICES: ", cuda_env_visible)
-            cuda_name = "cuda:0"
-        else:
-            cuda_name = params["cuda_name"]
-        device = cuda_name
-    else:
-        device = "cpu"
+    device = determine_device(params["cuda_name"])
 
     # -----------------------------
-    # Move model to device
-    model = str2Class(params["model_arch"]).to(device)
-
-    # -----------------------------
-    model.load_state_dict(torch.load(indtd["model"]))
-    model.eval()
-
-    # -----------------------------
-    # Compute raw predictions
-    # -----------------------------
-    pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
-    true_col_name = params["y_col_name"] + "_true"
-    test_true, test_pred = frm.predicting(model, device, test_loader)  # (groud truth), (predictions)
-
-    # -----------------------------
-    # Attempt to concat raw predictions with the cancer and drug ids, and the true values
-    if indtd["df"] is not None:
-        rsp_df = pd.read_csv(indtd["df"])
-
-        pred_df = pd.DataFrame(test_pred, columns=[pred_col_name])  # This includes only predicted values
-
-        mm = pd.concat([rsp_df, pred_df], axis=1)
-        mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
-
-        # Save the raw predictions on val data
-        # Note that there is no guarantee that the results effectively correspond to
-        # this pre-processing parameters or the specified data frame
-        # since the data is being read from a processed pt file (no from original data frame)
-        save_preds(mm,
-               params["canc_col_name"],
-               params["drug_col_name"],
-               params["y_col_name"],
-               params["pred_col_name_suffix"],
-               outdtd["pred"],
-        )
-        y_true = rsp_df[params["y_col_name"]].values
-    else: # Save only ground truth and predictions since cancer and drug ids are not available
-        df_ = pd.DataFrame({true_col_name: test_true, pred_col_name: test_pred})  # This includes true and predicted values
-        # Save preds df
-        df_.to_csv(outdtd["pred"], index=False)
-        y_true = test_true
-
-    # -----------------------------
-    # Compute performance scores
-    # -----------------------------
-    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    test_scores = compute_metrics(y_true, test_pred, metrics)
-    test_scores["test_loss"] = test_scores["mse"]
-
-    with open(outdtd["scores"], "w", encoding="utf-8") as f:
-        json.dump(test_scores, f, ensure_ascii=False, indent=4)
-
-    print("Inference scores:\n\t{}".format(test_scores))
-    return test_scores
+    # Prepare PyTorch dataloaders
+    # Note! Don't shuffle the test_loader or results will be corrupted
+    test_loader = build_PT_data_loader(params["test_ml_data_dir"],
+                                        params["test_data_processed"],
+                                        params["test_batch"],
+                                        shuffle=False)
 
     # -----------------------------
     # Load the saved model
