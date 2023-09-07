@@ -15,9 +15,8 @@ from graphdrp_preprocess_improve import (
     req_preprocess_args,
     check_parameter_consistency,
     raw_data_available,
-    common_data,
-    load_response_data,
-    compose_data_arrays,
+    build_common_data,
+    build_stage_dependent_data,
 )
 
 filepath = Path(__file__).resolve().parent
@@ -53,13 +52,13 @@ def run(params: Dict):
     # Construct data frames for drug and cell features
     # ------------------------------------------------------
     # [Req]
-    df_drug, df_cell_all, smile_graphs = common_data(params, inpathd)
+    df_drug, df_cell_all, smile_graphs = build_common_data(params, inpathd)
 
     # -------------------------------------------
     # Construct ML data for every split and stage
     # -------------------------------------------
     stages = ["train", "val", "test"]
-
+    scaler = None
     while tobuildq:
         elem = tobuildq.popleft() # This is (DataSplit, ISplitPath, OSplitPath)
         for st in stages:
@@ -70,47 +69,18 @@ def run(params: Dict):
                 source = elem[0].data_target
                 split_id = elem[0].split_target_index
 
-            # ------------------------------
-            # Load y data according to stage
-            # ------------------------------
-            df_response = load_response_data(inpathd,
-                                       params["response_file"],
-                                       source,
-                                       split_id,
-                                       st,
-                                       params["canc_col_name"],
-                                       params["drug_col_name"],
-                          )
-            # Retain (canc, drug) response samples for which omic data is available
-            df_y, df_cell = dtl.get_common_samples(df1=df_response,
-                                               df2=df_cell_all,
-                                               ref_col=params["canc_col_name"])
-            print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
+            outdtd = {"preprocess": elem[2]}
 
-            # Normalize features using training set -> ToDo: implement this
-            #if st == "train":
-                # Normalize
-                # Store normalization object
-            #else:
-                # Use previous normalization object
-
-            # Sub-select desired response column (y_col_name)
-            # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
-            df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
-            # Combine data
-            xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell, params["drug_col_name"], params["canc_col_name"])
-            print("stage ", st, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
-            # Save the processed (all) data as PyTorch dataset
-            TestbedDataset(root=elem[2],#outdtd["preprocess"],
-                       dataset=st + "_" + params["data_suffix"],
-                       xd=xd,
-                       xt=xc,
-                       y=y,
-                       smile_graph=smile_graphs)
-
-            # Save the subset of y data
-            fname = f"{st}_{params['y_data_suffix']}.csv"
-            df_y.to_csv(elem[2] / fname, index=False)
+            scaler = build_stage_dependent_data(params,
+                                   inpathd,
+                                   outdtd,
+                                   st,
+                                   source,
+                                   split_id,
+                                   df_drug,
+                                   df_cell_all,
+                                   smile_graphs,
+            )
 
 
 def main():

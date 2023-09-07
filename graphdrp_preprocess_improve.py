@@ -262,7 +262,7 @@ def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_n
         return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
 
 
-def common_data(params: Dict, inputdtd: frm.DataPathDict):
+def build_common_data(params: Dict, inputdtd: frm.DataPathDict):
     """Construct common feature data frames.
 
     Parameters
@@ -312,6 +312,60 @@ def common_data(params: Dict, inputdtd: frm.DataPathDict):
     return df_drug, df_cell_all, smile_graphs
 
 
+def build_stage_dependent_data(params: Dict,
+                         inputdtd: frm.DataPathDict,
+                         outputdtd: frm.DataPathDict,
+                         stage: str,
+                         source: str,
+                         split_id: int,
+                         df_drug: pd.DataFrame,
+                         df_cell_all: pd.DataFrame,
+                         smile_graphs,
+                         ):
+    # -----------------------------
+    # Load y data according to stage
+    # ------------------------------
+    df_response = load_response_data(inputdtd,
+                                    params["response_file"],
+                                    source,
+                                    split_id,
+                                    stage,
+                                    params["canc_col_name"],
+                                    params["drug_col_name"],
+                  )
+    # Retain (canc, drug) response samples for which omic data is available
+    df_y, df_cell = dtl.get_common_samples(df1=df_response,
+                                               df2=df_cell_all,
+                                               ref_col=params["canc_col_name"])
+    print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
+
+    # Normalize features using training set -> ToDo: implement this
+    #if stage == "train":
+        # Normalize
+        # Store normalization object
+    #else:
+        # Use previous normalization object
+
+    # Sub-select desired response column (y_col_name)
+    # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
+    df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
+    # Combine data
+    xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell, params["drug_col_name"], params["canc_col_name"])
+    print("stage ", stage, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
+    # Save the processed (all) data as PyTorch dataset
+    TestbedDataset(root=outputdtd["preprocess"],
+                       dataset=stage + "_" + params["data_suffix"],
+                       xd=xd,
+                       xt=xc,
+                       y=y,
+                       smile_graph=smile_graphs)
+    # Save the subset of y data
+    fname = f"{stage}_{params['y_data_suffix']}.csv"
+    df_y.to_csv(outputdtd["preprocess"] / fname, index=False)
+
+    return None # Should return scaler
+
+
 def run(params):
     """Execute data pre-processing for graphDRP model.
 
@@ -338,58 +392,27 @@ def run(params):
     # Construct data frames for drug and cell features
     # ------------------------------------------------------
     # [Req]
-    df_drug, df_cell_all, smile_graphs = common_data(params, indtd)
+    df_drug, df_cell_all, smile_graphs = build_common_data(params, indtd)
 
     # -------------------------------------------
     # Construct ML data for every stage
     # -------------------------------------------
     stages = ["train", "val", "test"]
-
+    scaler = None
     for st in stages:
         print(f"Building stage: {st}")
         source = params["data_set"]
         split_id = params["split_id"]
-
-        # -----------------------------
-        # Load y data according to stage
-        # ------------------------------
-        df_response = load_response_data(indtd,
-                                    params["response_file"],
-                                    source,
-                                    split_id,
-                                    st,
-                                    params["canc_col_name"],
-                                    params["drug_col_name"],
-                          )
-        # Retain (canc, drug) response samples for which omic data is available
-        df_y, df_cell = dtl.get_common_samples(df1=df_response,
-                                               df2=df_cell_all,
-                                               ref_col=params["canc_col_name"])
-        print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
-
-        # Normalize features using training set -> ToDo: implement this
-        #if st == "train":
-            # Normalize
-            # Store normalization object
-        #else:
-            # Use previous normalization object
-
-        # Sub-select desired response column (y_col_name)
-        # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
-        df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
-        # Combine data
-        xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell, params["drug_col_name"], params["canc_col_name"])
-        print("stage ", st, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
-        # Save the processed (all) data as PyTorch dataset
-        TestbedDataset(root=outdtd["preprocess"],
-                       dataset=st + "_" + params["data_suffix"],
-                       xd=xd,
-                       xt=xc,
-                       y=y,
-                       smile_graph=smile_graphs)
-        # Save the subset of y data
-        fname = f"{st}_{params['y_data_suffix']}.csv"
-        df_y.to_csv(outdtd["preprocess"] / fname, index=False)
+        scaler = build_stage_dependent_data(params,
+                                   indtd,
+                                   outdtd,
+                                   st,
+                                   source,
+                                   split_id,
+                                   df_drug,
+                                   df_cell_all,
+                                   smile_graphs,
+        )
 
 
 def main():
