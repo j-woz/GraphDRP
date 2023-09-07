@@ -126,7 +126,7 @@ def directory_tree_from_parameters(
                             ydata = inpath / fname
                             if ydata.exists() == False:
                                 raise Exception(f"ERROR ! Ground truth data '{ydata}' not found.\n")
-                            fname = f"{stg}_{params['x_data_suffix']}.pt"
+                            fname = f"{stg}_{params['data_suffix']}.pt"
                             xdata = inpath / "processed" / fname
                             if xdata.exists() == False:
                                 raise Exception(f"ERROR ! Feature data '{xdata}' not found.\n")

@@ -1,59 +1,29 @@
 """Functionality for Training in Cross-Study Analysis (CSA) for GraphDRP Model."""
 
 from pathlib import Path
-import os
-
-
-import json
-import sys
-
-import numpy as np
-import pandas as pd
-
-
-import torch
-from torch_geometric.data import DataLoader
 
 from improve import csa
-from candle import build_pytorch_optimizer, get_pytorch_function, keras_default_config, CandleCkptPyTorch
 
-from improve.torch_utils import TestbedDataset
-from improve.metrics import compute_metrics
-from models.gat import GATNet
-from models.gat_gcn import GAT_GCN
-from models.gcn import GCNNet
-from models.ginconv import GINConvNet
+#from models.gat import GATNet
+#from models.gat_gcn import GAT_GCN
+#from models.gcn import GCNNet
+#from models.ginconv import GINConvNet
 
-from graphdrp_train_improve import str2Class
+from csa_graphdrp_preprocess_improve import not_used_from_model, required_csa
+
+from graphdrp_train_improve import (
+    Trainer,
+    gdrp_data_conf,
+    gdrp_model_conf,
+    determine_device,
+    build_PT_data_loader,
+    evaluate_model,
+    store_predictions_df,
+    compute_performace_scores,
+)
 
 filepath = Path(__file__).resolve().parent
 
-
-
-def train(model, device, train_loader, optimizer, loss_fn, epoch, log_interval):
-    """ Training of one epoch (all batches). """
-    print("Training on {} samples...".format(len(train_loader.dataset)))
-    model.train()
-    avg_loss = []
-    for batch_idx, data in enumerate(train_loader):
-        data = data.to(device)
-        optimizer.zero_grad()
-        output, _ = model(data)
-        loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
-        loss.backward()
-        optimizer.step()
-        avg_loss.append(loss.item())
-        if batch_idx % log_interval == 0:
-            print(
-                "Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data.x),
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
-                )
-            )
-    return sum(avg_loss) / len(avg_loss)
 
 
 def run(params):
@@ -72,37 +42,74 @@ def run(params):
     print(totrainq)
 
     # -----------------------------
+    # [Req]
+    # Determine CUDA/CPU device and configure CUDA device if available
+    device = determine_device(params["cuda_name"])
+
+    # -----------------------------
     # Train ML data for every split
     # -----------------------------
     while totrainq:
         elem = totrainq.popleft() # This is (DataSplit, InputSplitPath, OutputSplitPath)
-        # -----------------------------------------------
-        # Prepare checkpoint path to follow CSA structure
-        ckptpath = elem[2] / "ckpts"
-        os.makedirs(ckptpath, exist_ok=True)
-        params["ckpt_directory"] = ckptpath # Needed to build checkpointing
-        # model_path = elem[2] / params["model_params"]
-        # -----------------------------------------------
-        # Recover datasets from CSA structure
-        xpath = elem[1] / "processed"
-        if xpath.exists() == False:
-            raise Exception(f"ERROR ! Feature data path '{xpath}' not found.\n")
-        train_data_file_name = f"train_{params['x_data_suffix']}" # TestbedDataset() appends this string with ".pt"
-        val_data_file_name = f"val_{params['x_data_suffix']}"
 
-########## Use graphdrp_train_improve......
+        # indtd is dictionary with input_description: path components
+        # outdtd is dictionary with output_description: path components
+        indtd = {"train": elem[1], "val": elem[1], "df": elem[1]}
+        outdtd = {"model": elem[2], "pred": elem[2], "scores": elem[2]}
+
+        # -------------------------------------
+        # Create Trainer object and setup train
+        # -------------------------------------
+        trobj = Trainer(params, device, outdtd["model"])
+        trobj.setup_train()
+        # -----------------------------
+        # Set checkpointing
+        # -----------------------------
+        if params["ckpt_directory"] is None:
+            params["ckpt_directory"] = outdtd["model"]
+        initial_epoch = trobj.config_checkpointing(params["ckpt_directory"])
+
+        # -----------------------------
+        # Prepare PyTorch dataloaders
+        train_data = f"train_{params['data_suffix']}" # TestbedDataset() appends this string with ".pt"
+        train_loader = build_PT_data_loader(indtd["train"],
+                                        train_data,
+                                        params["batch_size"],
+                                        shuffle=True)
+
+        # Note! Don't shuffle the val_loader or results will be corrupted
+        val_data = f"val_{params['data_suffix']}" # TestbedDataset() appends this string with ".pt"
+        val_loader = build_PT_data_loader(indtd["val"],
+                                        val_data,
+                                        params["val_batch"],
+                                        shuffle=False)
+
+        # -----------------------------
+        # Train
+        # -----------------------------
+        trobj.execute_train(train_loader, val_loader, initial_epoch)
+
+        # -----------------------------
+        # Load the (best) saved model (as determined based on val data)
+        # Compute predictions
+        # (groud truth), (predictions)
+        val_true, val_pred = evaluate_model(params["model_arch"], device, outdtd["model"], val_loader)
+
+        # Store predictions in data frame
+        # Attempt to concat predictions with the cancer and drug ids, and the true values
+        # If data frame found, then y_true is read from data frame and returned
+        # Otherwise, only a partial data frame is stored (with val_true and val_pred)
+        # and y_true is equal to pytorch loaded val_true
+        y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
+        # Compute performance scores
+        metrics = ["mse", "rmse", "pcc", "scc", "r2"]
+        compute_performace_scores(y_true, val_pred, metrics, outdtd, "val")
 
 
 def main():
-    params = csa.frm.initialize_parameters(filepath,
-                                       default_model="csa_graphdrp_default_model.txt",
-                                       additional_definitions = csa.csa_conf,
-                                       required = csa.req_csa_args,
-                                      )
-
     params = csa.initialize_parameters(filepath,
                                        default_model="csa_graphdrp_default_model.txt",
-                                       additional_definitions = gdrp_data_conf,
+                                       additional_definitions = gdrp_data_conf + gdrp_model_conf,
                                        required = required_csa,
                                        topop = not_used_from_model,
                                       )
