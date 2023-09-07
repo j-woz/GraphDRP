@@ -415,9 +415,9 @@ def run(params):
 
     # Store predictions in data frame
     # Attempt to concat predictions with the cancer and drug ids, and the true values
-    # If data frame found then y_true is read from data frame and returned
+    # If data frame found, then y_true is read from data frame and returned
     # Otherwise, only a partial data frame is stored (with val_true and val_pred)
-    # and y_true is evaluated val_true
+    # and y_true is equal to pytorch loaded val_true
     y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
     # Compute performance scores
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
