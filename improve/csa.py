@@ -48,7 +48,7 @@ class DataSplit:
 
 def directory_tree_from_parameters(
     params: Dict,
-    raw_data_check: Callable,
+    raw_data_check: Callable = None,
     step: str = "preprocess",
 ) -> Tuple[Deque, Union[frm.DataPathDict, None]]:
     """

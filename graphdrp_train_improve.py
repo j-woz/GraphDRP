@@ -124,21 +124,62 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     return inputdtd, outputdtd
 
 
-def train(model, device, train_loader, optimizer, loss_fn, epoch, log_interval):
-    """ Training of one epoch (all batches). """
-    print("Training on {} samples...".format(len(train_loader.dataset)))
-    model.train()
-    avg_loss = []
-    for batch_idx, data in enumerate(train_loader):
-        data = data.to(device)
-        optimizer.zero_grad()
-        output, _ = model(data)
-        loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
-        loss.backward()
-        optimizer.step()
-        avg_loss.append(loss.item())
-        if batch_idx % log_interval == 0:
-            print(
+class Trainer:
+    def __init__(self, params, device, modelpath, metrics=None):
+        # -----------------------------
+        # Create and move model to device
+        self.model_arch = params["model_arch"]
+        self.model = str2Class(self.model_arch).to(device)
+        self.params = params
+        self.device = device
+        self.modelpath = modelpath
+        if metrics is not None:
+            self.metrics = metrics
+        else:
+            self.metrics = ["mse", "rmse", "pcc", "scc"]
+
+    def setup_train(self,):
+        # Construct DL optimizer and loss
+        keras_defaults = keras_default_config()
+        self.optimizer = build_pytorch_optimizer(
+            model=self.model,
+            optimizer=self.params["optimizer"],
+            lr=self.params["learning_rate"],
+            kerasDefaults=keras_defaults
+        )
+        self.loss_fn = get_pytorch_function(self.params["loss"])
+        # Train parameters
+        self.num_epoch = self.params["epochs"]
+        self.log_interval = self.params["log_interval"]
+        self.patience = self.params["patience"]
+
+
+    def config_checkpointing(self, ckpt_directory):
+        self.params["ckpt_directory"] = ckpt_directory
+        initial_epoch = 0
+        self.ckpt = CandleCkptPyTorch(self.params)
+        self.ckpt.set_model({"model": self.model, "optimizer": self.optimizer})
+        J = self.ckpt.restart(self.model)
+        if J is not None:
+            initial_epoch = J["epoch"]
+            print("restarting from ckpt: initial_epoch: %i" % initial_epoch)
+
+        return initial_epoch
+
+    def train(self, train_loader, epoch):
+        print("Training on {} samples...".format(len(train_loader.dataset)))
+        self.model.train()
+        avg_loss = []
+        for batch_idx, data in enumerate(train_loader):
+            data = data.to(self.device)
+            self.optimizer.zero_grad()
+            output, _ = self.model(data)
+            loss = self.loss_fn(output, data.y.view(-1, 1).float().to(self.device))
+            loss.backward()
+            self.optimizer.step()
+            avg_loss.append(loss.item())
+            if batch_idx % self.log_interval == 0:
+                print(
                 "Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
                     batch_idx * len(data.x),
@@ -147,7 +188,41 @@ def train(model, device, train_loader, optimizer, loss_fn, epoch, log_interval):
                     loss.item(),
                 )
             )
-    return sum(avg_loss) / len(avg_loss)
+        return sum(avg_loss) / len(avg_loss)
+
+    def execute_train(self, train_loader, val_loader, initial_epoch):
+
+        # Settings for early stop and best model settings
+        best_score = np.inf
+        best_epoch = -1
+        early_stop_counter = 0  # define early-stop counter
+        early_stop_metric = "mse"  # metric for early stop
+
+        # Iterate over epochs
+        for epoch in range(initial_epoch, self.num_epoch):
+            train_loss = self.train(train_loader, epoch + 1)
+            self.ckpt.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
+
+            # Predict with val data
+            val_true, val_pred = frm.predicting(self.model, self.device, val_loader)  # val_true (groud truth), val_pred (predictions)
+            val_scores = compute_metrics(val_true, val_pred, self.metrics)
+
+            # For early stop
+            if val_scores[early_stop_metric] < best_score:
+                torch.save(self.model.state_dict(), self.modelpath)
+                best_epoch = epoch + 1
+                best_score = val_scores[early_stop_metric]
+                print(f"{early_stop_metric} improved at epoch {best_epoch}; Best \
+                  {early_stop_metric}: {best_score}; Model: {self.model_arch}")
+                early_stop_counter = 0  # zero the early-stop counter if the model improved after the epoch
+            else:
+                print(f"No improvement since epoch {best_epoch}; Best \
+                  {early_stop_metric}: {best_score}; Model: {self.model_arch}")
+                early_stop_counter += 1  # increment the counter if the model was not improved after the epoch
+
+            if early_stop_counter == self.patience:
+                print(f"Terminate training (model did not improve on val data for {self.patience} epochs).")
+                continue
 
 
 def save_preds(df: pd.DataFrame,
@@ -188,49 +263,7 @@ def save_preds(df: pd.DataFrame,
     return None
 
 
-def run(params):
-    """ Execute specified model training.
-
-    Parameters
-    ----------
-    params: python dictionary
-        A dictionary of Candle keywords and parsed values.
-    """
-    # ------------------------------------------------------
-    # Check data availability and create output directory
-    # ------------------------------------------------------
-    # [Req]
-    indtd, outdtd = check_data_available(params)
-    # indtd is dictionary with input_description: path components
-    # outdtd is dictionary with output_description: path components
-
-    # -----------------------------
-    # Train parameters
-    lr = params["learning_rate"]
-    num_epoch = params["epochs"]
-    train_batch = params["batch_size"]
-    log_interval = params["log_interval"]
-    val_batch = params["val_batch"]
-
-    # -----------------------------
-    # Prepare PyG datasets
-    train_data_file_name = params["train_data_processed"]
-    if train_data_file_name.endswith(".pt"):
-        train_data_file_name = train_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    val_data_file_name = params["val_data_processed"]
-    if val_data_file_name.endswith(".pt"):
-        val_data_file_name = val_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    train_data = TestbedDataset(root=params["train_ml_data_dir"], dataset=train_data_file_name) # TestbedDataset() requires strings
-    val_data = TestbedDataset(root=params["val_ml_data_dir"], dataset=val_data_file_name) # TestbedDataset() requires strings
-
-    # PyTorch dataloaders
-    train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
-    # Note! Don't shuffle the val_loader or results will be corrupted
-    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
-
-    # -----------------------------
-    # [Req]
-    # Determine CUDA/CPU device and configure CUDA device if available
+def determine_device(cuda_name_from_params):
     cuda_avail = torch.cuda.is_available()
     print("CPU/GPU: ", cuda_avail)
     if cuda_avail:  # GPU available
@@ -243,92 +276,44 @@ def run(params):
             print("CUDA_VISIBLE_DEVICES: ", cuda_env_visible)
             cuda_name = "cuda:0"
         else:
-            cuda_name = params["cuda_name"]
+            cuda_name = cuda_name_from_params
         device = cuda_name
     else:
         device = "cpu"
 
-    # -----------------------------
-    # Move model to device
-    model = str2Class(params["model_arch"]).to(device)
+    return device
 
-    # -----------------------------
-    # [Req]
-    # DL optimizer and loss
-    keras_defaults = keras_default_config()
-    optimizer = build_pytorch_optimizer(
-        model=model,
-        optimizer=params["optimizer"],
-        lr=lr,
-        kerasDefaults=keras_defaults
-    )  # Note! Specified in graphdrp_default_model.txt
-    loss_fn = get_pytorch_function(params["loss"])
 
-    # -----------------------------
-    # Checkpointing
-    # -----------------------------
-    if params["ckpt_directory"] is None:
-        params["ckpt_directory"] = params["model_outdir"]
-    initial_epoch = 0
-    ckpt = CandleCkptPyTorch(params)
-    ckpt.set_model({"model": model, "optimizer": optimizer})
-    J = ckpt.restart(model)
-    if J is not None:
-        initial_epoch = J["epoch"]
-        print("restarting from ckpt: initial_epoch: %i" % initial_epoch)
+def build_data_loaders(train_dir, train_data, train_batch, val_dir, val_data, val_batch):
+    train_data_file_name = train_data
+    if train_data_file_name.endswith(".pt"):
+        train_data_file_name = train_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
+    val_data_file_name = val_data
+    if val_data_file_name.endswith(".pt"):
+        val_data_file_name = val_data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
+    train_data = TestbedDataset(root=train_dir, dataset=train_data_file_name) # TestbedDataset() requires strings
+    val_data = TestbedDataset(root=val_dir, dataset=val_data_file_name) # TestbedDataset() requires strings
 
-    # -----------------------------
-    # Train
-    # -----------------------------
-    metrics = ["mse", "rmse", "pcc", "scc"]
+    # PyTorch dataloaders
+    train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
+    # Note! Don't shuffle the val_loader or results will be corrupted
+    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
 
-    # Settings for early stop and best model settings
-    best_score = np.inf
-    best_epoch = -1
-    early_stop_counter = 0  # define early-stop counter
-    early_stop_metric = "mse"  # metric for early stop
+    return train_loader, val_loader
 
-    # Iterate over epochs
-    for epoch in range(initial_epoch, num_epoch):
-        train_loss = train(model, device, train_loader, optimizer, loss_fn, epoch + 1, log_interval)
-        ckpt.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
 
-        # Predict with val data
-        val_true, val_pred = frm.predicting(model, device, val_loader)  # val_true (groud truth), val_pred (predictions)
-        val_scores = compute_metrics(val_true, val_pred, metrics)
-
-        # For early stop
-        if val_scores[early_stop_metric] < best_score:
-            #torch.save(model.state_dict(), model_path)
-            torch.save(model.state_dict(), outdtd["model"])
-            best_epoch = epoch + 1
-            best_score = val_scores[early_stop_metric]
-            print(f"{early_stop_metric} improved at epoch {best_epoch}; Best \
-                  {early_stop_metric}: {best_score}; Model: {params['model_arch']}")
-            early_stop_counter = 0  # zero the early-stop counter if the model improved after the epoch
-        else:
-            print(f"No improvement since epoch {best_epoch}; Best \
-                  {early_stop_metric}: {best_score}; Model: {params['model_arch']}")
-            early_stop_counter += 1  # increment the counter if the model was not improved after the epoch
-
-        if early_stop_counter == params["patience"]:
-            print(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
-            continue
-
-    # -----------------------------
-    # Load the (best) saved model (as determined based on val data)
-    del model
-    model = str2Class(params["model_arch"]).to(device)
-    model.load_state_dict(torch.load(outdtd["model"]))
+def evaluate_model(model_arch, device, modelpath, val_loader):
+    model = str2Class(model_arch).to(device)
+    model.load_state_dict(torch.load(modelpath))
     model.eval()
-
-    # -----------------------------
-    # [Req]
-    # Compute raw predictions
-    pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
-    true_col_name = params["y_col_name"] + "_true"
     val_true, val_pred = frm.predicting(model, device, val_loader)  # (groud truth), (predictions)
 
+    return val_true, val_pred
+
+
+def store_predictions_df(params, indtd, outdtd, val_true, val_pred):
+    pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
+    true_col_name = params["y_col_name"] + "_true"
     # -----------------------------
     # Attempt to concat raw predictions with the cancer and drug ids, and the true values
     if indtd["df"] is not None:
@@ -357,10 +342,10 @@ def run(params):
         df_.to_csv(outdtd["pred"], index=False)
         y_true = val_true
 
-    # -----------------------------
-    # Compute performance scores
-    # -----------------------------
-    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
+    return y_true
+
+
+def compute_performace_scores(y_true, val_pred, metrics, outdtd):
     val_scores = compute_metrics(y_true, val_pred, metrics)
     val_scores["val_loss"] = val_scores["mse"]
 
@@ -370,6 +355,72 @@ def run(params):
         json.dump(val_scores, f, ensure_ascii=False, indent=4)
 
     print("Validation scores:\n\t{}".format(val_scores))
+    return val_scores
+
+
+def run(params):
+    """ Execute specified model training.
+
+    Parameters
+    ----------
+    params: python dictionary
+        A dictionary of Candle keywords and parsed values.
+    """
+    # ------------------------------------------------------
+    # Check data availability and create output directory
+    # ------------------------------------------------------
+    # [Req]
+    indtd, outdtd = check_data_available(params)
+    # indtd is dictionary with input_description: path components
+    # outdtd is dictionary with output_description: path components
+
+    # -----------------------------
+    # [Req]
+    # Determine CUDA/CPU device and configure CUDA device if available
+    device = determine_device(params["cuda_name"])
+
+    # -------------------------------------
+    # Create Trainer object and setup train
+    # -------------------------------------
+    trobj = Trainer(params, device, outdtd["model"])
+    trobj.setup_train()
+    # -----------------------------
+    # Set checkpointing
+    # -----------------------------
+    if params["ckpt_directory"] is None:
+        params["ckpt_directory"] = params["model_outdir"]
+    initial_epoch = trobj.config_checkpointing(params["ckpt_directory"])
+
+    # -----------------------------
+    # Prepare PyTorch dataloaders
+    train_loader, val_loader = build_data_loaders(params["train_ml_data_dir"],
+                                                  params["train_data_processed"],
+                                                  params["batch_size"],
+                                                  params["val_ml_data_dir"],
+                                                  params["val_data_processed"],
+                                                  params["val_batch"])
+
+    # -----------------------------
+    # Train
+    # -----------------------------
+    trobj.execute_train(train_loader, val_loader, initial_epoch)
+
+    # -----------------------------
+    # Load the (best) saved model (as determined based on val data)
+    # Compute predictions
+    # (groud truth), (predictions)
+    val_true, val_pred = evaluate_model(params["model_arch"], device, outdtd["model"], val_loader)
+
+    # Store predictions in data frame
+    # Attempt to concat predictions with the cancer and drug ids, and the true values
+    # If data frame found then y_true is read from data frame and returned
+    # Otherwise, only a partial data frame is stored (with val_true and val_pred)
+    # and y_true is evaluated val_true
+    y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
+    # Compute performance scores
+    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
+    val_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd)
+
     return val_scores
 
 

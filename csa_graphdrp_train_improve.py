@@ -24,10 +24,10 @@ from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 
+from graphdrp_train_improve import str2Class
 
-def str2Class(str):
-    """Get model class from model name (str)."""
-    return globals()[str]()
+filepath = Path(__file__).resolve().parent
+
 
 
 def train(model, device, train_loader, optimizer, loss_fn, epoch, log_interval):
@@ -98,6 +98,13 @@ def main():
                                        default_model="csa_graphdrp_default_model.txt",
                                        additional_definitions = csa.csa_conf,
                                        required = csa.req_csa_args,
+                                      )
+
+    params = csa.initialize_parameters(filepath,
+                                       default_model="csa_graphdrp_default_model.txt",
+                                       additional_definitions = gdrp_data_conf,
+                                       required = required_csa,
+                                       topop = not_used_from_model,
                                       )
 
     run(params)
