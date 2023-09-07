@@ -339,17 +339,21 @@ def store_predictions_df(params, indtd, outdtd, val_true, val_pred):
     return y_true
 
 
-def compute_performace_scores(y_true, val_pred, metrics, outdtd):
-    val_scores = compute_metrics(y_true, val_pred, metrics)
-    val_scores["val_loss"] = val_scores["mse"]
+def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
+    scores = compute_metrics(y_true, y_pred, metrics)
+    key = f"{stage}_loss"
+    scores[key] = scores["mse"]
+
+    with open(outdtd["scores"], "w", encoding="utf-8") as f:
+        json.dump(scores, f, ensure_ascii=False, indent=4)
 
     # Performance scores for Supervisor HPO
-    print("\nIMPROVE_RESULT val_loss:\t{}\n".format(val_scores["mse"]))
-    with open(outdtd["scores"], "w", encoding="utf-8") as f:
-        json.dump(val_scores, f, ensure_ascii=False, indent=4)
-
-    print("Validation scores:\n\t{}".format(val_scores))
-    return val_scores
+    if stage == "val":
+        print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["mse"]))
+        print("Validation scores:\n\t{}".format(scores))
+    elif stage == "test":
+        print("Inference scores:\n\t{}".format(scores))
+    return scores
 
 
 def run(params):
@@ -417,7 +421,7 @@ def run(params):
     y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
     # Compute performance scores
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    val_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd)
+    val_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd, "val")
 
     return val_scores
 

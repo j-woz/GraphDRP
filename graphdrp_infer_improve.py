@@ -203,6 +203,24 @@ def run(params):
     print("Inference scores:\n\t{}".format(test_scores))
     return test_scores
 
+    # -----------------------------
+    # Load the saved model
+    # Compute predictions
+    # (groud truth), (predictions)
+    test_true, test_pred = evaluate_model(params["model_arch"], device, indtd["model"], test_loader)
+
+    # Store predictions in data frame
+    # Attempt to concat predictions with the cancer and drug ids, and the true values
+    # If data frame found then y_true is read from data frame and returned
+    # Otherwise, only a partial data frame is stored (with val_true and val_pred)
+    # and y_true is evaluated val_true
+    y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
+    # Compute performance scores
+    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
+    test_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd)
+
+    return test_scores
+
 
 def main():
     params = frm.initialize_parameters(filepath,
