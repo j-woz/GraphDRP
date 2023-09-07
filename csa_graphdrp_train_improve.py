@@ -52,10 +52,19 @@ def run(params):
     while totrainq:
         elem = totrainq.popleft() # This is (DataSplit, InputSplitPath, OutputSplitPath)
 
+        fname = f"val_{params['y_data_suffix']}.csv"
+        ivaldfpath = elem[1] / fname
+
+        modelpath = elem[2] / params["model_params"]
+        fname = f"val_{params['model_eval_suffix']}.csv"
+        predpath = elem[2] / fname
+        fname = f"val_{params['json_scores_suffix']}.json"
+        scorespath = elem[2] / fname
+
         # indtd is dictionary with input_description: path components
         # outdtd is dictionary with output_description: path components
-        indtd = {"train": elem[1], "val": elem[1], "df": elem[1]}
-        outdtd = {"model": elem[2], "pred": elem[2], "scores": elem[2]}
+        indtd = {"train": elem[1], "val": elem[1], "df": ivaldfpath}
+        outdtd = {"model":  modelpath, "pred": predpath, "scores": scorespath}
 
         # -------------------------------------
         # Create Trainer object and setup train
@@ -65,8 +74,7 @@ def run(params):
         # -----------------------------
         # Set checkpointing
         # -----------------------------
-        if params["ckpt_directory"] is None:
-            params["ckpt_directory"] = outdtd["model"]
+        params["ckpt_directory"] = str(elem[2])
         initial_epoch = trobj.config_checkpointing(params["ckpt_directory"])
 
         # -----------------------------
