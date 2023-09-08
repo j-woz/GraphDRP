@@ -31,7 +31,8 @@
 
 
 # Data Set:
-Data can be downloaded from [ftp]https://ftp.mcs.anl.gov/pub/candle/public/improve/tmp
+Data can be downloaded from [ftp-site](https://ftp.mcs.anl.gov/pub/candle/public/improve/tmp)
+
 The required data tree is shown next:
 
 ```
