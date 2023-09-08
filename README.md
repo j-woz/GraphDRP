@@ -90,53 +90,54 @@ out_GraphDRP/
 
 
 ## 3. Train a GraphDRP model
-```python graphdrp_train_improve.py --epochs 10
-```
+```python graphdrp_train_improve.py --epochs 10```
+
 This trains a GraphDRP model using the processed data. The checkpointing functionality helps to store the model that has the best MSE performance on validation data. The parameters for training are taken from the default configuration file (graphdrp_default_model.txt) reproduced here:
 
 ```
-    [Global_Params]
-    model_name = "GraphDRP"
-    model_arch = "GINConvNet"
-    batch_size = 256
-    cuda_name = "cuda:7"
-    epochs = 2
-    learning_rate = 0.0001
-    log_interval = 20
-    ckpt_save_interval = 5
-    model_outdir = "./out_GraphDRP/"
-    test_batch = 256
-    val_batch = 256
-    optimizer = "adam"
-    loss = "mse"
-    patience = 20
-    test_data_processed ="test_data.pt"
-    train_data_processed = "train_data.pt"
-    val_data_processed = "val_data.pt"
-    test_data_df = "test_y_data.csv"
-    val_data_df = "val_y_data.csv"
-    train_ml_data_dir = "./out_GraphDRP/"
-    val_ml_data_dir = "./out_GraphDRP/"
-    test_ml_data_dir = "./out_GraphDRP/"
+[Global_Params]
+model_name = "GraphDRP"
+model_arch = "GINConvNet"
+batch_size = 256
+cuda_name = "cuda:7"
+epochs = 2
+learning_rate = 0.0001
+log_interval = 20
+ckpt_save_interval = 5
+model_outdir = "./out_GraphDRP/"
+test_batch = 256
+val_batch = 256
+optimizer = "adam"
+loss = "mse"
+patience = 20
+test_data_processed ="test_data.pt"
+train_data_processed = "train_data.pt"
+val_data_processed = "val_data.pt"
+test_data_df = "test_y_data.csv"
+val_data_df = "val_y_data.csv"
+train_ml_data_dir = "./out_GraphDRP/"
+val_ml_data_dir = "./out_GraphDRP/"
+test_ml_data_dir = "./out_GraphDRP/"
 
-    [Preprocess]
-    x_data = ["cancer_gene_expression.tsv", "drug_SMILES.tsv"]
-    y_data = ["response.tsv"]
-    response_file = "response.tsv"
-    cell_file = "cancer_gene_expression.tsv"
-    drug_file = "drug_SMILES.tsv"
-    gene_system_identifier = ["Gene_Symbol"]
-    use_lincs = True
-    data_set = "gCSI"
-    split_id = 0
-    canc_col_name = "improve_sample_id"
-    drug_col_name = "improve_chem_id"
-    y_col_name = "auc"
-    y_data_suffix = "y_data"
+[Preprocess]
+x_data = ["cancer_gene_expression.tsv", "drug_SMILES.tsv"]
+y_data = ["response.tsv"]
+response_file = "response.tsv"
+cell_file = "cancer_gene_expression.tsv"
+drug_file = "drug_SMILES.tsv"
+gene_system_identifier = ["Gene_Symbol"]
+use_lincs = True
+data_set = "gCSI"
+split_id = 0
+canc_col_name = "improve_sample_id"
+drug_col_name = "improve_chem_id"
+y_col_name = "auc"
+y_data_suffix = "y_data"
 ```
 
 For a run of 100 epochs the following results are generated:
 
+```
 out_GraphDRP/
 ├── best -> ./out_GraphDRP/epochs/097
 ├── epochs
@@ -168,6 +169,7 @@ out_GraphDRP/
 ├── val_predicted.csv
 ├── val_scores.json
 └── val_y_data.csv
+```
 
 Note that arguments can be modified by command line as the `epochs` keyword demonstrates. Additionally, different models can be selected via the `model_arch` keyword
 
@@ -179,8 +181,8 @@ Note that arguments can be modified by command line as the `epochs` keyword demo
 
 
 ## 4. Infer over trained model 
-```python graphdrp_infer_improve.py"
-```
+```python graphdrp_infer_improve.py"```
+
 The scripts uses processed data and the trained model to evaluate performance which is stored in files: `test_scores.json` and `test_predicted.csv`.
 
 # Cross-Study Analysis (CSA) Workflow
@@ -191,24 +193,25 @@ Different source files and target files can be used to produce a CSA of GraphDRP
 ```export IMPROVE_DATA_DIR="./csa_data/"```
 
 2. Preprocess raw data
-```python csa_graphdrp_preprocess_improve.py"
-```
+```python csa_graphdrp_preprocess_improve.py```
 
 3. Run train model
-```python csa_graphdrp_train_improve.py"
-```
+```python csa_graphdrp_train_improve.py```
+
  These scripts use by default the configuration file: csa_graphdrp_default_model.txt, reproduced here for convenience:
- ```
-    [Global_Params]
-    model_name = "CSA_GraphDRP"
-    source_data = ["gCSI"]
-    target_data = ["gCSI"]
-    split_ids = [3, 7]
-    model_config = "graphdrp_default_model.txt"
- ``` 
+ 
+```
+[Global_Params]
+model_name = "CSA_GraphDRP"
+source_data = ["gCSI"]
+target_data = ["gCSI"]
+split_ids = [3, 7]
+model_config = "graphdrp_default_model.txt"
+``` 
 
 This is a sample of the output produced by the preprocessing and training scripts when using `--epochs 50`:
 
+```
 csa_data/ml_data
 ├── gCSI-gCSI
 │   ├── split_3
@@ -285,3 +288,4 @@ csa_data/ml_data
             ├── model.pt
             ├── val_predicted.csv
             └── val_scores.json
+```
