@@ -77,7 +77,7 @@ The required data tree is shown next:
 ## 2. Preprocess raw data to construct pytorch data loaders
 ```python graphdrp_preprocess_improve.py```
 
-This creates a mixed (drugs and cells) dataset and saves file pytorch data loaders (.pt), including training, validation, test setsm and stored at out_GraphDRP/  as follows:
+This creates a mixed (drugs and cells) dataset and saves file pytorch data loaders (.pt), including training, validation and test sets. They are stored at out_GraphDRP/ as follows:
 
 ```
 out_GraphDRP/
