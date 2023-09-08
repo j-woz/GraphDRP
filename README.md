@@ -32,8 +32,9 @@
 
 # Data Set:
 Data can be downloaded from [ftp]https://ftp.mcs.anl.gov/pub/candle/public/improve/tmp
-Required data (tree)
+The required data tree is shown next:
 
+```
 ├── index.html
 ├── splits
 │   ├── CCLE_all.txt
@@ -66,8 +67,7 @@ Required data (tree)
 └── y_data
     ├── index.html
     └── response.tsv
-
-
+```
 
 # Step-by-step running:
 
@@ -79,6 +79,7 @@ Required data (tree)
 
 This creates a mixed (drugs and cells) dataset and saves file pytorch data loaders (.pt), including training, validation, test setsm and stored at out_GraphDRP/  as follows:
 
+```
 out_GraphDRP/
 ├── processed
 │   ├── test_data.pt
@@ -87,7 +88,7 @@ out_GraphDRP/
 ├── test_y_data.csv
 ├── train_y_data.csv
 └── val_y_data.csv
-
+```
 
 ## 3. Train a GraphDRP model
 ```python graphdrp_train_improve.py --epochs 10```
@@ -181,7 +182,7 @@ Note that arguments can be modified by command line as the `epochs` keyword demo
 
 
 ## 4. Infer over trained model 
-```python graphdrp_infer_improve.py"```
+```python graphdrp_infer_improve.py```
 
 The scripts uses processed data and the trained model to evaluate performance which is stored in files: `test_scores.json` and `test_predicted.csv`.
 
