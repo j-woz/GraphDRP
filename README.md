@@ -36,6 +36,7 @@ Data can be downloaded from [ftp-site](https://ftp.mcs.anl.gov/pub/candle/public
 The required data tree is shown next:
 
 ```
+csa_data/raw_data/
 ├── index.html
 ├── splits
 │   ├── CCLE_all.txt
