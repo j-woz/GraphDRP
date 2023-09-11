@@ -87,6 +87,7 @@ def predicting(model, device, loader):
 
 
 def launch(modeling, args):
+    # import pdb; pdb.set_trace()
 
     timer = Timer()
     if args.set == "mixed":
@@ -111,6 +112,8 @@ def launch(modeling, args):
     data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
 
     # CANDLE_DATA_DIR = ./data_processed/mixed_set/processed
+    # improve_data_dir_env_var = os.getenv('IMPROVE_DATA_DIR')
+    # print(f'IMPROVE_DATA_DIR: {improve_data_dir_env_var}')
     candle_data_dir_env_var = os.getenv('CANDLE_DATA_DIR')
     print(f'CANDLE_DATA_DIR: {candle_data_dir_env_var}')
     for f in data_file_list:
@@ -120,6 +123,7 @@ def launch(modeling, args):
                         cache_subdir=args.cache_subdir)
 
     _data_dir = os.path.split(args.cache_subdir)[0]
+    # root = os.getenv('IMPROVE_DATA_DIR') + '/' + _data_dir
     root = os.getenv('CANDLE_DATA_DIR') + '/' + _data_dir
 
     # CANDLE known params
@@ -182,6 +186,7 @@ def launch(modeling, args):
     loss_fig_name = str(outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_loss"))
     pearson_fig_name = str(outdir / ("model_" + model_st + "_" + dataset + "_" + val_scheme + "_pearson"))
 
+    # import pdb; pdb.set_trace()
     for epoch in range(num_epoch):
         train_loss = train(model, device, train_loader, optimizer, epoch + 1, log_interval)
 
@@ -296,7 +301,10 @@ def initialize_parameters():
 
 
 def main():
+# def main(args):
+    # import pdb; pdb.set_trace()
     gParameters = initialize_parameters()
+    # gParameters = initialize_parameters(args)
     print(gParameters)
     scores = run(gParameters)
     print("Finished.")
@@ -304,3 +312,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # main(sys.argv[1:])
