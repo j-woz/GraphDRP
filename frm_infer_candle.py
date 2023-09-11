@@ -9,13 +9,16 @@ from pprint import pprint
 import torch
 from pathlib import Path
 
-import frm
+# from utils import TestbedDataset, DataLoader
+from utils import TestbedDataset
+from torch_geometric.data import DataLoader
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
+
+import frm
 import candle_improve_utils as improve_utils
-from utils import TestbedDataset, DataLoader
 
 frm.required.extend(["test_ml_data_dir", "y_col_name"])
 
@@ -95,7 +98,7 @@ def run(params):
     # -----------------------------
     # RSP_FNAME = "test_response.csv"  # TODO: move to improve_utils? ask Yitan?
     # rsp_df = pd.read_csv(Path(args.test_ml_data_dir)/RSP_FNAME)
-    rsp_df = pd.read_csv(Path(params["test_ml_data_dir"] + params["response_data"]))
+    rsp_df = pd.read_csv(Path(params["test_ml_data_dir"] + params["test_response_data"]))
 
     # # Old
     # tp = pd.concat([rsp_df, tp], axis=1)
@@ -122,7 +125,7 @@ def run(params):
     test_scores["test_loss"] = test_scores["mse"]
 
     # out_json = "test_scores.json"
-    with open(infer_outdir / params["out_json"], "w", encoding="utf-8") as f:
+    with open(infer_outdir / params["json_test_scores"], "w", encoding="utf-8") as f:
         json.dump(test_scores, f, ensure_ascii=False, indent=4)
 
     print("Inference scores:\n\t{}".format(test_scores))
@@ -132,7 +135,7 @@ def run(params):
 def main():
     params = frm.initialize_parameters()
     # Add infer parameter
-    params["out_file_path"] = params["output_dir"] + params["pred_fname"]
+    params["out_file_path"] = params["output_dir"] + params["test_pred_fname"]
     pprint(params)
     run(params)
     print("\nFinished inference.")
