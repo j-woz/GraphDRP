@@ -11,6 +11,8 @@
 
 
 ## Dependencies
+Instructions for conda env can be found in [conda_env_py37.sh](./conda_enc_py37.sh)
+Primary depedencies:<br/>
 + [Torch](https://pytorch.org/)
 + [Pytorch_geometric](https://github.com/rusty1s/pytorch_geometric)
 + [Rdkit](https://www.rdkit.org/)
@@ -18,6 +20,7 @@
 + [Pandas](https://pandas.pydata.org/)
 + [Numpy](https://numpy.org/)
 + [Scipy](https://docs.scipy.org/doc/)
+
 
 # Step-by-step running:
 
