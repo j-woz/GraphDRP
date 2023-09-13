@@ -108,7 +108,8 @@ def launch(modeling, args):
     os.makedirs(outdir, exist_ok=True)
 
     # Fetch data (if needed)
-    ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"
+    ftp_origin = f"https://ftp.mcs.anl.gov/pub/candle/public/improve/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"  # ftp location in the legacy file system
+    # ftp_origin = f"https://web.cels.anl.gov/projects/IMPROVE_FTP/model_curation_data/GraphDRP/data_processed/{val_scheme}/processed"  # ftp location in the new file systems (gce)
     data_file_list = ["train_data.pt", "val_data.pt", "test_data.pt"]
 
     # CANDLE_DATA_DIR = ./data_processed/mixed_set/processed
