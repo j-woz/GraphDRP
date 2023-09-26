@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+
 
 # level_map_cell_data encodes the relationship btw the column and gene identifier system
 level_map_cell_data = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
@@ -189,3 +191,57 @@ def load_drug_data(fname: Union[Path, str],
         print(f"Data read: {fname}")
         print(f"Shape of constructed drug data framework: {df.shape}")
     return df
+
+
+def scale_df(dataf, scaler_name="standard", scaler = None, verbose=False):
+    """ Returns a dataframe with scaled data.
+
+    It can create a new scaler or use the scaler passed or return the
+    data as it is. If `scaler_name` is None, no scaling is applied. If
+    `scaler` is None, a new scaler is constructed. If `scaler` is not
+    None, and `scaler_name` is not None, the scaler passed is used for
+    scaling the data frame.
+
+    Args:
+        dataf: Pandas dataframe to scale.
+        scaler_name: Name of scikit learn scaler to apply. Default:
+                     standard scaling.
+        scaler: Scikit object to use, in case it was created already.
+                Default: None, create scikit scaling object of
+                specified type.
+        verbose: Flag specifying if verbose message printing is desired.
+                 Default: False, no verbose print.
+
+    Returns:
+        pd.Dataframe: dataframe that contains drug response values.
+        scaler: Scikit object used for scaling.
+    """
+    if scaler_name is None:
+        if verbose:
+            print("Scaler is None (no df scaling).")
+        return dataf, None
+
+    # Scale data
+    # Select only numerical columns in data frame
+    df_num = dataf.select_dtypes(include="number")
+
+    if scaler is None: # Create scikit scaler object
+        if scaler_name == "standard":
+            scaler = StandardScaler()
+        elif scaler_name == "minmax":
+            scaler = MinMaxScaler()
+        elif scaler_name == "robust":
+            scaler = RobustScaler()
+        else:
+            print(f"The specified scaler {scaler_name} is not implemented (no df scaling).")
+            return dataf, None
+
+        # Scale data according to new scaler
+        df_norm = scaler.fit_transform(df_num)
+    else: # Apply passed scikit scaler
+        # Scale data according to specified scaler
+        df_norm = scaler.transform(df_num)
+
+    # Copy back scaled data to data frame
+    dataf[df_num.columns] = df_norm
+    return dataf, scaler
