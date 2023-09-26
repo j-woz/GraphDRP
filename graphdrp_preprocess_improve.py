@@ -80,10 +80,7 @@ req_preprocess_args.extend(["y_col_name", "model_outdir"])
 def check_parameter_consistency(params: Dict):
     """Minimal validation over parameter set.
 
-    Parameters
-    ----------
-    params: python dictionary
-        A dictionary of Candle/Improve keywords and parsed values.
+    :params: Dict params: A Python dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
     if params["response_file"] not in params["y_data"]:
         message = (f"ERROR ! {params['response_file']} was not listed in params['y_data']. Not guaranteed that it is available.\n")
@@ -100,7 +97,7 @@ def raw_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected raw data folder and check that files needed for cross-study analysis (CSA) are available.
 
-    :param Dict params: Dictionary of parameters read
+    :params: Dict params: Dictionary of parameters read
 
     :return: Path to directories requested stored in dictionary with str key str and Path value.
     :rtype: DataPathDict
@@ -128,7 +125,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected input paths and check that raw data files needed for preprocessing are available.
 
-    :param Dict params: Dictionary of parameters read
+    :params: Dict params: Dictionary of parameters read
 
     :return: Path to directories requested stored in dictionary with str key str and Path value.
     :rtype: DataPathDict
@@ -159,23 +156,29 @@ def load_response_data(inpath_dict: frm.DataPathDict,
         sep: str = "\t",
         verbose: bool = True) -> pd.DataFrame:
     """
-    Returns dataframe with cancer ids, drug ids, and drug response values. Samples
-    from the original drug response file are filtered based on the specified
-    split ids.
+    Returns dataframe with cancer ids, drug ids, and drug response values.
+    Samples from the original drug response file are filtered based on
+    the specified split ids.
 
-    Args:
-        inpath_dict: Dictionary of paths and info about raw data input directories.
-        y_file_name: Name of file for reading the y_data.
-        source: DRP source name.
-        split_id : Split id. If -1, use all data. Note that this assumes that split_id has been constructed to take into account all the data sources.
-        stage: Type of split to read. One of the following: 'train', 'val', 'test'.
-        canc_col_name: Column name that contains the cancer sample ids. Default: "improve_sample_id".
-        drug_col_name: Column name that contains the drug ids. Default: "improve_chem_id".
-        sep: Separator used in data file.
-        verbose: Flag for verbosity. If True, info about computations is displayed. Default: True.
+    :params: Dict inpath_dict: Dictionary of paths and info about raw
+             data input directories.
+    :params: str y_file_name: Name of file for reading the y_data.
+    :params: str source: DRP source name.
+    :params: int split_id: Split id. If -1, use all data. Note that this
+             assumes that split_id has been constructed to take into
+             account all the data sources.
+    :params: str stage: Type of partition to read. One of the following:
+             'train', 'val', 'test'.
+    :params: str canc_col_name: Column name that contains the cancer
+             sample ids. Default: "improve_sample_id".
+    :params: str drug_col_name: Column name that contains the drug ids.
+             Default: "improve_chem_id".
+    :params: str sep: Separator used in data file.
+    :params: bool verbose: Flag for verbosity. If True, info about
+             computations is displayed. Default: True.
 
-    Returns:
-        pd.Dataframe: dataframe that contains single drug response values.
+    :return: Dataframe that contains single drug response values.
+    :rtype: pd.Dataframe
     """
     y_data_file = inpath_dict["y_data"] / y_file_name
     if y_data_file.exists() == False:
@@ -204,77 +207,77 @@ def load_response_data(inpath_dict: frm.DataPathDict,
 
 
 def compose_data_arrays(df_response, df_drug, df_cell, drug_col_name, canc_col_name):
-        """ Returns drug and cancer feature data, and response values.
-        Args:
-            df_response: drug response dataframe. This already has been filtered to three columns: drug_id, cell_id and drug_response.
-            df_drug: drug features dataframe.
-            df_cell: cell features dataframe.
-            drug_col_name: Column name that contains the drug ids.
-            canc_col_name: Column name that contains the cancer sample ids.
+    """ Returns drug and cancer feature data, and response values.
 
-        Returns: Numpy arrays with drug features, cell features and responses
+    :params: pd.Dataframe df_response: drug response dataframe. This
+             already has been filtered to three columns: drug_id,
+             cell_id and drug_response.
+    :params: pd.Dataframe df_drug: drug features dataframe.
+    :params: pd.Dataframe df_cell: cell features dataframe.
+    :params: str drug_col_name: Column name that contains the drug ids.
+    :params: str canc_col_name: Column name that contains the cancer sample ids.
+
+    :return: Numpy arrays with drug features, cell features and responses
             xd, xc, y
-        """
-        xd = [] # To collect drug features
-        xc = [] # To collect cell features
-        y = [] # To collect responses
-        # To collect missing or corrupted data
-        # nan_rsp_list = []
-        # miss_cell = []
-        # miss_drug = []
-        count_nan_rsp = 0
-        count_miss_cell = 0
-        count_miss_drug = 0
-        # Convert to indices for rapid lookup
-        df_drug = df_drug.set_index([drug_col_name])
-        df_cell = df_cell.set_index([canc_col_name])
-        for i in range(df_response.shape[0]):  # tuples of (drug name, cell id, response)
-            if i > 0 and (i%15000 == 0):
-                print(i)
-            drug, cell, rsp = df_response.iloc[i, :].values.tolist()
-            if np.isnan(rsp):
-                # nan_rsp_list.append(rsp)
-                count_nan_rsp += 1
-            # If drug and cell features are available
-            try: # Look for drug
-                drug_features = df_drug.loc[drug]
-            except KeyError: # drug not found
-                # miss_drug.append(drug)
-                count_miss_drug += 1
-            else: # Look for cell
-                try:
-                    cell_features = df_cell.loc[cell]
-                except KeyError: # cell not found
-                    # miss_cell.append(cell)
-                    count_miss_cell += 1
-                else: # Both drug and cell were found
-                    xd.append(drug_features.values) # xd contains list of drug feature vectors
-                    xc.append(cell_features.values) # xc contains list of cell feature vectors
-                    y.append(rsp)
+    :rtype: np.array
+    """
+    xd = [] # To collect drug features
+    xc = [] # To collect cell features
+    y = [] # To collect responses
+    # To collect missing or corrupted data
+    # nan_rsp_list = []
+    # miss_cell = []
+    # miss_drug = []
+    count_nan_rsp = 0
+    count_miss_cell = 0
+    count_miss_drug = 0
+    # Convert to indices for rapid lookup
+    df_drug = df_drug.set_index([drug_col_name])
+    df_cell = df_cell.set_index([canc_col_name])
+    for i in range(df_response.shape[0]):  # tuples of (drug name, cell id, response)
+        if i > 0 and (i%15000 == 0):
+            print(i)
+        drug, cell, rsp = df_response.iloc[i, :].values.tolist()
+        if np.isnan(rsp):
+            # nan_rsp_list.append(rsp)
+            count_nan_rsp += 1
+        # If drug and cell features are available
+        try: # Look for drug
+            drug_features = df_drug.loc[drug]
+        except KeyError: # drug not found
+            # miss_drug.append(drug)
+            count_miss_drug += 1
+        else: # Look for cell
+            try:
+                cell_features = df_cell.loc[cell]
+            except KeyError: # cell not found
+                # miss_cell.append(cell)
+                count_miss_cell += 1
+            else: # Both drug and cell were found
+                xd.append(drug_features.values) # xd contains list of drug feature vectors
+                xc.append(cell_features.values) # xc contains list of cell feature vectors
+                y.append(rsp)
 
-        print("Number of NaN responses: ", count_nan_rsp)
-        print("Number of drugs not found: ", count_miss_drug)
-        print("Number of cells not found: ", count_miss_cell)
-        # Reset index
-        df_drug = df_drug.reset_index()
-        df_cell = df_cell.reset_index()
+    print("Number of NaN responses: ", count_nan_rsp)
+    print("Number of drugs not found: ", count_miss_drug)
+    print("Number of cells not found: ", count_miss_cell)
+    # Reset index
+    df_drug = df_drug.reset_index()
+    df_cell = df_cell.reset_index()
 
-        return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
+    return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
 
 
 def build_common_data(params: Dict, inputdtd: frm.DataPathDict):
     """Construct common feature data frames.
 
-    Parameters
-    ----------
-    params: python dictionary
-        A dictionary of Candle/Improve keywords and parsed values.
-    inputdtd: python dictionary
-        Path to directories requested stored in dictionary with str key str and Path value.
+    :params: Dict params: A Python dictionary of CANDLE/IMPROVE keywords
+             and parsed values.
+    :params: Dict inputdtd: Path to directories of input data stored in
+            dictionary with str key str and Path value.
 
-    Returns
-    -------
-    drug and cell dataframes and smiles graphs
+    :return: drug and cell dataframes and smiles graphs
+    :rtype: pd.DataFrame
     """
     # -------------------
     # Load drug data
@@ -322,6 +325,25 @@ def build_stage_dependent_data(params: Dict,
                          df_cell_all: pd.DataFrame,
                          smile_graphs,
                          ):
+    """Construct feature and ouput arrays according to training stage.
+
+    :params: Dict params: A Python dictionary of CANDLE/IMPROVE keywords
+             and parsed values.
+    :params: Dict inputdtd: Path to directories of input data stored in
+            dictionary with str key str and Path value.
+    :params: Dict outputdtd: Path to directories for output data stored
+            in dictionary with str key str and Path value.
+    :params: str stage: Type of partition to read. One of the following:
+             'train', 'val', 'test'.
+    :params: str source: DRP source name.
+    :params: int split_id: Split id. If -1, use all data. Note that this
+             assumes that split_id has been constructed to take into
+             account all the data sources.
+    :params: pd.Dataframe df_drug: Pandas dataframe with drug features.
+    :params: pd.Dataframe df_cell_all: Pandas dataframe with cell features.
+    :params: dict smile_graphs: Python dictionary with smiles string as
+             key and corresponding graphs as values.
+    """
     # -----------------------------
     # Load y data according to stage
     # ------------------------------
@@ -369,10 +391,7 @@ def build_stage_dependent_data(params: Dict,
 def run(params):
     """Execute data pre-processing for graphDRP model.
 
-    Parameters
-    ----------
-    params: python dictionary
-        A dictionary of Candle/Improve keywords and parsed values.
+    :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
     # --------------------------------------------
     # Check consistency of parameter specification
