@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, RobustScaler
 
 
 # level_map_cell_data encodes the relationship btw the column and gene identifier system
@@ -193,7 +193,7 @@ def load_drug_data(fname: Union[Path, str],
     return df
 
 
-def scale_df(dataf, scaler_name="standard", scaler = None, verbose=False):
+def scale_df(dataf, scaler_name="std", scaler = None, verbose=False):
     """ Returns a dataframe with scaled data.
 
     It can create a new scaler or use the scaler passed or return the
@@ -204,7 +204,8 @@ def scale_df(dataf, scaler_name="standard", scaler = None, verbose=False):
 
     Args:
         dataf: Pandas dataframe to scale.
-        scaler_name: Name of scikit learn scaler to apply. Default:
+        scaler_name: Name of scikit learn scaler to apply. Options:
+                     ["minabs", "minmax", "std", "none"]. Default: std
                      standard scaling.
         scaler: Scikit object to use, in case it was created already.
                 Default: None, create scikit scaling object of
@@ -216,7 +217,7 @@ def scale_df(dataf, scaler_name="standard", scaler = None, verbose=False):
         pd.Dataframe: dataframe that contains drug response values.
         scaler: Scikit object used for scaling.
     """
-    if scaler_name is None:
+    if scaler_name is None or scaler_name == "none":
         if verbose:
             print("Scaler is None (no df scaling).")
         return dataf, None
@@ -226,10 +227,12 @@ def scale_df(dataf, scaler_name="standard", scaler = None, verbose=False):
     df_num = dataf.select_dtypes(include="number")
 
     if scaler is None: # Create scikit scaler object
-        if scaler_name == "standard":
+        if scaler_name == "std":
             scaler = StandardScaler()
         elif scaler_name == "minmax":
             scaler = MinMaxScaler()
+        elif scaler_name == "minabs":
+            scaler = MaxAbsScaler()
         elif scaler_name == "robust":
             scaler = RobustScaler()
         else:

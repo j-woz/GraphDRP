@@ -80,6 +80,7 @@ def run(params: Dict):
                                    df_drug,
                                    df_cell_all,
                                    smile_graphs,
+                                   scaler,
             )
 
 

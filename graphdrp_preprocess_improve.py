@@ -6,6 +6,7 @@ from typing import Dict
 
 import numpy as np
 import pandas as pd
+import joblib
 
 from improve import framework as frm
 from improve import dataloader as dtl
@@ -324,6 +325,7 @@ def build_stage_dependent_data(params: Dict,
                          df_drug: pd.DataFrame,
                          df_cell_all: pd.DataFrame,
                          smile_graphs,
+                         scaler,
                          ):
     """Construct feature and ouput arrays according to training stage.
 
@@ -343,6 +345,7 @@ def build_stage_dependent_data(params: Dict,
     :params: pd.Dataframe df_cell_all: Pandas dataframe with cell features.
     :params: dict smile_graphs: Python dictionary with smiles string as
              key and corresponding graphs as values.
+    :params: scikit scaler: Scikit object for scaling data.
     """
     # -----------------------------
     # Load y data according to stage
@@ -361,12 +364,17 @@ def build_stage_dependent_data(params: Dict,
                                                ref_col=params["canc_col_name"])
     print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
-    # Normalize features using training set -> ToDo: implement this
-    #if stage == "train":
+    # Normalize features using training set
+    if stage == "train": # Ignore scaler object even if specified
         # Normalize
+        df_cell, scaler = dtl.scale_df(df_cell, scaler_name=params["scaling"])
         # Store normalization object
-    #else:
-        # Use previous normalization object
+        scaler_fname = outputdtd["preprocess"] / "cell_xdata_scaler.gz"
+        joblib.dump(scaler, scaler_fname)
+        print("Scaling object created is stored in: ", scaler_fname)
+    else:
+        # Use passed scikit scaler object
+        df_cell, _ = dtl.scale_df(df_cell, scaler=scaler)
 
     # Sub-select desired response column (y_col_name)
     # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
@@ -385,7 +393,7 @@ def build_stage_dependent_data(params: Dict,
     fname = f"{stage}_{params['y_data_suffix']}.csv"
     df_y.to_csv(outputdtd["preprocess"] / fname, index=False)
 
-    return None # Should return scaler
+    return scaler
 
 
 def run(params):
@@ -431,6 +439,7 @@ def run(params):
                                    df_drug,
                                    df_cell_all,
                                    smile_graphs,
+                                   scaler,
         )
 
 
