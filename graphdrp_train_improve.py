@@ -467,7 +467,7 @@ def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
 def run(params):
     """ Execute specified model training.
 
-    :params: Dict params: A dictionary of Candle keywords and parsed values.
+    :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
 
     :return: List of floats evaluating model predictions according to
              specified metrics.

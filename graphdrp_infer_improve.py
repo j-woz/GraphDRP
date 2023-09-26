@@ -106,10 +106,11 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
 def run(params):
     """Execute specified model inference.
 
-    Parameters
-    ----------
-    params: python dictionary
-        A dictionary of Candle keywords and parsed values.
+    :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
+
+    :return: List of floats evaluating model predictions according to
+             specified metrics.
+    :rtype: float list
     """
     # ------------------------------------------------------
     # Check data availability and create output directory
