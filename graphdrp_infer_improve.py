@@ -65,7 +65,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     if itest.exists() == False:
         raise Exception(f"ERROR ! Processed testing data {itest} not found.\n")
 
-    # Check if validation data frame exists
+    # Check if testing data frame exists
     itestdfpath = None
     if "test_data_df" in params:
         itestdfpath = Path(params["test_ml_data_dir"]) / params["test_data_df"]

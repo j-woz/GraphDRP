@@ -64,7 +64,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected input paths and check that files needed in training are available.
 
-    :param Dict params: Dictionary of parameters read
+    :param Dict params: Dictionary of CANDLE/IMPROVE parameters read.
 
     :return: Path to directories requested stored in dictionary with str key str and Path value.
     :rtype: DataPathDict
@@ -125,7 +125,15 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
 
 
 class Trainer:
+    """Class to define a PyTorch interface for training models."""
     def __init__(self, params, device, modelpath, metrics=None):
+        """Initialize a Trainer object.
+
+        :params Dict params: Dictionary of CANDLE/IMPROVE parameters read.
+        :params str device: String with PyTorch format describing device available for training.
+        :params Path modelpath: Path to store model. Currently this is complementary to checkpointing, i.e. models are saved directly and also with CANDLE checkpointing. This redundacy should be re-evaluated.
+        :params List metrics: List of strings specifying the functions to evaluate the model, e.g. "mse", "pcc", etc. Default: None which is converted to: ["mse", "rmse", "pcc", "scc"].
+        """
         # -----------------------------
         # Create and move model to device
         self.model_arch = params["model_arch"]
@@ -139,6 +147,12 @@ class Trainer:
             self.metrics = ["mse", "rmse", "pcc", "scc"]
 
     def setup_train(self,):
+        """Configure the Trainer object.
+
+        This function constructs the optimizer and loss and extract
+        trainer parameters for number of epochs, interval of logging
+        model evaluation and patience for early stopping.
+        """
         # Construct DL optimizer and loss
         keras_defaults = keras_default_config()
         self.optimizer = build_pytorch_optimizer(
@@ -155,6 +169,13 @@ class Trainer:
 
 
     def config_checkpointing(self, ckpt_directory):
+        """Configure CANDLE checkpointing. Reads last saved state if checkpoints exist.
+
+        :params str ckpt_directory: String with path to directory for storing the CANDLE checkpointing for the model being trained.
+
+        :return: Number of training iterations already run (this may be > 0 if reading from checkpointing).
+        :rtype: int
+        """
         self.params["ckpt_directory"] = ckpt_directory
         initial_epoch = 0
         self.ckpt = CandleCkptPyTorch(self.params)
@@ -167,6 +188,14 @@ class Trainer:
         return initial_epoch
 
     def train(self, train_loader, epoch):
+        """Execute a training step (i.e. one pass through training set).
+
+        :params DataLoader train_loader: PyTorch data loader with training data.
+        :params int epoch: Current training epoch (for display purposes only).
+
+        :return: Average loss for executed training step.
+        :rtype: float
+        """
         print("Training on {} samples...".format(len(train_loader.dataset)))
         self.model.train()
         avg_loss = []
@@ -191,6 +220,16 @@ class Trainer:
         return sum(avg_loss) / len(avg_loss)
 
     def execute_train(self, train_loader, val_loader, initial_epoch):
+        """Execute a training loop, i.e. perform multiple passes through training set,
+        updating model parameters, storing them (directly and via CANDLE checkpointing),
+        evaluating model and enacting early stopping (if applicable, i.e. if for a
+        `patience` number of iterations the selected metric does not improve when evaluating
+        over the validation set).
+
+        :params DataLoader train_loader: PyTorch data loader with training data.
+        :params DataLoader val_loader: PyTorch data loader with validation data. Used for early stopping.
+        :params int initial_epoch: Number of training iterations already run (this may be > 0 if reading from checkpointing).
+        """
 
         # Settings for early stop and best model settings
         best_score = np.inf
@@ -233,20 +272,20 @@ def save_preds(df: pd.DataFrame,
                outpath: Union[str, Path],
                round_decimals: int = 4) -> None:
     """ Save model predictions.
+
     This function throws errors if the dataframe does not include the expected
     columns: canc_col_name, drug_col_name, y_col_name, y_col_name + "_pred"
 
-    Args:
-        df (pd.DataFrame): Pandas data frame with model predictions
-        canc_col_name (str): Column name that contains the cancer sample ids.
-        drug_col_name (str): Column name that contains the drug ids.
-        y_col_name (str): drug response col name (e.g., IC50, AUC)
-        pred_col_name_suffix (str): Suffix to identoy column of predictions made by model.
-        outpath (str or PosixPath): outdir to save the model predictions df.
-        round (int): round response values.
+    :params pd.DataFrame df: Pandas data frame with model predictions
+    :params str canc_col_name: Column name that contains the cancer sample ids.
+    :params str drug_col_name: Column name that contains the drug ids.
+    :params str y_col_name: drug response col name (e.g., IC50, AUC)
+    :params str pred_col_name_suffix: Suffix to identoy column of predictions made by model.
+    :params str or PosixPath outpath: outdir to save the model predictions df.
+    :params int round: round response values.
 
-    Returns:
-        None
+    :return: ?.
+    :rtype: None
     """
     # Check that the 4 columns exist
     assert canc_col_name in df.columns, f"{canc_col_name} was not found in columns."
@@ -264,6 +303,16 @@ def save_preds(df: pd.DataFrame,
 
 
 def determine_device(cuda_name_from_params):
+    """Determine device to run PyTorch functions.
+
+    PyTorch functions can run on CPU or on GPU. In the latter case, it
+    also takes into account the GPU devices requested for the run.
+
+    :params str cuda_name_from_params: GPUs specified for the run.
+
+    :return: Device available for running PyTorch functionality.
+    :rtype: str
+    """
     cuda_avail = torch.cuda.is_available()
     print("CPU/GPU: ", cuda_avail)
     if cuda_avail:  # GPU available
@@ -285,6 +334,18 @@ def determine_device(cuda_name_from_params):
 
 
 def build_PT_data_loader(datadir: str, datafname: str, batch: int, shuffle: bool):
+    """Build a PyTorch data loader.
+
+    :params str datadir: Directory where `processed` folder containing
+            processed data can be found.
+    :params str datafname: Name of PyTorch processed data to read.
+    :params int batch: Batch size for data loader.
+    :params bool shuffle: Flag to specify if data is to be shuffled when
+            applying data loader.
+
+    :return: PyTorch data loader constructed.
+    :rtype: DataLoader
+    """
     data_file_name = datafname
     if data_file_name.endswith(".pt"):
         data_file_name = data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
@@ -297,6 +358,17 @@ def build_PT_data_loader(datadir: str, datafname: str, batch: int, shuffle: bool
 
 
 def evaluate_model(model_arch, device, modelpath, val_loader):
+    """Perform predictions using given model.
+
+    :params str model_arch: Name of model architecture to use.
+    :params str device: Device to use for evaluating PyTorch model.
+    :params Path modelpath: Path containing model parameters.
+    :params DataLoader val_loader: PyTorch data loader with data to
+            use for evaluation.
+
+    :return: Arrays with ground truth and model predictions.
+    :rtype: np.array
+    """
     model = str2Class(model_arch).to(device)
     model.load_state_dict(torch.load(modelpath))
     model.eval()
@@ -306,6 +378,26 @@ def evaluate_model(model_arch, device, modelpath, val_loader):
 
 
 def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
+    """Store predictions with accompanying data frame.
+
+    This allows to trace original data evaluated (e.g. drug and cell
+    combinations) if corresponding data frame is available, in which case
+    the whole structure as well as the model predictions are stored. If
+    the data frame is not available, only ground truth (read from the
+    PyTorch processed data) and model predictions are stored. The ground
+    truth available (from data frame or PyTorch data) is returned for
+    further evaluations.
+
+    :params Dict params: Dictionary of CANDLE/IMPROVE parameters read.
+    :params Dict indtd: Dictionary specifying paths of input data.
+    :params Dict outdtd: Dictionary specifying paths for ouput data.
+    :params array y_true: Ground truth.
+    :params array y_pred: Model predictions.
+
+    :return: Arrays with ground truth. This may have been read from an
+             input data frame or from a processed PyTorch data file.
+    :rtype: np.array
+    """
     pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
     true_col_name = params["y_col_name"] + "_true"
     # -----------------------------
@@ -342,6 +434,20 @@ def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
 
 
 def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
+    """Evaluate predictions according to specified metrics.
+
+    Metrics are evaluated. Scores are stored in specified path and returned.
+
+    :params array y_true: Array with ground truth values.
+    :params array y_pred: Array with model predictions.
+    :params listr metrics: List of strings with metrics to evaluate.
+    :params Dict outdtd: Dictionary with path to store scores.
+    :params str stage: String specified if evaluation is with respect to
+            validation or testing set.
+
+    :return: Python dictionary with metrics evaluated and corresponding scores.
+    :rtype: dict
+    """
     scores = compute_metrics(y_true, y_pred, metrics)
     key = f"{stage}_loss"
     scores[key] = scores["mse"]
@@ -361,10 +467,11 @@ def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
 def run(params):
     """ Execute specified model training.
 
-    Parameters
-    ----------
-    params: python dictionary
-        A dictionary of Candle keywords and parsed values.
+    :params: Dict params: A dictionary of Candle keywords and parsed values.
+
+    :return: List of floats evaluating model predictions according to
+             specified metrics.
+    :rtype: float list
     """
     # ------------------------------------------------------
     # Check data availability and create output directory
