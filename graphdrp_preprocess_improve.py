@@ -368,10 +368,11 @@ def build_stage_dependent_data(params: Dict,
     if stage == "train": # Ignore scaler object even if specified
         # Normalize
         df_cell, scaler = dtl.scale_df(df_cell, scaler_name=params["scaling"])
-        # Store normalization object
-        scaler_fname = outputdtd["preprocess"] / "cell_xdata_scaler.gz"
-        joblib.dump(scaler, scaler_fname)
-        print("Scaling object created is stored in: ", scaler_fname)
+        if params["scaling"] is not None and params["scaling"] != "none":
+            # Store normalization object
+            scaler_fname = outputdtd["preprocess"] / "cell_xdata_scaler.gz"
+            joblib.dump(scaler, scaler_fname)
+            print("Scaling object created is stored in: ", scaler_fname)
     else:
         # Use passed scikit scaler object
         df_cell, _ = dtl.scale_df(df_cell, scaler=scaler)
