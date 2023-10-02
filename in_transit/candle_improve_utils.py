@@ -58,11 +58,6 @@ def add_improve_key(key_name, old_suffix, new_suffix, params):
 
 def build_improve_paths(params):
 
-    # special cases -- no point automating
-    # TODO (ap): following the statement above, is there really a need for
-    # construct_improve_dir_path()? The main issue here, is that we need to
-    # specify main_data_dir somewhere. Where? main_data_dir should not be
-    # hard coded into construct_improve_dir_path().
     params = construct_improve_dir_path("raw_data_dir", params["main_data_dir"], params)
     params = construct_improve_dir_path("ml_data_dir", params["main_data_dir"], params)
     params = construct_improve_dir_path("models_dir", params["main_data_dir"], params)
