@@ -77,12 +77,25 @@ req_preprocess_args = [ll["name"] for ll in gdrp_data_conf]
 
 req_preprocess_args.extend(["y_col_name", "model_outdir"])
 
+# TODO: The functions below are general functions relevant to drp.
+# 1. check_parameter_consistency()
+# 2. raw_data_available()
+# 3. check_data_available()
+# 4. build_common_data()
+# 5. load_response_data()
+#
+# Thus, should these functions be defined somewhere in ./improve rather than in *_preprocess_*.py?
+# How about ./imporve/drug_response_prediction?
+
 
 def check_parameter_consistency(params: Dict):
     """Minimal validation over parameter set.
 
     :params: Dict params: A Python dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
+    # TODO:
+    # 1. Why do we need to define response_file var in graphdrp_default_model.txt? I think defining y_data var should be enough.
+    # 2. cell_file and drug_file should probably be lists, because certain models use multiple feature types to represent cells and drugs.
     if params["response_file"] not in params["y_data"]:
         message = (f"ERROR ! {params['response_file']} was not listed in params['y_data']. Not guaranteed that it is available.\n")
         warnings.warn(message, RuntimeWarning)
@@ -110,7 +123,11 @@ def raw_data_available(params: Dict) -> frm.DataPathDict:
     if mainpath.exists() == False:
         raise Exception(f"ERROR ! {mainpath} not found.\n")
     # Make sure that the raw data directory exists
-    inpath = mainpath / "raw_data"
+    # inpath = mainpath / "raw_data"
+    # TODO: "raw_data" should be a global var (see def in the old improve_utils.py)
+    # e.g., improve_globals.raw_data_dir_name = "raw_data"
+    raw_data_dir_name = "raw_data"
+    inpath = mainpath / raw_data_dir_name
     if inpath.exists() == False:
         raise Exception(f"ERROR ! {inpath} not found.\n")
     # Make sure that the data subdirectories exist
@@ -137,6 +154,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     ipathd = raw_data_available(params)
 
     # Create output directory. Do not complain if it exists.
+    # TODO: This was originally called ml_data. Why changed to out_MODELNAME?
     opath = Path(params["model_outdir"])
     os.makedirs(opath, exist_ok=True)
 
@@ -189,6 +207,10 @@ def load_response_data(inpath_dict: frm.DataPathDict,
 
     # Get a subset of samples if split_id is different to -1
     if split_id > -1:
+        # TODO: this should not be encoded like this because other comparison
+        # piplines will have a different split_file_name. E.g, in learning curve,
+        # it will be f"{source}_split_{split_id}_{stage}_size_{train_size}.txt"
+        # Moreover, we should be able to pass a list of splits.
         split_file_name = f"{source}_split_{split_id}_{stage}.txt"
     else:
         split_file_name = f"{source}_all.txt"
@@ -291,6 +313,8 @@ def build_common_data(params: Dict, inputdtd: frm.DataPathDict):
                            columns=["improve_chem_id", "smiles"],
                           )
 
+    # TODO: This method converts SMILES into graphs and it's specific to GraphDRP model.
+    # I don't think it's a "common" data so we should consider defining it somewhere else.
     smile_graphs = build_graph_dict_from_smiles_collection(df_drug["smiles"].values)
 
     # -------------------
@@ -360,8 +384,8 @@ def build_stage_dependent_data(params: Dict,
                   )
     # Retain (canc, drug) response samples for which omic data is available
     df_y, df_cell = dtl.get_common_samples(df1=df_response,
-                                               df2=df_cell_all,
-                                               ref_col=params["canc_col_name"])
+                                           df2=df_cell_all,
+                                           ref_col=params["canc_col_name"])
     print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
     # Normalize features using training set
@@ -381,15 +405,18 @@ def build_stage_dependent_data(params: Dict,
     # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
     df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
     # Combine data
+    # TODO: is this general func or model-specific?
     xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell, params["drug_col_name"], params["canc_col_name"])
     print("stage ", stage, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
+
     # Save the processed (all) data as PyTorch dataset
     TestbedDataset(root=outputdtd["preprocess"],
-                       dataset=stage + "_" + params["data_suffix"],
-                       xd=xd,
-                       xt=xc,
-                       y=y,
-                       smile_graph=smile_graphs)
+                   dataset=stage + "_" + params["data_suffix"],
+                   xd=xd,
+                   xt=xc,
+                   y=y,
+                   smile_graph=smile_graphs)
+
     # Save the subset of y data
     fname = f"{stage}_{params['y_data_suffix']}.csv"
     df_y.to_csv(outputdtd["preprocess"] / fname, index=False)
@@ -402,6 +429,7 @@ def run(params):
 
     :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
+    import pdb; pdb.set_trace()
     # --------------------------------------------
     # Check consistency of parameter specification
     # --------------------------------------------
@@ -414,7 +442,6 @@ def run(params):
     indtd, outdtd = check_data_available(params)
     # indtd is dictionary with input_description: path components
     # outdtd is dictionary with output_description: path components
-
 
     # ------------------------------------------------------
     # Construct data frames for drug and cell features
@@ -442,6 +469,7 @@ def run(params):
                                    smile_graphs,
                                    scaler,
         )
+    return None
 
 
 def main():

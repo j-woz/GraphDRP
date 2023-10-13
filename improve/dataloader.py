@@ -9,6 +9,14 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, RobustScaler
 
 
+# TODO: different omic data files have different mappings. Thus, should we specify these
+# mapping for each omic type and where?
+# Should this be:
+# level_map_gene_expression = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
+# level_map_copy_number = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
+# load_discretized_copy_number = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
+# level_map_methylation = {"Ensembl": 2, "Entrez": 1, "Gene_Symbol": 3, "TSS": 0}
+# etc.
 # level_map_cell_data encodes the relationship btw the column and gene identifier system
 level_map_cell_data = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
 
@@ -79,7 +87,6 @@ def common_elements(list1: List, list2: List, verbose: bool = True) -> List:
         print("Elements in common count: ", len(in_common))
 
     return in_common
-
 
 
 def set_col_names_in_multilevel_dataframe(
