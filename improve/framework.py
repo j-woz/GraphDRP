@@ -11,7 +11,7 @@ if os.getenv("IMPROVE_DATA_DIR") is None:
 os.environ["CANDLE_DATA_DIR"] = os.environ["IMPROVE_DATA_DIR"]
 
 from pathlib import Path
-from typing import List, Set, TypeAlias
+from typing import List, Set, NewType, Dict, Optional # use NewType becuase TypeAlias is available from python 3.10
 
 import torch
 
@@ -22,7 +22,8 @@ str2bool = candle.str2bool
 finalize_parameters = candle.finalize_parameters
 
 
-DataPathDict: TypeAlias = dict[str, Path]
+# DataPathDict: TypeAlias = dict[str, Path]
+DataPathDict = NewType("DataPathDict", Dict[str, Path])
 
 
 # Parameters that are relevant to all IMPROVE models
@@ -136,6 +137,7 @@ frm_additional_definitions = improve_basic_conf + \
 # Required
 frm_required = []
 
+
 class ImproveBenchmark(candle.Benchmark):
     """ Benchmark for Improve Models. """
 
@@ -154,7 +156,10 @@ class ImproveBenchmark(candle.Benchmark):
             self.additional_definitions.extend(frm_additional_definitions) # This considers global framework definitions
 
 
-def initialize_parameters(filepath, default_model="frm_default_model.txt", additional_definitions=None, required=None):
+def initialize_parameters(filepath,
+                          default_model: str="frm_default_model.txt",
+                          additional_definitions: Optional[List]=None,
+                          required: Optional[List]=None):
     """ Parse execution parameters from file or command line.
 
     Parameters
@@ -173,6 +178,7 @@ def initialize_parameters(filepath, default_model="frm_default_model.txt", addit
     """
 
     # Build benchmark object
+    # import pdb; pdb.set_trace()
     frm = ImproveBenchmark(
         filepath=filepath,
         defmodel=default_model,
@@ -186,7 +192,6 @@ def initialize_parameters(filepath, default_model="frm_default_model.txt", addit
     gParameters = candle.finalize_parameters(frm)
 
     return gParameters
-
 
 
 def check_path_and_files(folder_name: str, file_list: List, inpath: Path) -> Path:
@@ -217,8 +222,8 @@ def check_path_and_files(folder_name: str, file_list: List, inpath: Path) -> Pat
 
 
 # TODO: While the implementation of this func is model-specific, we may want
-# to require that all models have this func defined for their models. Also,
-# we need to decide where this func should be located.
+# to require that all models have this func defined for their models.
+# Also, where this function should be located?
 def predicting(model, device, loader):
     """ Method to run predictions/inference.
     This is used in *train.py and *infer.py
@@ -251,4 +256,3 @@ def predicting(model, device, loader):
             total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
             total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
-
