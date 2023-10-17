@@ -1,4 +1,8 @@
 """Basic Definitions of IMPROVE Framework."""
+# TODO. Should we rename this framework.py?
+# TODO. Questions about graphdrp_default_model.txt
+# Global_Params: it contains a mix of model-specific and other args(?)
+# 
 
 import os
 import argparse
@@ -6,14 +10,16 @@ import argparse
 # Check that environmental variable "IMPROVE_DATA_DIR" has been specified
 if os.getenv("IMPROVE_DATA_DIR") is None:
     raise Exception(
-                "ERROR ! Required system variable not specified.  You must define IMPROVE_DATA_DIR ... Exiting.\n"
+                "ERROR ! Required system variable not specified.  You must \
+                define IMPROVE_DATA_DIR ... Exiting.\n"
             )
 os.environ["CANDLE_DATA_DIR"] = os.environ["IMPROVE_DATA_DIR"]
 
 from pathlib import Path
 from typing import List, Set, NewType, Dict, Optional # use NewType becuase TypeAlias is available from python 3.10
 
-import torch
+# TODO! torch only used in predicting(). predicting() is moved to model_utils.py
+# import torch  
 
 SUPPRESS = argparse.SUPPRESS
 
@@ -31,15 +37,15 @@ improve_basic_conf = [
     {"name": "y_col_name",
      "type": str,
      "default": "auc",
-     "help": "Column name in the y data file (e.g., response.tsv), that represents \
-              the target variable that the model predicts. In drug response prediction \
-              problem it can be IC50, AUC, and others."
+     "help": "Column name in the y data file (e.g., response.tsv), that \
+             represents the target variable that the model predicts. In \
+             drug response prediction problem it can be IC50, AUC, and others."
     },
     {"name": "pred_col_name_suffix",
      "type": str,
      "default": "_pred",
-     "help": "Suffix to add to column name in data framework to identify predictions \
-              made by the model"
+     "help": "Suffix to add to column name in data framework to identify \
+             predictions made by the model"
     },
     {"name": "model_outdir",
      "type": str,
@@ -58,6 +64,8 @@ improve_preprocess_conf = [
 ]
 
 # Parameters that are relevant to all IMPROVE training scripts
+# TODO. Defaults for some of these args are specified in graphdrp_default_model.txt
+# Which file takes precedence (graphdrp_default_model.txt and defs below)?
 improve_train_conf = [
     {"name": "y_data_suffix",
       "type": str,
@@ -67,7 +75,7 @@ improve_train_conf = [
       "type": str,
       "default": "data",
       "help": "Suffix to compose file name for storing features (x values)."},
-    {"name": "model_params",
+    {"name": "model_params", # TODO. Consider renaming (e.g., model_file)
      "type": str,
      "default": "model.pt",
      "help": "Filename to store trained model parameters."},
@@ -79,7 +87,7 @@ improve_train_conf = [
      "action": "store",
      "type": str,
      "help": "Datadir where val data is stored."},
-    {"name": "train_data_processed",
+    {"name": "train_data_processed", # TODO. Is this like ml_data?
      "action": "store",
      "type": str,
      "help": "Name of pytorch processed train data file."},
@@ -129,6 +137,7 @@ improve_test_conf = [
 
 
 # Combine improve configuration into additional_definitions
+# TODO. Consider renaming (e.g., improve_additional_definition)
 frm_additional_definitions = improve_basic_conf + \
     improve_preprocess_conf + \
     improve_train_conf + \
@@ -221,38 +230,38 @@ def check_path_and_files(folder_name: str, file_list: List, inpath: Path) -> Pat
     return outpath
 
 
-# TODO: While the implementation of this func is model-specific, we may want
-# to require that all models have this func defined for their models.
-# Also, where this function should be located?
-def predicting(model, device, loader):
-    """ Method to run predictions/inference.
-    This is used in *train.py and *infer.py
+# TODO! While the implementation of this func is model-specific, we want to
+# require that all models have this func defined for their models.
+# This func is moved to model_utils.py.
+# def predicting(model, device, loader):
+#     """ Method to run predictions/inference.
+#     This is used in *train.py and *infer.py
 
-    Parameters
-    ----------
-    model : pytorch model
-        Model to evaluate.
-    device : string
-        Identifier for hardware that will be used to evaluate model.
-    loader : pytorch data loader.
-        Object to load data to evaluate.
+#     Parameters
+#     ----------
+#     model : pytorch model
+#         Model to evaluate.
+#     device : string
+#         Identifier for hardware that will be used to evaluate model.
+#     loader : pytorch data loader.
+#         Object to load data to evaluate.
 
-    Returns
-    -------
-    total_labels: numpy array
-        Array with ground truth.
-    total_preds: numpy array
-        Array with inferred outputs.
-    """
-    model.eval()
-    total_preds = torch.Tensor()
-    total_labels = torch.Tensor()
-    print("Make prediction for {} samples...".format(len(loader.dataset)))
-    with torch.no_grad():
-        for data in loader:
-            data = data.to(device)
-            output, _ = model(data)
-            # Is this computationally efficient?
-            total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
-    return total_labels.numpy().flatten(), total_preds.numpy().flatten()
+#     Returns
+#     -------
+#     total_labels: numpy array
+#         Array with ground truth.
+#     total_preds: numpy array
+#         Array with inferred outputs.
+#     """
+#     model.eval()
+#     total_preds = torch.Tensor()
+#     total_labels = torch.Tensor()
+#     print("Make prediction for {} samples...".format(len(loader.dataset)))
+#     with torch.no_grad():
+#         for data in loader:
+#             data = data.to(device)
+#             output, _ = model(data)
+#             # Is this computationally efficient?
+#             total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
+#             total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
+#     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
