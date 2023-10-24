@@ -52,7 +52,9 @@ gdrp_train_conf = [
     },
 ]
 
-req_train_args = ["model_arch", "model_outdir", "train_ml_data_dir", "val_ml_data_dir", "train_data_processed", "val_data_processed"]
+req_train_args = ["model_arch", "model_outdir",
+                  "train_ml_data_dir", "val_ml_data_dir",
+                  "train_data_processed", "val_data_processed"]
 
 
 def str2Class(str):
@@ -124,6 +126,8 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     return inputdtd, outputdtd
 
 
+# TODO. Should each model implement this class? What about keras or TF models?
+# TODO. Consider moving this to ./model_utils
 class Trainer:
     """Class to define a PyTorch interface for training models."""
     def __init__(self, params, device, modelpath, metrics=None):
@@ -131,8 +135,12 @@ class Trainer:
 
         :params Dict params: Dictionary of CANDLE/IMPROVE parameters read.
         :params str device: String with PyTorch format describing device available for training.
-        :params Path modelpath: Path to store model. Currently this is complementary to checkpointing, i.e. models are saved directly and also with CANDLE checkpointing. This redundacy should be re-evaluated.
-        :params List metrics: List of strings specifying the functions to evaluate the model, e.g. "mse", "pcc", etc. Default: None which is converted to: ["mse", "rmse", "pcc", "scc"].
+        :params Path modelpath: Path to store model. Currently this is complementary
+                to checkpointing, i.e. models are saved directly and also with CANDLE
+                checkpointing. This redundacy should be re-evaluated.
+        :params List metrics: List of strings specifying the functions to evaluate the
+                model, e.g. "mse", "pcc", etc. Default: None which is converted to:
+                ["mse", "rmse", "pcc", "scc"].
         """
         # -----------------------------
         # Create and move model to device
@@ -166,7 +174,6 @@ class Trainer:
         self.num_epoch = self.params["epochs"]
         self.log_interval = self.params["log_interval"]
         self.patience = self.params["patience"]
-
 
     def config_checkpointing(self, ckpt_directory):
         """Configure CANDLE checkpointing. Reads last saved state if checkpoints exist.
@@ -264,6 +271,7 @@ class Trainer:
                 continue
 
 
+# TODO. Consider moving this to ./improve/drug_response_prediction
 def save_preds(df: pd.DataFrame,
                canc_col_name: str,
                drug_col_name: str,
@@ -302,6 +310,7 @@ def save_preds(df: pd.DataFrame,
     return None
 
 
+# TODO. Consider moving this to ./improve/...
 def determine_device(cuda_name_from_params):
     """Determine device to run PyTorch functions.
 
@@ -357,6 +366,8 @@ def build_PT_data_loader(datadir: str, datafname: str, batch: int, shuffle: bool
     return loader
 
 
+# TODO. Should each model implement this class? What about keras or TF models?
+# TODO. Consider moving this to ./model_utils
 def evaluate_model(model_arch, device, modelpath, val_loader):
     """Perform predictions using given model.
 
@@ -377,6 +388,7 @@ def evaluate_model(model_arch, device, modelpath, val_loader):
     return val_true, val_pred
 
 
+# TODO. Consider moving this to ./improve/drug_response_prediction
 def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
     """Store predictions with accompanying data frame.
 
@@ -433,6 +445,7 @@ def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
     return y_true_return
 
 
+# TODO. Consider moving this to ./improve/...
 def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
     """Evaluate predictions according to specified metrics.
 
@@ -507,9 +520,9 @@ def run(params):
 
     # Note! Don't shuffle the val_loader or results will be corrupted
     val_loader = build_PT_data_loader(params["val_ml_data_dir"],
-                                        params["val_data_processed"],
-                                        params["val_batch"],
-                                        shuffle=False)
+                                      params["val_data_processed"],
+                                      params["val_batch"],
+                                      shuffle=False)
 
     # -----------------------------
     # Train

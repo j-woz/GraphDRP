@@ -1,28 +1,20 @@
-"""Functionality for IMPROVE data handling."""
-# TODO. We should either rename this script (e.g., data_utils.py) or move scale_df
-# somewhere else.
-# ./improve/
-#       data_utils
-#           dataloader.py
-#           ...
+""" Functionality for IMPROVE drug response prediction (DRP) models. """
 
 from pathlib import Path
-
 from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
-
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, RobustScaler
 
 # from improve import framework as frm
 from . import framework as frm
+# from .frm import imp_glob
+from .framework import imp_glob
 
 # TODO: omic data files have different mappings for multi-level index mapping.
 # level_map_cell_data = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
 
-## TODO. These file names are copied from improve_utils.py
-## Where these should be specified?
-## These are global variables that should be accesible to all IMPROVE drp models.
+## File names of should be accesible to all IMPROVE DRP models.
 # Cancer sample features file names
 copy_number_fname = "cancer_copy_number.tsv"  # cancer feature
 discretized_copy_number_fname = "cancer_discretized_copy_number.tsv"  # cancer feature
@@ -32,11 +24,13 @@ miRNA_expression_fname = "cancer_miRNA_expression.tsv"  # cancer feature
 mutation_count_fname = "cancer_mutation_count.tsv"  # cancer feature
 mutation_fname = "cancer_mutation.tsv"  # cancer feature
 rppa_fname = "cancer_RPPA.tsv"  # cancer feature
+lincs_fname = "landmark_genes"
 
 # Drug features file names
-smiles_file_name = "drug_SMILES.tsv"  # drug feature
-mordred_file_name = "drug_mordred.tsv"  # drug feature
-ecfp4_512bit_file_name = "drug_ecfp4_512bit.tsv"  # drug feature
+smiles_fname = "drug_SMILES.tsv"  # drug feature
+mordred_fname = "drug_mordred.tsv"  # drug feature
+ecfp4_512bit_fname = "drug_ecfp4_512bit.tsv"  # drug feature
+
 
 def get_common_samples(
         df1: pd.DataFrame,
@@ -86,7 +80,7 @@ def get_common_samples(
     return df1, df2
 
 
-def common_elements(list1: List, list2: List, verbose: bool = True) -> List:
+def common_elements(list1: List, list2: List, verbose: bool=False) -> List:
     """
     Return list of elements that the provided lists have in common.
 
@@ -98,11 +92,9 @@ def common_elements(list1: List, list2: List, verbose: bool = True) -> List:
     Returns:
         List of common elements.
     """
-
     in_common = list(set(list1).intersection(set(list2)))
     if verbose:
         print("Elements in common count: ", len(in_common))
-
     return in_common
 
 
@@ -153,15 +145,16 @@ def set_col_names_in_multilevel_dataframe(
 
 # TODO(done). Renamed func to load_cell_data()
 # def load_omics_data(fname: Union[Path, str],
-def load_omics_data(fname: Union[str, Path, List[str], List[Path]] = ["cancer_gene_expression.tsv"],
+# def load_omics_data(fname: Union[str, Path, List[str], List[Path]] = ["cancer_gene_expression.tsv"],
+def load_omics_data(params: Dict,
+                    omics_type: str = "gene_expression",
                     canc_col_name: str = "improve_sample_id",
-                    # omics_type: str = "gene_expression",
-                    # cell_file: Union[str, List[str]] = ["cancer_copy_number.tsv"],
                     gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+                    use_lincs: bool = False,
                     sep: str = "\t",
                     verbose: bool = True) -> pd.DataFrame:
     """
-    Returns data frame with specified cell line data.
+    Returns dataframe with specified omics data.
 
     Args:
         fname: Name of, or Path to, file for reading cell data.
@@ -176,129 +169,111 @@ def load_omics_data(fname: Union[str, Path, List[str], List[Path]] = ["cancer_ge
         pd.DataFrame: dataframe with the cell line data.
     """
 
-    # if omics_type == "copy_number":
-    #     level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
-    # elif omics_type == "discretized_copy_number":
-    #     level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
-    # elif omics_type == "methylation":
-    #     level_map = {"Ensembl": 2, "Entrez": 1, "Gene_Symbol": 3, "TSS": 0}
-    # if omics_type == "gene_expression":
-    #     level_map = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
-    # elif omics_type == "mirna_expression":
-    #     # level_map = TODO
-    #     raise NotImplementedError(f"{omics_type} not implemeted yet.")
-    # elif omics_type == "mutation_count":
-    #     level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
-    # elif omics_type == "mutation":
-    #     # level_map = TODO
-    #     raise NotImplementedError(f"{omics_type} not implemeted yet.")
-    # elif omics_type == "rppa":
-    #     # level_map = TODO
-    #     raise NotImplementedError(f"{omics_type} not implemeted yet.")
-    # else:
-    #     raise NotImplementedError(f"Option '{omics_type}' not recognized.")
+    # omics_file_to_name_mapping = {
+    #     "cancer_copy_number.tsv": ["copy_number", {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}],
+    #     "cancer_discretized_copy_number.tsv": ["discretized_copy_number", {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}],
+    #     "cancer_DNA_methylation.tsv": ["dna_methylation", {"Ensembl": 2, "Entrez": 1, "Gene_Symbol": 3, "TSS": 0}],
+    #     "cancer_gene_expression.tsv": ["gene_expression", {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}],
+    #     "cancer_miRNA_expression.tsv": ["miRNA_expression", {}],
+    #     "cancer_mutation_count.tsv": ["mutation_count", {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}],
+    #     "cancer_mutation.tsv": ["mutation", {}],
+    #     "cancer_RPPA.tsv": ["rppa", {}],
+    # }
 
-    omics_file_to_name_mapping = {
-        "cancer_copy_number.tsv": ["copy_number", {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}],
-        "cancer_discretized_copy_number.tsv": ["discretized_copy_number", {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}],
-        "cancer_DNA_methylation.tsv": ["dna_methylation", {"Ensembl": 2, "Entrez": 1, "Gene_Symbol": 3, "TSS": 0}],
-        "cancer_gene_expression.tsv": ["gene_expression", {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}],
-        "cancer_miRNA_expression.tsv": ["miRNA_expression", {}],
-        "cancer_mutation_count.tsv": ["mutation_count", {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}],
-        "cancer_mutation.tsv": ["mutation", {}],
-        "cancer_RPPA.tsv": ["rppa", {}],
-    }
+    # dfs = {}
+    # for file in fname:
+    #     if file not in omics_file_to_name_mapping:
+    #         # raise Exception(f"ERROR ! '{file}' is not recognized.\n")
+    #         continue
+    #     if Path(omics_file_to_name_mapping[file]).exists() == False:
+    #         raise Exception(f"ERROR ! File '{file}' is not found.\n")
 
-    # copy_number_fname = "cancer_copy_number.tsv"  # cancer feature
-    # discretized_copy_number_fname = "cancer_discretized_copy_number.tsv"  # cancer feature
-    # dna_methylation_fname = "cancer_DNA_methylation.tsv"  # cancer feature
-    # gene_expression_fname = "cancer_gene_expression.tsv"  # cancer feature
-    # miRNA_expression_fname = "cancer_miRNA_expression.tsv"  # cancer feature
-    # mutation_count_fname = "cancer_mutation_count.tsv"  # cancer feature
-    # mutation_fname = "cancer_mutation.tsv"  # cancer feature
-    # rppa_fname = "cancer_RPPA.tsv"  # cancer feature
+    #     fea_name = omics_file_to_name_mapping[file][0]
+    #     level_map = omics_file_to_name_mapping[file][1]
+    #     header = [i for i in range(len(level_map))]
+    #     fname_ = omics_file_to_name_mapping[file]
 
-    dfs = {}
-    for file in fname:
-        if file not in omics_file_to_name_mapping:
-            # raise Exception(f"ERROR ! '{file}' is not recognized.\n")
-            continue
-        if Path(omics_file_to_name_mapping[file]).exists() == False:
-            raise Exception(f"ERROR ! File '{file}' is not found.\n")
+    #     df = pd.read_csv(fname_, sep=sep, index_col=0, header=header)
+    #     df.index.name = canc_col_name  # assign index name
+    #     df = set_col_names_in_multilevel_dataframe(df, level_map, gene_system_identifier)
+    #     df = df.reset_index()
+    #     dfs[fea_name] = df
 
-        fea_name = omics_file_to_name_mapping[file][0]
-        level_map = omics_file_to_name_mapping[file][1]
-        header = [i for i in range(len(level_map))]
-        fname_ = omics_file_to_name_mapping[file]
+    if omics_type == "copy_number":
+        fname = "cancer_copy_number.tsv"
+        level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
+    elif omics_type == "discretized_copy_number":
+        fname = "cancer_discretized_copy_number.tsv"
+        level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
+    elif omics_type == "methylation":
+        fname = "cancer_DNA_methylation.tsv"
+        level_map = {"Ensembl": 2, "Entrez": 1, "Gene_Symbol": 3, "TSS": 0}
+    if omics_type == "gene_expression":
+        fname = "cancer_gene_expression.tsv"
+        level_map = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
+    elif omics_type == "mirna_expression":
+        # level_map = TODO
+        miRNA_expression_fname = "cancer_miRNA_expression.tsv"  # cancer feature
+        raise NotImplementedError(f"{omics_type} not implemeted yet.")
+    elif omics_type == "mutation_count":
+        fname = "cancer_mutation_count.tsv"
+        level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
+    elif omics_type == "mutation":
+        # level_map = TODO
+        fname = "cancer_mutation.tsv"
+        raise NotImplementedError(f"{omics_type} not implemeted yet.")
+    elif omics_type == "rppa":
+        # level_map = TODO
+        fname = "cancer_RPPA.tsv"
+        raise NotImplementedError(f"{omics_type} not implemeted yet.")
+    else:
+        raise NotImplementedError(f"Option '{omics_type}' not recognized.")
 
-        df = pd.read_csv(fname_, sep=sep, index_col=0, header=header)
-        df.index.name = canc_col_name  # assign index name
-        df = set_col_names_in_multilevel_dataframe(df, level_map, gene_system_identifier)
-        df = df.reset_index()
+    # fpath = imp_glob.X_DATA_DIR / fname
+    fpath = params["x_data_path"] / fname
+    if fpath.exists() == False:
+        raise Exception(f"ERROR ! {fpath} not found.\n")
 
-        dfs[fea_name] = df
+    header = [i for i in range(len(level_map))]
+    df = pd.read_csv(fpath, sep=sep, index_col=0, header=header)
+    df.index.name = canc_col_name  # assign index name
+    df = set_col_names_in_multilevel_dataframe(df, level_map, gene_system_identifier)
+    df = df.reset_index()
 
-    # dct = {}
-    # for file in file_list:
-    #     if file == copy_number_fname:
-    #         level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
-    #     # elif omics_type == "discretized_copy_number":
-    #     elif file == discretized_copy_number_fname:
-    #         level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
-    #     # elif omics_type == "methylation":
-    #     elif file == dna_methylation_fname:
-    #         level_map = {"Ensembl": 2, "Entrez": 1, "Gene_Symbol": 3, "TSS": 0}
-    #     # elif omics_type == "gene_expression":
-    #     elif file == dna_gene_expression_fname:
-    #         level_map = {"Ensembl": 0, "Entrez": 1, "Gene_Symbol": 2}
-    #     # elif omics_type == "mirna_expression":
-    #     elif file == miRNA_expression_fname:
-    #         # level_map = TODO
-    #         raise NotImplementedError(f"{omics_type} not implemeted yet.")
-    #     # elif omics_type == "mutation_count":
-    #     elif file == mutation_count_fname:
-    #         level_map = {"Ensembl": 2, "Entrez": 0, "Gene_Symbol": 1}
-    #     # elif omics_type == "mutation":
-    #     elif file == mutation_fname:
-    #         # level_map = TODO
-    #         raise NotImplementedError(f"{omics_type} not implemeted yet.")
-    #     # elif omics_type == "rppa":
-    #     elif file == rppa_fname:
-    #         # level_map = TODO
-    #         raise NotImplementedError(f"{omics_type} not implemeted yet.")
-    #     else:
-    #         raise NotImplementedError(f"Option '{omics_type}' not recognized.")
+    # TODO. (Yitan, Priyanka) For which data files does the lincs apply?
+    if use_lincs and omics_type == "gene_expression":
+        with open(imp_glob.X_DATA_DIR/lincs_fname) as f:
+            genes = [str(line.rstrip()) for line in f]
+        # genes = ["ge_" + str(g) for g in genes]  # This is for our legacy data
+        # print("Genes count: {}".format(len(set(genes).intersection(set(df.columns[1:])))))
+        # genes = list(set(genes).intersection(set(df.columns[1:])))
+        genes = common_elements(genes, df.columns[1:])
+        cols = [canc_col_name] + genes
+        df = df[cols]
 
-    # header = [i for i in range(len(level_map))]
-
-    # df = pd.read_csv(fname, sep=sep, index_col=0, header=header)
-    # df.index.name = canc_col_name  # assign index name
-
-    # df = set_col_names_in_multilevel_dataframe(df, level_map, gene_system_identifier)
-    # df = df.reset_index()
     if verbose:
+        print(f"Omics type: {omics_type}")
         print(f"Data read: {fname}")
-        print(f"Shape of constructed cell data framework: {df.shape}")
-        print(f"Unique cells:  {df[canc_col_name].nunique()}")
+        print(f"Shape of omics data: {df.shape}")
+        print(f"Unique count of samples: {df[canc_col_name].nunique()}")
     return df
 
 
 def load_smiles_data(
+        params: dict,
         sep: str = "\t",
         verbose: bool = True) -> pd.DataFrame:
-    """
-    IMPROVE-specific func.
-    Read smiles data.
-    src_raw_data_dir : data dir where the raw DRP data is stored
-    """
-    # df = pd.read_csv(improve_globals.smiles_file_path, sep=sep)
-    pass
+    """ Read smiles data. """
+    # fname = imp_glob.X_DATA_DIR / smiles_fname
+    fpath = params["x_data_path"] / smiles_fname
+    if fpath.exists() == False:
+        raise Exception(f"ERROR ! {fpath} not found.\n")
 
-    # TODO: updated this after we update the data
-    df.columns = ["improve_chem_id", "smiles"]
+    df = pd.read_csv(fpath, sep=sep)
+    df.columns = ["improve_chem_id", "smiles"] # Note! We updated this after updating the data
 
     if verbose:
-        print(f"SMILES data: {df.shape}")
+        print(f"Shape of SMILES data: {df.shape}")
         # print(df.dtypes)
         # print(df.dtypes.value_counts())
     return df
@@ -383,12 +358,24 @@ def load_drug_data(fname: Union[str, Path, List[str], List[Path]] = ["drug_SMILE
     return df
 
 
+# source: str,
+# # split: Union[int, None] = None,
+# # split_type: Union[str, List[str], None] = None,
+# split_file_name: Union[str, List[str], None] = None,
+# y_col_name: str = "auc",
+# sep: str = "\t",
+# verbose: bool = True) -> pd.DataFrame:
+
+
 # TODO: consider moving to ./improve/drug_response_prediction
-def load_response_data(inpath_dict: frm.DataPathDict,
-        y_file_name: str,
+def load_response_data(
+        y_data_fpath,
+        # inpath_dict: frm.DataPathDict,
+        # y_file_name: str,
         source: str,
         # split_id: int,
-        split_file_name: Union[str, List[str], None] = None,
+        # split_file_name: Union[str, List[str], None] = None,
+        split_fpath: Union[str, Path],
         # stage: str,
         canc_col_name: str = "improve_sample_id",
         drug_col_name: str = "improve_chem_id",
@@ -419,11 +406,11 @@ def load_response_data(inpath_dict: frm.DataPathDict,
     :return: Dataframe that contains single drug response values.
     :rtype: pd.Dataframe
     """
-    y_data_file = inpath_dict["y_data"] / y_file_name
-    if y_data_file.exists() == False:
-        raise Exception(f"ERROR ! {y_file_name} file not available.\n")
+    # y_data_file = inpath_dict["y_data"] / y_file_name
+    if y_data_fpath.exists() == False:
+        raise Exception(f"ERROR ! {y_data_fpath} file not available.\n")
     # Read y_data_file
-    df = pd.read_csv(y_data_file, sep=sep)
+    df = pd.read_csv(y_data_fpath, sep=sep)
 
     # # Get a subset of samples if split_id is different to -1
     # if split_id > -1:
@@ -436,74 +423,20 @@ def load_response_data(inpath_dict: frm.DataPathDict,
     # else:
     #     split_file_name = f"{source}_all.txt"
 
-    insplit = inpath_dict["splits"] / split_file_name
-    if insplit.exists() == False:
-        raise Exception(f"ERROR ! {split_file_name} file not available.\n")
+    # insplit = inpath_dict["splits"] / split_file_name
+    # if insplit.exists() == False:
+    #     raise Exception(f"ERROR ! {split_file_name} file not available.\n")
 
-    ids = pd.read_csv(insplit, header=None)[0].tolist()
+    if split_fpath.exists() == False:
+        raise Exception(f"ERROR ! {split_fpath} not found.\n")
+
+    ids = pd.read_csv(split_fpath, header=None)[0].tolist()
     df = df.loc[ids]
 
     df = df.reset_index(drop=True)
     if verbose:
-        print(f"Data read: {y_file_name}, Filtered by: {split_file_name}")
+        print(f"Data read: {y_data_fpath}, Filtered by: {split_fpath}")
         print(f"Shape of constructed response data framework: {df.shape}")
         print(f"Unique cells:  {df[canc_col_name].nunique()}")
         print(f"Unique drugs:  {df[drug_col_name].nunique()}")
     return df
-
-
-def scale_df(dataf, scaler_name="std", scaler = None, verbose=False):
-    """ Returns a dataframe with scaled data.
-
-    It can create a new scaler or use the scaler passed or return the
-    data as it is. If `scaler_name` is None, no scaling is applied. If
-    `scaler` is None, a new scaler is constructed. If `scaler` is not
-    None, and `scaler_name` is not None, the scaler passed is used for
-    scaling the data frame.
-
-    Args:
-        dataf: Pandas dataframe to scale.
-        scaler_name: Name of scikit learn scaler to apply. Options:
-                     ["minabs", "minmax", "std", "none"]. Default: std
-                     standard scaling.
-        scaler: Scikit object to use, in case it was created already.
-                Default: None, create scikit scaling object of
-                specified type.
-        verbose: Flag specifying if verbose message printing is desired.
-                 Default: False, no verbose print.
-
-    Returns:
-        pd.Dataframe: dataframe that contains drug response values.
-        scaler: Scikit object used for scaling.
-    """
-    if scaler_name is None or scaler_name == "none":
-        if verbose:
-            print("Scaler is None (no df scaling).")
-        return dataf, None
-
-    # Scale data
-    # Select only numerical columns in data frame
-    df_num = dataf.select_dtypes(include="number")
-
-    if scaler is None: # Create scikit scaler object
-        if scaler_name == "std":
-            scaler = StandardScaler()
-        elif scaler_name == "minmax":
-            scaler = MinMaxScaler()
-        elif scaler_name == "minabs":
-            scaler = MaxAbsScaler()
-        elif scaler_name == "robust":
-            scaler = RobustScaler()
-        else:
-            print(f"The specified scaler {scaler_name} is not implemented (no df scaling).")
-            return dataf, None
-
-        # Scale data according to new scaler
-        df_norm = scaler.fit_transform(df_num)
-    else: # Apply passed scikit scaler
-        # Scale data according to specified scaler
-        df_norm = scaler.transform(df_num)
-
-    # Copy back scaled data to data frame
-    dataf[df_num.columns] = df_norm
-    return dataf, scaler

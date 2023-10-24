@@ -21,21 +21,27 @@ val_data_df = "val_y_data.csv"
 train_ml_data_dir = "./out_GraphDRP/"
 val_ml_data_dir = "./out_GraphDRP/"
 test_ml_data_dir = "./out_GraphDRP/"
+raw_data_dir = "raw_data"
+x_data_dir = "x_data"
+y_data_dir = "y_data"
+splits_dir = "splits"
 
 [Preprocess]
-x_data = ["cancer_gene_expression.tsv", "drug_SMILES.tsv"]
-y_data = ["response.tsv"]
-response_file = "response.tsv"
-cell_file = "cancer_gene_expression.tsv"
-drug_file = "drug_SMILES.tsv"
+x_data_files = ["cancer_gene_expression.tsv", "drug_SMILES.tsv"]
+x_data_canc_files = ["cancer_gene_expression.tsv"]
+x_data_drug_files = ["drug_SMILES.tsv"]
+y_data_files = ["response.tsv"]
+y_data_file = "response.tsv"
 gene_system_identifier = ["Gene_Symbol"]
 use_lincs = True
 data_set = "gCSI"
+source_data_set = "gCSI"
 split_id = 0
+train_split_file = "gCSI_split_0_train.txt"
+val_split_file = "gCSI_split_0_val.txt"
+test_split_file = "gCSI_split_0_test.txt"
 canc_col_name = "improve_sample_id"
 drug_col_name = "improve_chem_id"
 y_col_name = "auc"
 y_data_suffix = "y_data"
 scaling = "std"
-
-

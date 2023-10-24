@@ -1,0 +1,36 @@
+================
+./improve
+================
+Original ./improve/ structure
+./improve/
+|-- csa.py
+|-- dataloader.py
+|-- framework.py
+|-- metrics.py
+|-- rdkit_utils.py
+|-- troch_utils.py
+|-- viz_utils.py
+
+* General funcs:  metrics.py
+* DRP-specific funcs:  dataloader.py
+* GraphDRP-specific funcs:  rdkit_utils.py, torch_utils.py, viz_utils.py
+
+Consider a modified ./improve/
+./improve/
+|-- framework.py
+|-- metrics.py
+|-- drug_response_prediction
+    |-- dataloader.py
+|-- workflows
+    |-- csa.py
+
+./model_utils
+|-- rdkit_utils.py
+|-- torch_utils.py
+|-- viz_utils.py
+
+
+================
+dataloader
+================
+scale_df()
