@@ -1,61 +1,29 @@
-# Resources:
-+ README.md: this file.
-+ data: GDSC dataset
-
-###  source codes:
-+ preprocess.py: create data in pytorch format
-+ utils.py: include TestbedDataset used by create_data.py to create data, performance measures and functions to draw loss, pearson by epoch.
-+ models/ginconv.py, gat.py, gat_gcn.py, and gcn.py: proposed models GINConvNet, GATNet, GAT_GCN, and GCNNet receiving graphs as input for drugs.
-+ training.py: train a GraphDRP model.
-+ saliancy_map.py: run this to get saliency value.
-
-
-## Dependencies
-Instructions for conda env can be found in [conda_env_py37.sh](./conda_env_py37.sh)<br/>
-Primary depedencies:<br/>
-+ [Torch](https://pytorch.org/)
-+ [Pytorch_geometric](https://github.com/rusty1s/pytorch_geometric)
-+ [Rdkit](https://www.rdkit.org/)
-+ [Matplotlib](https://matplotlib.org/)
-+ [Pandas](https://pandas.pydata.org/)
-+ [Numpy](https://numpy.org/)
-+ [Scipy](https://docs.scipy.org/doc/)
-
-
-# Step-by-step running:
-
-## 1. Create data in pytorch format
+# Install computational environment
+The installation instructions can be found in `conda_env_py37.sh`.<br>
+Step 1. Create conda env.
 ```sh
-python preprocess.py --choice 0
+conda create -n GraphDRP_py37 python=3.7 pip --yes
 ```
-choice:
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0: create mixed test dataset
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1: create saliency map dataset
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: create blind drug dataset
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3: create blind cell dataset
-
-This returns file pytorch format (.pt) stored at data/processed including training, validation, test set.
-
-## 2. Train a GraphDRP model
+Step 2. Run the commands in `conda_env_py37.sh`.
 ```sh
-python training.py --model 0 --train_batch 1024 --val_batch 1024 --test_batch 1024 --lr 0.0001 --num_epoch 300 --log_interval 20 --cuda_name "cuda:0"
+bash conda_env_py37.sh
 ```
-model:
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1: GINConvNet
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: GATNet
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3: GAT_GCN
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4: GCNNet
 
-To train a model using training data. The model is chosen if it gains the best MSE for testing data. 
-
-This returns the model and result files for the modelling achieving the best MSE for testing data throughout the training.
-
-## 3. Get saliency value 
-```sh
-python saliency_map.py --model 0 --num_feature 10 --processed_data_file "data/processed/GDSC_bortezomib.pt" --model_file "model_GINConvNet_GDSC.model" --cuda_name "cuda:0"
+# Run the scripts
+## Preprocessing.
+Transform the benchmark data into model input data files.
+```python
+python frm_preprocess_tr_vl_te.py
 ```
-The model and model_file must be the same kind of graph neural network. This outputs most important abberations with corresponding saliency value.
 
-# IMPROVE framework development
-* Create computational env
-* Run frm_workflow_within.sh or frm_workflow_cross.sh
+## Training.
+Train the model.
+```python
+python frm_train.py
+```
+
+## Inference.
+Run inference.
+```python
+python frm_infer.py
+```
