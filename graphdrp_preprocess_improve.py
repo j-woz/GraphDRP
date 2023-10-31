@@ -7,87 +7,103 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 import joblib
+
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, RobustScaler
 
 # IMPROVE imports
 from improve import framework as frm
-# from improve import dataloader as dtl
-from improve import drug_resp_pred as drp
-# from improve.torch_utils import TestbedDataset
-# from improve.rdkit_utils import build_graph_dict_from_smiles_collection
+# from improve import dataloader as dtl  # This is replaced with drug_resp_pred
+from improve import drug_resp_pred as drp  # some funcs from dataloader.py were copied to drp
 
 # Model-specific imports
+# from improve.torch_utils import TestbedDataset
+# from improve.rdkit_utils import build_graph_dict_from_smiles_collection
 from model_utils.torch_utils import TestbedDataset
 # from model_utils.rdkit_utils import build_graph_dict_from_smiles_collection
 
 filepath = Path(__file__).resolve().parent
 
-# General DRP args
-# TODO: all these args are specific to the DRP probelm but apply to all DRP models.
-# Thus, consider moving this dict somewhere else.
-gdrp_data_conf = [
-    # {"name": "x_data",
+# Model-specific params
+model_conf_params = [
+    {"name": "use_lincs",
+     "type": frm.str2bool,
+     "default": True,
+     "help": "Flag to indicate if using landmark genes.",
+    },
+]
+
+# DRP-specific params
+drp_conf_params = [
+    # {"name": "x_data_files",  # imp; TODO: (renamed from 'x_data') currently doesn't work with multimodal inputs
     #  "nargs": "+",
     #  "type": str,
     #  "help": "List of feature files.",
     # },
-    # {"name": "y_data",
-    #  "nargs": "+",
-    #  "type": str,
-    #  "help": "List of output files.",
-    # },
-    {"name": "data_set",
+    {"name": "x_data_canc_files",  # app;
+     "nargs": "+",
+     "type": str,
+     "help": "List of feature files.",
+    },
+    {"name": "x_data_drug_files",  # app;
+     # "nargs": "+",
+     "type": str,
+     "help": "List of feature files.",
+    },
+    {"name": "y_data_files",  # imp; TODO: (renamed from 'y_data') currently doesn't work with multimodal inputs
+     "nargs": "+",
+     "type": str,
+     "help": "List of output files.",
+    },
+    {"name": "data_set",  # imp; TODO: what about source and target?
      "type": str,
      "help": "Data set to preprocess.",
     },
-    # {"name": "split_id",
+    # {"name": "split_id",  # imp; TODO: use split_file_name instead (defined in framework.py)
     #  "type": int,
     #  "default": 0,
     #  "help": "ID of split to read. This is used to find training/validation/testing \
     #          partitions and read lists of data samples to use for preprocessing.",
     # },
-    # {"name": "response_file",
+    # {"name": "response_file",  # imp; TODO: renamed to y_data_file and moved to framework.py
     #  "type": str,
     #  "default": "response.tsv",
     #  "help": "File with response data",
     # },
-    # {"name": "cell_file", # TODO. Should this be list?
-    #  "type": str,
-    #  "default": "cancer_gene_expression.tsv",
-    #  "help": "File with cancer feature data",
-    # },
-    # {"name": "drug_file", # TODO. Should this be list?
-    #  "type": str,
-    #  "default": "drug_SMILES.tsv",
-    #  "help": "File with drug feature data",
-    # },
-    # {"name": "canc_col_name",
-    #  "default": "improve_sample_id",
-    #  "type": str,
-    #  "help": "Column name that contains the cancer sample ids.",
-    # },
-    # {"name": "drug_col_name",
-    #  "default": "improve_chem_id",
-    #  "type": str,
-    #  "help": "Column name that contains the drug ids.",
-    # },
-    # {"name": "gene_system_identifier",
+    {"name": "cell_file",  # app; TODO: do we actually need this? If yes, should this be a list?
+     "type": str,
+     "default": "cancer_gene_expression.tsv",
+     "help": "File with cancer feature data",
+    },
+    {"name": "drug_file",  # app; TODO: do we actually need this? If yes, should this be a list?
+     "type": str,
+     "default": "drug_SMILES.tsv",
+     "help": "File with drug feature data",
+    },
+    {"name": "canc_col_name",  # app;
+     "default": "improve_sample_id",
+     "type": str,
+     "help": "Column name that contains the cancer sample ids.",
+    },
+    {"name": "drug_col_name",  # app;
+     "default": "improve_chem_id",
+     "type": str,
+     "help": "Column name that contains the drug ids.",
+    },
+    # {"name": "gene_system_identifier",  # app;
     #  "nargs": "+",
     #  "type": str,
     #  "help": "Gene identifier system to use. Options: 'Entrez', 'Gene_Symbol',\
     #          'Ensembl', 'all', or any list combination.",
     # },
-    {"name": "use_lincs",
-     "type": frm.str2bool,
-     "default": True, # TODO. Should this be False?
-     "help": "Flag to indicate if using landmark genes.",
-    },
 
 ]
 
-req_preprocess_args = [ll["name"] for ll in gdrp_data_conf]
+# gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
+gdrp_data_conf = model_conf_params + drp_conf_params  # TODO: consider renaming to 'conf_params'
 
-req_preprocess_args.extend(["y_col_name", "model_outdir"])
+req_preprocess_args = [ll["name"] for ll in gdrp_data_conf]  # TODO: it seems that all args specifiied to be 'req'. Why?
+
+req_preprocess_args.extend(["y_col_name", "model_outdir"])  # TODO: Does 'req' mean no defaults are specified?
 
 # TODO: The functions below are general functions relevant to drp.
 # 1. check_parameter_consistency()
@@ -166,6 +182,22 @@ def smile_to_graph(smile):
     # (ap) How is edges list different from edge_index list??
     # It seems that len(edge_index) is twice the size of len(edges)
     return c_size, features, edge_index
+
+
+def lincs_gene_selection(df):
+    """ Takes df of gene expression and returns df will only lincs genes. """
+    # TODO. (Yitan, Priyanka) For which data files does the lincs apply?
+    # TODO: implement!
+    if use_lincs and omics_type == "gene_expression":
+        with open(imp_glob.X_DATA_DIR/lincs_fname) as f:
+            genes = [str(line.rstrip()) for line in f]
+        # genes = ["ge_" + str(g) for g in genes]  # This is for our legacy data
+        # print("Genes count: {}".format(len(set(genes).intersection(set(df.columns[1:])))))
+        # genes = list(set(genes).intersection(set(df.columns[1:])))
+        genes = common_elements(genes, df.columns[1:])
+        cols = [canc_col_name] + genes
+        df = df[cols]
+
 # ------------------------------------------------------------
 
 def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
@@ -225,7 +257,7 @@ def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
     return dataf, scaler
 # ------------------------------------------------------------
 
-# TODO: consider moving to ./improve/drug_response_prediction
+# TODO: consider moving to ./improve/drug_resp_pred
 def check_parameter_consistency(params: Dict):
     """Minimal validation over parameter set.
 
@@ -246,7 +278,7 @@ def check_parameter_consistency(params: Dict):
     #     warnings.warn(message, RuntimeWarning)
 
 
-# TODO: consider moving to ./improve/data
+# TODO: consider moving to ./improve/framework.py
 def raw_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected raw data folder and check that files needed for cross-study analysis (CSA) are available.
@@ -269,14 +301,14 @@ def raw_data_available(params: Dict) -> frm.DataPathDict:
         raise Exception(f"ERROR ! {inpath} not found.\n")
 
     # Make sure that the data subdirectories exist
-    xpath = frm.check_path_and_files(params["x_data_dir"], params["x_data_files"], inpath)
-    ypath = frm.check_path_and_files(params["y_data_dir"], params["y_data_files"], inpath)
+    xpath = frm.check_path_and_files(params["x_data_dir_name"], params["x_data_files"], inpath)
+    ypath = frm.check_path_and_files(params["y_data_dir_name"], params["y_data_files"], inpath)
     spath = frm.check_path_and_files("splits", [], inpath)
 
     return {"x_data_path": xpath, "y_data_path": ypath, "splits_path": spath}
 
 
-# TODO: consider moving to ./improve/data
+# TODO: consider moving to ./improve/framework.py
 def check_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected input paths and check that raw data files needed for preprocessing are available.
@@ -305,7 +337,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     return inputdtd, outputdtd
 
 
-# # TODO: consider moving to ./improve/drug_response_prediction
+# # TODO: consider moving to ./improve/drug_resp_pred
 # def load_response_data(inpath_dict: frm.DataPathDict,
 #         y_file_name: str,
 #         source: str,
@@ -599,7 +631,7 @@ def run(params):
 
     :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     # --------------------------------------------
     # Check consistency of parameter specification
     # --------------------------------------------
@@ -609,16 +641,17 @@ def run(params):
     # Check data availability and create output directory
     # ------------------------------------------------------
     # [Req]
-    indtd, outdtd = check_data_available(params)
+    # import pdb; pdb.set_trace()
+    # indtd, outdtd = check_data_available(params)
     # indtd is dictionary with input_description: path components
     # outdtd is dictionary with output_description: path components
 
     # ------------------------------------------------------
     # Build paths [Req]
     # ------------------------------------------------------
-    # TODO. This serves the same as check_data_available() but puts the paths
-    # into params.
-    # Need to decide which method to use!
+    # TODO. This does the same as check_data_available() but also creates and adds
+    # paths into the params dict.
+    # import pdb; pdb.set_trace()
     params = frm.build_paths(params)
 
     # ------------------------------------------------------
@@ -632,8 +665,18 @@ def run(params):
     # If the model uses omics data, then must use the improve
     # lib function to load the needed data. E.g. load_omics_data()
     # ------------------------------------------------------
-    # import ipdb; ipdb.set_trace()
-    ge = drp.load_omics_data(
+    import ipdb; ipdb.set_trace()
+    # df = load_gene_expression_data(
+    #         canc_col_name: str = "improve_sample_id",
+    #         gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
+    #         sep: str = "\t",
+    #         verbose: bool = True) -> pd.DataFrame:
+
+    oo = drp.OmicsLoader(params)
+    print(oo)
+    ge = oo.dfs['cancer_gene_expression.tsv']
+    
+    ge = drp.load_omics_data(params, 
         params,
         omics_type="gene_expression",
         canc_col_name=params["canc_col_name"],
@@ -647,6 +690,7 @@ def run(params):
     # lib function to load the needed data. E.g. load_smiels_data()
     # ------------------------------------------------------
     # import ipdb; ipdb.set_trace()
+    oo = drp.DrugsLoader(params)
     smi = drp.load_smiles_data(params)
 
     # ------------------------------------------------------
@@ -696,6 +740,7 @@ def run(params):
         # Load response data
         # import ipdb; ipdb.set_trace()
         # df_response = drp.load_response_data(inputdtd,
+        oo = drp.DrugResponseLoader(params)
         df_response = drp.load_response_data(
             y_data_fpath=params["y_data_path"]/params["y_data_file"],
             source=params["data_set"],

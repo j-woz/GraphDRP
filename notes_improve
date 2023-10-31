@@ -34,3 +34,11 @@ Consider a modified ./improve/
 dataloader
 ================
 scale_df()
+
+================
+Create env variables
+================
+export PYTHONPATH=$PYTHONPATH:/lambda_stor/data/apartin/projects/IMPROVE/pan-models/IMPROVE
+export IMPROVE_DATA_DIR="./csa_data/"
+echo $PYTHONPATH
+echo $IMPROVE_DATA_DIR
