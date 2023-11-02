@@ -1,4 +1,4 @@
-""" Functionality for Preprocessing Data for Training a GraphDRP Model. """
+""" Preprocessing of raw data to generate datasets for GraphDRP Model. """
 
 import os
 from pathlib import Path
@@ -19,28 +19,33 @@ from improve import drug_resp_pred as drp  # some funcs from dataloader.py were 
 # from improve.torch_utils import TestbedDataset
 # from improve.rdkit_utils import build_graph_dict_from_smiles_collection
 from model_utils.torch_utils import TestbedDataset
-# from model_utils.rdkit_utils import build_graph_dict_from_smiles_collection
 
 filepath = Path(__file__).resolve().parent
 
-# Model-specific params
+# Model-specific params (Model: GraphDRP)
 model_conf_params = [
     {"name": "use_lincs",
      "type": frm.str2bool,
      "default": True,
      "help": "Flag to indicate if using landmark genes.",
     },
+    {"name": "scaling",
+     "type": str,
+     "default": "std",
+     "choice": ["std", "minmax", "miabs", "robust"],
+     "help": "Scaler for gene expression data.",
+    },
+    {"name": "scaler_fname",
+     "type": str,
+     "default": "x_data_gene_expression_scaler.gz",
+     "help": "File name to save the scaler object.",
+    },
 ]
 
-# DRP-specific params
+# App-specific params (App: drug response prediction)
 drp_conf_params = [
-    # {"name": "x_data_files",  # imp; TODO: (renamed from 'x_data') currently doesn't work with multimodal inputs
-    #  "nargs": "+",
-    #  "type": str,
-    #  "help": "List of feature files.",
-    # },
     {"name": "x_data_canc_files",  # app;
-     "nargs": "+",
+     # "nargs": "+",
      "type": str,
      "help": "List of feature files.",
     },
@@ -49,36 +54,36 @@ drp_conf_params = [
      "type": str,
      "help": "List of feature files.",
     },
-    {"name": "y_data_files",  # imp; TODO: (renamed from 'y_data') currently doesn't work with multimodal inputs
-     "nargs": "+",
+    {"name": "y_data_files",  # imp;
+     # "nargs": "+",
      "type": str,
      "help": "List of output files.",
     },
-    {"name": "data_set",  # imp; TODO: what about source and target?
-     "type": str,
-     "help": "Data set to preprocess.",
-    },
-    # {"name": "split_id",  # imp; TODO: use split_file_name instead (defined in framework.py)
+    # {"name": "data_set",
+    #  "type": str,
+    #  "help": "Data set to preprocess.",
+    # },
+    # {"name": "split_id",
     #  "type": int,
     #  "default": 0,
     #  "help": "ID of split to read. This is used to find training/validation/testing \
     #          partitions and read lists of data samples to use for preprocessing.",
     # },
-    # {"name": "response_file",  # imp; TODO: renamed to y_data_file and moved to framework.py
+    # {"name": "response_file",
     #  "type": str,
     #  "default": "response.tsv",
     #  "help": "File with response data",
     # },
-    {"name": "cell_file",  # app; TODO: do we actually need this? If yes, should this be a list?
-     "type": str,
-     "default": "cancer_gene_expression.tsv",
-     "help": "File with cancer feature data",
-    },
-    {"name": "drug_file",  # app; TODO: do we actually need this? If yes, should this be a list?
-     "type": str,
-     "default": "drug_SMILES.tsv",
-     "help": "File with drug feature data",
-    },
+    # {"name": "cell_file",
+    #  "type": str,
+    #  "default": "cancer_gene_expression.tsv",
+    #  "help": "File with cancer feature data",
+    # },
+    # {"name": "drug_file",
+    #  "type": str,
+    #  "default": "drug_SMILES.tsv",
+    #  "help": "File with drug feature data",
+    # },
     {"name": "canc_col_name",  # app;
      "default": "improve_sample_id",
      "type": str,
@@ -99,21 +104,11 @@ drp_conf_params = [
 ]
 
 # gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
-gdrp_data_conf = model_conf_params + drp_conf_params  # TODO: consider renaming to 'conf_params'
+conf_params = model_conf_params + drp_conf_params  # TODO: consider renaming to 'conf_params'
 
-req_preprocess_args = [ll["name"] for ll in gdrp_data_conf]  # TODO: it seems that all args specifiied to be 'req'. Why?
+req_preprocess_args = [ll["name"] for ll in conf_params]  # TODO: it seems that all args specifiied to be 'req'. Why?
 
 req_preprocess_args.extend(["y_col_name", "model_outdir"])  # TODO: Does 'req' mean no defaults are specified?
-
-# TODO: The functions below are general functions relevant to drp.
-# 1. check_parameter_consistency()
-# 2. raw_data_available()
-# 3. check_data_available()
-# 4. build_common_data()
-# 5. load_response_data()
-#
-# Thus, should these functions be defined somewhere in ./improve rather than in *_preprocess_*.py?
-# How about ./imporve/drug_response_prediction?
 
 
 # ------------------------------------------------------------
@@ -176,31 +171,31 @@ def smile_to_graph(smile):
     for bond in mol.GetBonds():
         edges.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
     g = nx.Graph(edges).to_directed()  # return a directed graph
+
     edge_index = []
     for e1, e2 in g.edges:
         edge_index.append([e1, e2])
-    # (ap) How is edges list different from edge_index list??
+    # (ap) How does the edges list different from edge_index list??
     # It seems that len(edge_index) is twice the size of len(edges)
     return c_size, features, edge_index
-
-
-def lincs_gene_selection(df):
-    """ Takes df of gene expression and returns df will only lincs genes. """
-    # TODO. (Yitan, Priyanka) For which data files does the lincs apply?
-    # TODO: implement!
-    if use_lincs and omics_type == "gene_expression":
-        with open(imp_glob.X_DATA_DIR/lincs_fname) as f:
-            genes = [str(line.rstrip()) for line in f]
-        # genes = ["ge_" + str(g) for g in genes]  # This is for our legacy data
-        # print("Genes count: {}".format(len(set(genes).intersection(set(df.columns[1:])))))
-        # genes = list(set(genes).intersection(set(df.columns[1:])))
-        genes = common_elements(genes, df.columns[1:])
-        cols = [canc_col_name] + genes
-        df = df[cols]
-
 # ------------------------------------------------------------
 
-def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
+def gene_selection(df, genes_fpath, canc_col_name):
+    """ Takes a dataframe omics data (e.g., gene expression) and retains only
+    the genes specified in genes_fpath.
+    """
+    # TODO. (Yitan, Priyanka) For which data files does the lincs apply?
+    with open(genes_fpath) as f:
+        genes = [str(line.rstrip()) for line in f]
+    # genes = ["ge_" + str(g) for g in genes]  # This is for our legacy data
+    # print("Genes count: {}".format(len(set(genes).intersection(set(df.columns[1:])))))
+    # genes = list(set(genes).intersection(set(df.columns[1:])))
+    genes = drp.common_elements(genes, df.columns[1:])
+    cols = [canc_col_name] + genes
+    return df[cols]
+
+
+def scale_df(df, scaler_name: str="std", scaler=None, verbose: bool=False):
     """ Returns a dataframe with scaled data.
 
     It can create a new scaler or use the scaler passed or return the
@@ -210,7 +205,7 @@ def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
     scaling the data frame.
 
     Args:
-        dataf: Pandas dataframe to scale.
+        df: Pandas dataframe to scale.
         scaler_name: Name of scikit learn scaler to apply. Options:
                      ["minabs", "minmax", "std", "none"]. Default: std
                      standard scaling.
@@ -227,11 +222,11 @@ def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
     if scaler_name is None or scaler_name == "none":
         if verbose:
             print("Scaler is None (no df scaling).")
-        return dataf, None
+        return df, None
 
     # Scale data
     # Select only numerical columns in data frame
-    df_num = dataf.select_dtypes(include="number")
+    df_num = df.select_dtypes(include="number")
 
     if scaler is None: # Create scikit scaler object
         if scaler_name == "std":
@@ -243,8 +238,8 @@ def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
         elif scaler_name == "robust":
             scaler = RobustScaler()
         else:
-            print(f"The specified scaler {scaler_name} is not implemented (no df scaling).")
-            return dataf, None
+            print(f"The specified scaler ({scaler_name}) is not implemented (no df scaling).")
+            return df, None
 
         # Scale data according to new scaler
         df_norm = scaler.fit_transform(df_num)
@@ -253,23 +248,19 @@ def scale_df(dataf, scaler_name: str="std", scaler=None, verbose=False):
         df_norm = scaler.transform(df_num)
 
     # Copy back scaled data to data frame
-    dataf[df_num.columns] = df_norm
-    return dataf, scaler
+    df[df_num.columns] = df_norm
+    return df, scaler
 # ------------------------------------------------------------
 
-# TODO: consider moving to ./improve/drug_resp_pred
+
 def check_parameter_consistency(params: Dict):
     """Minimal validation over parameter set.
 
     :params: Dict params: A Python dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
-    # TODO:
-    # 1. Why do we need to define response_file var in graphdrp_default_model.txt? I think defining y_data var should be enough.
-    # 2. cell_file and drug_file should probably be lists, because certain models use multiple feature types to represent cells and drugs.
     if params["response_file"] not in params["y_data"]:
         message = (f"ERROR ! {params['response_file']} was not listed in params['y_data']. Not guaranteed that it is available.\n")
         warnings.warn(message, RuntimeWarning)
-    # TODO. I commented the lines below. Check if need to put them elsewhere.
     # if params["cell_file"] not in params["x_data"]:
     #     message = (f"ERROR ! {params['cell_data']} was not listed in params['x_data']. Not guaranteed that it is available.\n")
     #     warnings.warn(message, RuntimeWarning)
@@ -278,7 +269,6 @@ def check_parameter_consistency(params: Dict):
     #     warnings.warn(message, RuntimeWarning)
 
 
-# TODO: consider moving to ./improve/framework.py
 def raw_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected raw data folder and check that files needed for cross-study analysis (CSA) are available.
@@ -301,14 +291,13 @@ def raw_data_available(params: Dict) -> frm.DataPathDict:
         raise Exception(f"ERROR ! {inpath} not found.\n")
 
     # Make sure that the data subdirectories exist
-    xpath = frm.check_path_and_files(params["x_data_dir_name"], params["x_data_files"], inpath)
-    ypath = frm.check_path_and_files(params["y_data_dir_name"], params["y_data_files"], inpath)
+    xpath = frm.check_path_and_files(params["x_data_dir"], params["x_data_files"], inpath)
+    ypath = frm.check_path_and_files(params["y_data_dir"], params["y_data_files"], inpath)
     spath = frm.check_path_and_files("splits", [], inpath)
 
     return {"x_data_path": xpath, "y_data_path": ypath, "splits_path": spath}
 
 
-# TODO: consider moving to ./improve/framework.py
 def check_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected input paths and check that raw data files needed for preprocessing are available.
@@ -324,8 +313,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     ipathd = raw_data_available(params)
 
     # Create output directory. Do not complain if it exists.
-    # TODO: This was originally called ml_data.
-    opath = Path(params["model_outdir"])
+    opath = Path(params["model_outdir"]) # this was originally called ml_data
     os.makedirs(opath, exist_ok=True)
 
     # Return in DataPathDict structure
@@ -337,7 +325,6 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     return inputdtd, outputdtd
 
 
-# # TODO: consider moving to ./improve/drug_resp_pred
 # def load_response_data(inpath_dict: frm.DataPathDict,
 #         y_file_name: str,
 #         source: str,
@@ -380,7 +367,7 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
 
 #     # Get a subset of samples if split_id is different to -1
 #     if split_id > -1:
-#         # TODO: this should not be encoded like this because other comparison
+#         # This should not be encoded like this because other comparison
 #         # piplines will have a different split_file_name.
 #         # E.g, in learning curve, it will be
 #         # f"{source}_split_{split_id}_{stage}_size_{train_size}.txt"
@@ -403,7 +390,6 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
 #     return df
 
 
-# TODO: consider moving to ./model_utils/...
 # xd_tr, xc_tr, y_tr = extract_data_vars(df_tr, d_dict, c_dict_tr, d_smile, c_feature_tr, dd, cc_tr, args.y_col_name)
 def compose_data_arrays(df_response: pd.DataFrame,
                         df_drug: pd.DataFrame,
@@ -464,9 +450,9 @@ def compose_data_arrays(df_response: pd.DataFrame,
                 xc.append(cell_features.values) # xc contains list of cell feature vectors
                 y.append(rsp)
 
-    print("Number of NaN responses:   ", len(nan_rsp_list))
-    print("Number of drugs not found: ", len(miss_cell))
-    print("Number of cells not found: ", len(miss_drug))
+    # print("Number of NaN responses:   ", len(nan_rsp_list))
+    # print("Number of drugs not found: ", len(miss_cell))
+    # print("Number of cells not found: ", len(miss_drug))
 
     # # Reset index
     # df_drug = df_drug.reset_index()
@@ -475,7 +461,6 @@ def compose_data_arrays(df_response: pd.DataFrame,
     return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
 
 
-# TODO: Data loading is done directly in run()
 def build_common_data(params: Dict, inputdtd: frm.DataPathDict):
     """Construct common feature data frames.
 
@@ -504,7 +489,7 @@ def build_common_data(params: Dict, inputdtd: frm.DataPathDict):
     #                              )
     df_drug = drp.load_drug_data(fname)
 
-    # TODO: This method converts SMILES into graphs and it's specific to GraphDRP model.
+    # This method converts SMILES into graphs and it's specific to GraphDRP model.
     # I don't think it's a "common" data so we should consider defining it somewhere else.
     smile_graphs = build_graph_dict_from_smiles_collection(df_drug["smiles"].values)
 
@@ -539,7 +524,6 @@ def build_common_data(params: Dict, inputdtd: frm.DataPathDict):
     return df_drug, df_cell_all, smile_graphs
 
 
-# TODO: Functionality from this func was used in run()
 def build_stage_dependent_data(params: Dict,
                          inputdtd: frm.DataPathDict,
                          outputdtd: frm.DataPathDict,
@@ -594,9 +578,9 @@ def build_stage_dependent_data(params: Dict,
         df_cell, scaler = drp.scale_df(df_cell, scaler_name=params["scaling"])
         if params["scaling"] is not None and params["scaling"] != "none":
             # Store normalization object
-            scaler_fname = outputdtd["preprocess"] / "cell_xdata_scaler.gz"
-            joblib.dump(scaler, scaler_fname)
-            print("Scaling object created is stored in: ", scaler_fname)
+            scaler_fpath = outputdtd["preprocess"] / "cell_xdata_scaler.gz"
+            joblib.dump(scaler, scaler_fpath)
+            print("Scaling object created is stored in: ", scaler_fpath)
     else:
         # Use passed scikit scaler object
         df_cell, _ = drp.scale_df(df_cell, scaler=scaler)
@@ -605,7 +589,7 @@ def build_stage_dependent_data(params: Dict,
     # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
     df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
     # Combine data
-    # TODO: is this general func or model-specific?
+    # This general func or model-specific!
     xd, xc, y = compose_data_arrays(df_y, df_drug, df_cell, params["drug_col_name"], params["canc_col_name"])
     print("stage ", stage, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
 
@@ -631,7 +615,6 @@ def run(params):
 
     :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
-    # import pdb; pdb.set_trace()
     # --------------------------------------------
     # Check consistency of parameter specification
     # --------------------------------------------
@@ -640,69 +623,64 @@ def run(params):
     # ------------------------------------------------------
     # Check data availability and create output directory
     # ------------------------------------------------------
-    # [Req]
     # import pdb; pdb.set_trace()
     # indtd, outdtd = check_data_available(params)
     # indtd is dictionary with input_description: path components
     # outdtd is dictionary with output_description: path components
 
     # ------------------------------------------------------
-    # Build paths [Req]
-    # ------------------------------------------------------
-    # TODO. This does the same as check_data_available() but also creates and adds
-    # paths into the params dict.
+    # [Req] Build paths
+    # -----------------
     # import pdb; pdb.set_trace()
-    params = frm.build_paths(params)
+    params = frm.build_paths(params)  # paths to raw data
+    # Create outdir for ML data (to save preprocessed data)
+    preprocess_outdir = frm.create_ml_data_outpath(params)
+    # -----------------
 
     # ------------------------------------------------------
     # Construct data frames for drug and cell features
     # ------------------------------------------------------
-    # [Req]
     # df_drug, df_cell_all, smile_graphs = build_common_data(params, indtd)
 
     # ------------------------------------------------------
-    # Load omics data [Req]
-    # If the model uses omics data, then must use the improve
-    # lib function to load the needed data. E.g. load_omics_data()
-    # ------------------------------------------------------
-    import ipdb; ipdb.set_trace()
-    # df = load_gene_expression_data(
-    #         canc_col_name: str = "improve_sample_id",
-    #         gene_system_identifier: Union[str, List[str]] = "Gene_Symbol",
-    #         sep: str = "\t",
-    #         verbose: bool = True) -> pd.DataFrame:
-
+    # [Req] Load omics data
+    # ---------------------
+    # import ipdb; ipdb.set_trace()
+    print("\nLoading omics data...")
     oo = drp.OmicsLoader(params)
     print(oo)
-    ge = oo.dfs['cancer_gene_expression.tsv']
-    
-    ge = drp.load_omics_data(params, 
-        params,
-        omics_type="gene_expression",
-        canc_col_name=params["canc_col_name"],
-        gene_system_identifier=params["gene_system_identifier"],
-        use_lincs=True
-    )
+    ge = oo.dfs['cancer_gene_expression.tsv']  # get the needed canc x data
+    # ---------------------
 
     # ------------------------------------------------------
-    # Load drug data [Req]
-    # If the model uses omics data, then must use the improve
-    # lib function to load the needed data. E.g. load_smiels_data()
+    # Prep omics data (if needed)
     # ------------------------------------------------------
     # import ipdb; ipdb.set_trace()
-    oo = drp.DrugsLoader(params)
-    smi = drp.load_smiles_data(params)
+    # Gene selection (LINCS landmark genes)
+    if params["use_lincs"]:
+        genes_fpath = filepath/"landmark_genes"
+        ge = gene_selection(ge, genes_fpath, canc_col_name=params["canc_col_name"])
 
     # ------------------------------------------------------
-    # Prepare features
-    # Drug featurization for GraphDRP (specific to GraphDRP)
+    # [Req] Load drug data
+    # --------------------
+    # import ipdb; ipdb.set_trace()
+    print("\nLoading drugs data...")
+    dd = drp.DrugsLoader(params)
+    print(dd)
+    smi = dd.dfs['drug_SMILES.tsv']  # get the needed drug x data
+    # --------------------
+
+    # ------------------------------------------------------
+    # Prep drug features (if needed)
+    # Drug featurization for GraphDRP
     # ------------------------------------------------------
     # import ipdb; ipdb.set_trace()
     # smile_graphs = build_graph_dict_from_smiles_collection(smi["smiles"].values)
 
-    smi = smi.rename(columns={"smiles": "SMILES"})
-
     # Prep molecular graph data
+    smi = smi.reset_index()
+    smi.columns = [params["drug_col_name"], "SMILES"] # Note! We updated this after updating the data
     drug_smiles = smi["SMILES"].values  # list of smiles
     smiles_graphs = {}  # dict of molecular graphs converted from smiles {smiles: graph}
     for smile in drug_smiles:
@@ -711,61 +689,39 @@ def run(params):
 
     # -------------------------------------------
     # Construct ML data for every stage
+    # Note! All models must load response data (y data) using DrugResponseLoader().
+    # Below, we iterate over the 3 split files (train, val, test) and load response
+    # data, filtered by the split ids from the split files.
     # -------------------------------------------
-    # stages = ["train", "val", "test"]
-    # scaler = None
-    # for st in stages:
-    #     print(f"Building stage: {st}")
-    #     source = params["data_set"]
-    #     split_id = params["split_id"]
-    #     scaler = build_stage_dependent_data(params,
-    #                                indtd,
-    #                                outdtd,
-    #                                st,
-    #                                source,
-    #                                split_id,
-    #                                df_drug,
-    #                                df_cell_all,
-    #                                smile_graphs,
-    #                                scaler,
-    #     )
-
     # import ipdb; ipdb.set_trace()
     stages = {"train": params["train_split_file"],
               "val": params["val_split_file"],
               "test": params["test_split_file"]}
     scaler = None
-    for stage, split_file_name in stages.items():
+    for stage, split_file in stages.items():
 
-        # Load response data
-        # import ipdb; ipdb.set_trace()
-        # df_response = drp.load_response_data(inputdtd,
-        oo = drp.DrugResponseLoader(params)
-        df_response = drp.load_response_data(
-            y_data_fpath=params["y_data_path"]/params["y_data_file"],
-            source=params["data_set"],
-            split_fpath=params["splits_path"]/split_file_name,
-            canc_col_name=params["canc_col_name"],
-            drug_col_name=params["drug_col_name"],
-        )
+        # ---------------------------------
+        # [Req] Load response data
+        # ------------------------
+        rr = drp.DrugResponseLoader(params, split_file=split_file, verbose=True)
+        # print(rr)
+        df_response = rr.dfs["response.tsv"]
+        # ------------------------
 
         # Retain (canc, drug) response samples for which omic data is available
-        # df_y, df_cell = drp.get_common_samples(df1=df_response, df2=df_cell_all,
-        #                                        ref_col=params["canc_col_name"])
         df_y, df_canc = drp.get_common_samples(df1=df_response, df2=ge,
                                                ref_col=params["canc_col_name"])
         print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
-        # import ipdb; ipdb.set_trace()
-        # Normalize features using training set
-        if stage == "train": # Ignore scaler object even if specified
-            # Normalize
+        # Scale features using training data
+        if stage == "train":
+            # Scale data
             df_canc, scaler = scale_df(df_canc, scaler_name=params["scaling"])
+            # Store scaler object
             if params["scaling"] is not None and params["scaling"] != "none":
-                # Store normalization object
-                scaler_fname = outdtd["preprocess_path"] / "x_data_gene_expression_scaler.gz"
-                joblib.dump(scaler, scaler_fname)
-                print("Scaling object created is stored in: ", scaler_fname)
+                scaler_fpath = preprocess_outdir / params["scaler_fname"]
+                joblib.dump(scaler, scaler_fpath)
+                print("Scaler object created and stored in: ", scaler_fpath)
         else:
             # Use passed scikit scaler object
             df_canc, _ = scale_df(df_canc, scaler=scaler)
@@ -773,36 +729,40 @@ def run(params):
         # Sub-select desired response column (y_col_name)
         # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
         df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
-        # Combine data
-        # TODO: is this general func or model-specific?
-        # xd, xc, y = compose_data_arrays(df_y, df_drug, df_canc, params["drug_col_name"], params["canc_col_name"])
+        # Further prepare data (model-specific)
         xd, xc, y = compose_data_arrays(df_y, smi, df_canc, params["drug_col_name"], params["canc_col_name"])
-        print("stage ", stage, "--> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
+        print(stage.upper(), "data --> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
 
-        # Save the processed (all) data as PyTorch dataset
-        TestbedDataset(root=outdtd["preprocess_path"],
-                       dataset=stage + "_" + params["data_suffix"],
+        # -----------------------
+        # [Req] Create data and save in preprocess_outdir/stage + "_" + params["data_suffix"]
+        # The execution of this step, depends the model.
+        # -----------------------
+        # Save the processed data as PyTorch dataset
+        # We ignore file_format because TestbedDataset() appends .pt
+        # automatically to the file name
+        data_fname = frm.build_ml_data_name(params, stage, file_format=None)
+        TestbedDataset(root=preprocess_outdir,
+                       dataset=data_fname,
                        xd=xd,
                        xt=xc,
                        y=y,
                        smile_graph=smiles_graphs)
 
-        # Save the subset of y data
+        # Save y data dataframe for the current stage
         # rs_tr.to_csv(Path(root)/"train_response.csv", index=False) # That's what we originally used
         fname = f"{stage}_{params['y_data_suffix']}.csv"
-        df_y.to_csv(outdtd["preprocess_path"] / fname, index=False)
+        df_y.to_csv(preprocess_outdir / fname, index=False)
 
-    # return root
-    return outdtd["preprocess_path"]
+    return preprocess_outdir
 
 
 def main():
     params = frm.initialize_parameters(filepath,
-                                       default_model="graphdrp_default_model.txt",
-                                       additional_definitions = gdrp_data_conf,
+                                       default_model = "graphdrp_default_model.txt",
+                                       additional_definitions = conf_params,
                                        required = req_preprocess_args,
                                       )
-    ml_data_path = run(params)
+    ml_data_outpath = run(params)
     print("\nFinished GraphDRP pre-processing (transformed raw DRP data to model input ML data).")
 
 

@@ -1,43 +1,27 @@
 [Global_Params]
 model_name = "GraphDRP"
-model_arch = "GINConvNet"
-batch_size = 256
 cuda_name = "cuda:7"
-epochs = 2
-learning_rate = 0.0001
-log_interval = 20
-ckpt_save_interval = 5
-model_outdir = "./out_GraphDRP/"
-test_batch = 256
-val_batch = 256
-optimizer = "adam"
-loss = "mse"
-patience = 20
-test_data_processed ="test_data.pt"
-train_data_processed = "train_data.pt"
-val_data_processed = "val_data.pt"
-test_data_df = "test_y_data.csv"
-val_data_df = "val_y_data.csv"
-train_ml_data_dir = "./out_GraphDRP/"
-val_ml_data_dir = "./out_GraphDRP/"
-test_ml_data_dir = "./out_GraphDRP/"
-raw_data_dir = "raw_data"
-x_data_dir = "x_data"
-y_data_dir = "y_data"
-splits_dir = "splits"
 
 [Preprocess]
-x_data_canc_files = [["cancer_gene_expression.tsv", ["Ensembl", "Gene_Symbol"]], ["cancer_copy_number.tsv", ["Gene_Symbol"]], ["cancer_DNA_methylation.tsv"]]
-x_data_drug_files = [["drug_SMILES.tsv"], ["drug_mordred_descriptors.tsv"]]
+ml_data_outpath = "./ml_data"
+x_data_canc_files = [["cancer_gene_expression.tsv", ["Gene_Symbol"]]]
+x_data_drug_files = [["drug_SMILES.tsv"]]
 y_data_files = [["response.tsv"]]
-use_lincs = True
-data_set = "gCSI"
-source_data_set = "gCSI"
 train_split_file = "gCSI_split_0_train.txt"
 val_split_file = "gCSI_split_0_val.txt"
 test_split_file = "gCSI_split_0_test.txt"
-canc_col_name = "improve_sample_id"
-drug_col_name = "improve_chem_id"
-y_col_name = [["auc"]]
-y_data_suffix = "y_data"
+use_lincs = True
 scaling = "std"
+
+[Train]
+model_arch = "GINConvNet"
+batch_size = 256
+val_batch = 256
+test_batch = 256
+optimizer = "adam"
+learning_rate = 0.0001
+loss = "mse"
+epochs = 2
+patience = 20
+log_interval = 20
+ckpt_save_interval = 5
