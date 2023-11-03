@@ -43,6 +43,7 @@ model_conf_params = [
 ]
 
 # App-specific params (App: drug response prediction)
+# TODO: consider moving this list to drug_resp_pred.py module
 drp_conf_params = [
     {"name": "x_data_canc_files",  # app;
      # "nargs": "+",
@@ -104,7 +105,7 @@ drp_conf_params = [
 ]
 
 # gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
-conf_params = model_conf_params + drp_conf_params  # TODO: consider renaming to 'conf_params'
+conf_params = model_conf_params + drp_conf_params
 
 req_preprocess_args = [ll["name"] for ll in conf_params]  # TODO: it seems that all args specifiied to be 'req'. Why?
 
