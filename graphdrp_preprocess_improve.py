@@ -23,7 +23,8 @@ from model_utils.torch_utils import TestbedDataset
 filepath = Path(__file__).resolve().parent
 
 # Model-specific params (Model: GraphDRP)
-model_conf_params = [
+# model_conf_params = [
+model_preproc_params = [
     {"name": "use_lincs",
      "type": frm.str2bool,
      "default": True,
@@ -44,7 +45,8 @@ model_conf_params = [
 
 # App-specific params (App: drug response prediction)
 # TODO: consider moving this list to drug_resp_pred.py module
-drp_conf_params = [
+# drp_conf_params = [
+drp_preproc_params = [
     {"name": "x_data_canc_files",  # app;
      # "nargs": "+",
      "type": str,
@@ -105,9 +107,10 @@ drp_conf_params = [
 ]
 
 # gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
-conf_params = model_conf_params + drp_conf_params
+# preprocess_params = model_conf_params + drp_conf_params
+preprocess_params = model_preproc_params + drp_preproc_params
 
-req_preprocess_args = [ll["name"] for ll in conf_params]  # TODO: it seems that all args specifiied to be 'req'. Why?
+req_preprocess_args = [ll["name"] for ll in preprocess_params]  # TODO: it seems that all args specifiied to be 'req'. Why?
 
 req_preprocess_args.extend(["y_col_name", "model_outdir"])  # TODO: Does 'req' mean no defaults are specified?
 
@@ -635,7 +638,7 @@ def run(params):
     # import pdb; pdb.set_trace()
     params = frm.build_paths(params)  # paths to raw data
     # Create outdir for ML data (to save preprocessed data)
-    preprocess_outdir = frm.create_ml_data_outpath(params)
+    processed_outdir = frm.create_ml_data_outdir(params)
     # -----------------
 
     # ------------------------------------------------------
@@ -720,7 +723,7 @@ def run(params):
             df_canc, scaler = scale_df(df_canc, scaler_name=params["scaling"])
             # Store scaler object
             if params["scaling"] is not None and params["scaling"] != "none":
-                scaler_fpath = preprocess_outdir / params["scaler_fname"]
+                scaler_fpath = processed_outdir / params["scaler_fname"]
                 joblib.dump(scaler, scaler_fpath)
                 print("Scaler object created and stored in: ", scaler_fpath)
         else:
@@ -735,35 +738,41 @@ def run(params):
         print(stage.upper(), "data --> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
 
         # -----------------------
-        # [Req] Create data and save in preprocess_outdir/stage + "_" + params["data_suffix"]
+        # [Req] Create data and save in processed_outdir/stage + "_" + params["data_suffix"]
         # The execution of this step, depends the model.
         # -----------------------
-        # Save the processed data as PyTorch dataset
-        # We ignore file_format because TestbedDataset() appends .pt
-        # automatically to the file name
-        data_fname = frm.build_ml_data_name(params, stage, file_format=None)
-        TestbedDataset(root=preprocess_outdir,
-                       dataset=data_fname,
+        # Save the processed data as PyTorch dataset. Note:
+        # 1. We ignore data_format because TestbedDataset() appends the file
+        #    name automatically with .pt
+        # 2. TestbedDataset() which inherits from torch_geometric.data.InMemoryDataset
+        #    automatically creates dir called "processed" inside root and saves the file
+        #    inside. This results in: [root]/processed/[data_fname],
+        #    e.g., ml_data/processed/train_data.pt
+        # import ipdb; ipdb.set_trace()
+        x_data_fname = frm.build_ml_data_name(params, stage, data_format=None)  # e.g., data_fname = train_data.pt
+        TestbedDataset(root=processed_outdir,
+                       dataset=x_data_fname,
                        xd=xd,
                        xt=xc,
                        y=y,
                        smile_graph=smiles_graphs)
 
-        # Save y data dataframe for the current stage
+        # [Req] Save y data dataframe for the current stage
         # rs_tr.to_csv(Path(root)/"train_response.csv", index=False) # That's what we originally used
-        fname = f"{stage}_{params['y_data_suffix']}.csv"
-        df_y.to_csv(preprocess_outdir / fname, index=False)
+        y_data_fname = f"{stage}_{params['y_data_suffix']}.csv"
+        df_y.to_csv(processed_outdir / y_data_fname, index=False)
 
-    return preprocess_outdir
+    return processed_outdir
 
 
 def main():
-    params = frm.initialize_parameters(filepath,
-                                       default_model = "graphdrp_default_model.txt",
-                                       additional_definitions = conf_params,
-                                       required = req_preprocess_args,
-                                      )
-    ml_data_outpath = run(params)
+    params = frm.initialize_parameters(
+        filepath,
+        default_model="graphdrp_default_model.txt",
+        additional_definitions=preprocess_params,
+        required=req_preprocess_args,
+    )
+    processed_outdir = run(params)
     print("\nFinished GraphDRP pre-processing (transformed raw DRP data to model input ML data).")
 
 

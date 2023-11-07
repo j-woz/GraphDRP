@@ -1,9 +1,8 @@
 [Global_Params]
 model_name = "GraphDRP"
-cuda_name = "cuda:7"
 
 [Preprocess]
-ml_data_outpath = "./ml_data"
+ml_data_outdir = "./ml_data"
 x_data_canc_files = [["cancer_gene_expression.tsv", ["Gene_Symbol"]]]
 x_data_drug_files = [["drug_SMILES.tsv"]]
 y_data_files = [["response.tsv"]]
@@ -14,10 +13,15 @@ use_lincs = True
 scaling = "std"
 
 [Train]
+model_outdir = "./out_models"
+train_ml_data_dir = "./ml_data"
+val_ml_data_dir = "./ml_data"
+train_ml_data_fname = "train_data"
+val_ml_data_fname = "val_data"
+data_format = ".pt"
 model_arch = "GINConvNet"
 batch_size = 256
 val_batch = 256
-test_batch = 256
 optimizer = "adam"
 learning_rate = 0.0001
 loss = "mse"
@@ -25,3 +29,10 @@ epochs = 2
 patience = 20
 log_interval = 20
 ckpt_save_interval = 5
+cuda_name = "cuda:7"
+
+[Test]
+test_ml_data_dir = "./ml_data"
+test_ml_data_fname = "test_data"
+test_batch = 256
+cuda_name = "cuda:7"
