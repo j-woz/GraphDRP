@@ -749,9 +749,9 @@ def run(params):
         #    inside. This results in: [root]/processed/[data_fname],
         #    e.g., ml_data/processed/train_data.pt
         # import ipdb; ipdb.set_trace()
-        x_data_fname = frm.build_ml_data_name(params, stage, data_format=None)  # e.g., data_fname = train_data.pt
+        data_fname = frm.build_ml_data_name(params, stage, data_format=None)  # e.g., data_fname = train_data.pt
         TestbedDataset(root=processed_outdir,
-                       dataset=x_data_fname,
+                       dataset=data_fname,
                        xd=xd,
                        xt=xc,
                        y=y,
