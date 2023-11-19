@@ -12,23 +12,20 @@ from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, Ro
 
 # IMPROVE imports
 from improve import framework as frm
-# from improve import dataloader as dtl  # This is replaced with drug_resp_pred
-from improve import drug_resp_pred as drp  # some funcs from dataloader.py were copied to drp
+from improve import drug_resp_pred as drp
 
 # Model-specific imports
-# from improve.torch_utils import TestbedDataset
-# from improve.rdkit_utils import build_graph_dict_from_smiles_collection
 from model_utils.torch_utils import TestbedDataset
 
 filepath = Path(__file__).resolve().parent
 
-# Model-specific params (Model: GraphDRP)
+# [Req] Model-specific params (Model: GraphDRP)
 # model_conf_params = [
 model_preproc_params = [
     {"name": "use_lincs",
      "type": frm.str2bool,
      "default": True,
-     "help": "Flag to indicate if using landmark genes.",
+     "help": "Flag to indicate if landmark genes are used for gene selection.",
     },
     {"name": "scaling",
      "type": str,
@@ -43,76 +40,48 @@ model_preproc_params = [
     },
 ]
 
-# App-specific params (App: drug response prediction)
+# [Req] App-specific params (App: monotherapy drug response prediction)
 # TODO: consider moving this list to drug_resp_pred.py module
 # drp_conf_params = [
-drp_preproc_params = [
-    {"name": "x_data_canc_files",  # app;
+app_preproc_params = [
+    {"name": "x_data_canc_files",
      # "nargs": "+",
      "type": str,
-     "help": "List of feature files.",
+     "help": "List of feature files including gene_system_identifer. Examples: \n\
+             1) [['cancer_gene_expression.tsv', ['Gene_Symbol']]] \n\
+             2) [['cancer_copy_number.tsv', ['Ensembl', 'Entrez']]].",
     },
-    {"name": "x_data_drug_files",  # app;
+    {"name": "x_data_drug_files",
      # "nargs": "+",
      "type": str,
-     "help": "List of feature files.",
+     "help": "List of feature files. Examples: \n\
+             1) [['drug_SMILES.tsv']] \n\
+             2) [['drug_SMILES.tsv'], ['drug_ecfp4_nbits512.tsv']]",
     },
-    {"name": "y_data_files",  # imp;
+    {"name": "y_data_files",
      # "nargs": "+",
      "type": str,
-     "help": "List of output files.",
+     "help": "List of files that contain the y (prediction variable) data. \
+             Example: [['response.tsv']]",
     },
-    # {"name": "data_set",
-    #  "type": str,
-    #  "help": "Data set to preprocess.",
-    # },
-    # {"name": "split_id",
-    #  "type": int,
-    #  "default": 0,
-    #  "help": "ID of split to read. This is used to find training/validation/testing \
-    #          partitions and read lists of data samples to use for preprocessing.",
-    # },
-    # {"name": "response_file",
-    #  "type": str,
-    #  "default": "response.tsv",
-    #  "help": "File with response data",
-    # },
-    # {"name": "cell_file",
-    #  "type": str,
-    #  "default": "cancer_gene_expression.tsv",
-    #  "help": "File with cancer feature data",
-    # },
-    # {"name": "drug_file",
-    #  "type": str,
-    #  "default": "drug_SMILES.tsv",
-    #  "help": "File with drug feature data",
-    # },
-    {"name": "canc_col_name",  # app;
+    {"name": "canc_col_name",
      "default": "improve_sample_id",
      "type": str,
-     "help": "Column name that contains the cancer sample ids.",
+     "help": "Column name in the y (response) data file that contains the cancer sample ids.",
     },
-    {"name": "drug_col_name",  # app;
+    {"name": "drug_col_name",
      "default": "improve_chem_id",
      "type": str,
-     "help": "Column name that contains the drug ids.",
+     "help": "Column name in the y (response) data file that contains the drug ids.",
     },
-    # {"name": "gene_system_identifier",  # app;
-    #  "nargs": "+",
-    #  "type": str,
-    #  "help": "Gene identifier system to use. Options: 'Entrez', 'Gene_Symbol',\
-    #          'Ensembl', 'all', or any list combination.",
-    # },
 
 ]
 
 # gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
 # preprocess_params = model_conf_params + drp_conf_params
-preprocess_params = model_preproc_params + drp_preproc_params
-
-req_preprocess_args = [ll["name"] for ll in preprocess_params]  # TODO: it seems that all args specifiied to be 'req'. Why?
-
-req_preprocess_args.extend(["y_col_name", "model_outdir"])  # TODO: Does 'req' mean no defaults are specified?
+preprocess_params = model_preproc_params + app_preproc_params
+req_preprocess_args = [ll["name"] for ll in preprocess_params]
+# req_preprocess_args.extend(["y_col_name", "model_outdir"])
 
 
 # ------------------------------------------------------------
@@ -327,71 +296,6 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     outputdtd = {"preprocess_path": opath}
 
     return inputdtd, outputdtd
-
-
-# def load_response_data(inpath_dict: frm.DataPathDict,
-#         y_file_name: str,
-#         source: str,
-#         split_id: int,
-#         stage: str,
-#         canc_col_name = "improve_sample_id",
-#         drug_col_name = "improve_chem_id",
-#         sep: str = "\t",
-#         verbose: bool = True) -> pd.DataFrame:
-#     """
-#     Returns dataframe with cancer ids, drug ids, and drug response values.
-#     Samples from the original drug response file are filtered based on
-#     the specified split ids.
-
-#     :params: Dict inpath_dict: Dictionary of paths and info about raw
-#              data input directories.
-#     :params: str y_file_name: Name of file for reading the y_data.
-#     :params: str source: DRP source name.
-#     :params: int split_id: Split id. If -1, use all data. Note that this
-#              assumes that split_id has been constructed to take into
-#              account all the data sources.
-#     :params: str stage: Type of partition to read. One of the following:
-#              'train', 'val', 'test'.
-#     :params: str canc_col_name: Column name that contains the cancer
-#              sample ids. Default: "improve_sample_id".
-#     :params: str drug_col_name: Column name that contains the drug ids.
-#              Default: "improve_chem_id".
-#     :params: str sep: Separator used in data file.
-#     :params: bool verbose: Flag for verbosity. If True, info about
-#              computations is displayed. Default: True.
-
-#     :return: Dataframe that contains single drug response values.
-#     :rtype: pd.Dataframe
-#     """
-#     y_data_file = inpath_dict["y_data"] / y_file_name
-#     if y_data_file.exists() == False:
-#         raise Exception(f"ERROR ! {y_file_name} file not available.\n")
-#     # Read y_data_file
-#     df = pd.read_csv(y_data_file, sep=sep)
-
-#     # Get a subset of samples if split_id is different to -1
-#     if split_id > -1:
-#         # This should not be encoded like this because other comparison
-#         # piplines will have a different split_file_name.
-#         # E.g, in learning curve, it will be
-#         # f"{source}_split_{split_id}_{stage}_size_{train_size}.txt"
-#         # Moreover, we should be able to pass a list of splits.
-#         split_file_name = f"{source}_split_{split_id}_{stage}.txt"
-#     else:
-#         split_file_name = f"{source}_all.txt"
-#     insplit = inpath_dict["splits"] / split_file_name
-#     if insplit.exists() == False:
-#         raise Exception(f"ERROR ! {split_file_name} file not available.\n")
-#     ids = pd.read_csv(insplit, header=None)[0].tolist()
-#     df = df.loc[ids]
-
-#     df = df.reset_index(drop=True)
-#     if verbose:
-#         print(f"Data read: {y_file_name}, Filtered by: {split_file_name}")
-#         print(f"Shape of constructed response data framework: {df.shape}")
-#         print(f"Unique cells:  {df[canc_col_name].nunique()}")
-#         print(f"Unique drugs:  {df[drug_col_name].nunique()}")
-#     return df
 
 
 # xd_tr, xc_tr, y_tr = extract_data_vars(df_tr, d_dict, c_dict_tr, d_smile, c_feature_tr, dd, cc_tr, args.y_col_name)
@@ -627,19 +531,19 @@ def run(params):
     # ------------------------------------------------------
     # Check data availability and create output directory
     # ------------------------------------------------------
-    # import pdb; pdb.set_trace()
     # indtd, outdtd = check_data_available(params)
     # indtd is dictionary with input_description: path components
     # outdtd is dictionary with output_description: path components
 
     # ------------------------------------------------------
-    # [Req] Build paths
-    # -----------------
-    # import pdb; pdb.set_trace()
-    params = frm.build_paths(params)  # paths to raw data
+    # [Req] Build paths and create ML data dir
+    # ----------------------------------------
+    # Build paths for raw_data, x_data, y_data, splits
+    params = frm.build_paths(params)  
+
     # Create outdir for ML data (to save preprocessed data)
-    processed_outdir = frm.create_ml_data_outdir(params)
-    # -----------------
+    processed_outdir = frm.create_ml_data_outdir(params)  # creates params["ml_data_outdir"]
+    # ----------------------------------------
 
     # ------------------------------------------------------
     # Construct data frames for drug and cell features
@@ -649,18 +553,16 @@ def run(params):
     # ------------------------------------------------------
     # [Req] Load omics data
     # ---------------------
-    # import ipdb; ipdb.set_trace()
-    print("\nLoading omics data...")
+    print("\nLoading omics data ...")
     oo = drp.OmicsLoader(params)
-    print(oo)
-    ge = oo.dfs['cancer_gene_expression.tsv']  # get the needed canc x data
+    # print(oo)
+    ge = oo.dfs['cancer_gene_expression.tsv']  # get only gene expression dataframe
     # ---------------------
 
     # ------------------------------------------------------
-    # Prep omics data (if needed)
+    # [GraphDRP] Prep omics data
     # ------------------------------------------------------
-    # import ipdb; ipdb.set_trace()
-    # Gene selection (LINCS landmark genes)
+    # Gene selection (LINCS landmark genes) for GraphDRP
     if params["use_lincs"]:
         genes_fpath = filepath/"landmark_genes"
         ge = gene_selection(ge, genes_fpath, canc_col_name=params["canc_col_name"])
@@ -668,23 +570,20 @@ def run(params):
     # ------------------------------------------------------
     # [Req] Load drug data
     # --------------------
-    # import ipdb; ipdb.set_trace()
     print("\nLoading drugs data...")
     dd = drp.DrugsLoader(params)
-    print(dd)
-    smi = dd.dfs['drug_SMILES.tsv']  # get the needed drug x data
+    # print(dd)
+    smi = dd.dfs['drug_SMILES.tsv']  # get only the SMILES data
     # --------------------
 
     # ------------------------------------------------------
-    # Prep drug features (if needed)
-    # Drug featurization for GraphDRP
+    # [GraphDRP] Prep drug features
     # ------------------------------------------------------
-    # import ipdb; ipdb.set_trace()
     # smile_graphs = build_graph_dict_from_smiles_collection(smi["smiles"].values)
 
-    # Prep molecular graph data
+    # Prep molecular graph data for GraphDRP
     smi = smi.reset_index()
-    smi.columns = [params["drug_col_name"], "SMILES"] # Note! We updated this after updating the data
+    smi.columns = [params["drug_col_name"], "SMILES"]
     drug_smiles = smi["SMILES"].values  # list of smiles
     smiles_graphs = {}  # dict of molecular graphs converted from smiles {smiles: graph}
     for smile in drug_smiles:
@@ -692,16 +591,16 @@ def run(params):
         smiles_graphs[smile] = g
 
     # -------------------------------------------
-    # Construct ML data for every stage
-    # Note! All models must load response data (y data) using DrugResponseLoader().
+    # Construct ML data for every stage (train, val, test)
+    # [Req] All models must load response data (y data) using DrugResponseLoader().
     # Below, we iterate over the 3 split files (train, val, test) and load response
     # data, filtered by the split ids from the split files.
     # -------------------------------------------
-    # import ipdb; ipdb.set_trace()
     stages = {"train": params["train_split_file"],
               "val": params["val_split_file"],
               "test": params["test_split_file"]}
     scaler = None
+
     for stage, split_file in stages.items():
 
         # ------------------------
@@ -713,11 +612,11 @@ def run(params):
         # ------------------------
 
         # ------------------------
-        # GraphDRP data prep
+        # [GraphDRP] Data prep
         # ------------------------
-        # Retain (canc, drug) response samples for which omic data is available
+        # Retain (canc, drug) response samples for which omics data is available
         ydf, df_canc = drp.get_common_samples(df1=df_response, df2=ge,
-                                               ref_col=params["canc_col_name"])
+                                              ref_col=params["canc_col_name"])
         print(ydf[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
         # Scale features using training data
@@ -742,19 +641,26 @@ def run(params):
         # ------------------------
 
         # -----------------------
-        # [Req] Create data file and save in params["ml_data_outdir"]/stage + "_" + params["data_suffix"]
-        # The implementation of this step, depends the model.
+        # [Req] Save ML data files in params["ml_data_outdir"]
+        # The implementation of this step, depends on the model.
         # -----------------------
-        data_fname = frm.build_ml_data_name(params, stage, data_format=params["data_format"])  # [Req]
+        # [Req] Create data name
+        data_fname = frm.build_ml_data_name(params, stage, data_format=params["data_format"])
 
         # Revmoe data_format because TestbedDataset() appends '.pt' to the
-        # file name automatically
+        # file name automatically. This is unique for GraphDRP.
         data_fname = data_fname.split(params["data_format"])[0]
 
+        # Create the ml data and save it as data_fname in params["ml_data_outdir"]
+        # Note! In the *train*.py and *infer*.py scripts, functionality should
+        # be implemented to load the saved data.
+        # -----
+        # In GraphDRP, TestbedDataset() is used to create and save the file.
         # TestbedDataset() which inherits from torch_geometric.data.InMemoryDataset
         # automatically creates dir called "processed" inside root and saves the file
         # inside. This results in: [root]/processed/[dataset],
         # e.g., ml_data/processed/train_data.pt
+        # -----
         TestbedDataset(root=params["ml_data_outdir"],
                        dataset=data_fname,
                        xd=xd,
@@ -762,11 +668,8 @@ def run(params):
                        y=y,
                        smile_graph=smiles_graphs)
 
-        # [Req] Save y data dataframe for the current stage
-        # y_df_fname = f"{stage}_{params['y_data_suffix']}.csv"  
-        # y_df_fpath = params["ml_data_outdir"] / y_df_fname
-        # df_y.to_csv(y_df_fpath, index=False)
-        frm.save_stage_ydf(ydf, params, stage)  # [Req]
+        # [Req] Save y dataframe for the current stage
+        frm.save_stage_ydf(ydf, params, stage)
 
     return params["ml_data_outdir"]
 
