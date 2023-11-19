@@ -704,7 +704,7 @@ def run(params):
     scaler = None
     for stage, split_file in stages.items():
 
-        # ---------------------------------
+        # ------------------------
         # [Req] Load response data
         # ------------------------
         rr = drp.DrugResponseLoader(params, split_file=split_file, verbose=True)
@@ -712,10 +712,13 @@ def run(params):
         df_response = rr.dfs["response.tsv"]
         # ------------------------
 
+        # ------------------------
+        # GraphDRP data prep
+        # ------------------------
         # Retain (canc, drug) response samples for which omic data is available
-        df_y, df_canc = drp.get_common_samples(df1=df_response, df2=ge,
+        ydf, df_canc = drp.get_common_samples(df1=df_response, df2=ge,
                                                ref_col=params["canc_col_name"])
-        print(df_y[[params["canc_col_name"], params["drug_col_name"]]].nunique())
+        print(ydf[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
         # Scale features using training data
         if stage == "train":
@@ -723,7 +726,7 @@ def run(params):
             df_canc, scaler = scale_df(df_canc, scaler_name=params["scaling"])
             # Store scaler object
             if params["scaling"] is not None and params["scaling"] != "none":
-                scaler_fpath = processed_outdir / params["scaler_fname"]
+                scaler_fpath = Path(params["ml_data_outdir"]) / params["scaler_fname"]
                 joblib.dump(scaler, scaler_fpath)
                 print("Scaler object created and stored in: ", scaler_fpath)
         else:
@@ -732,25 +735,27 @@ def run(params):
 
         # Sub-select desired response column (y_col_name)
         # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
-        df_y = df_y[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
+        ydf = ydf[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
         # Further prepare data (model-specific)
-        xd, xc, y = compose_data_arrays(df_y, smi, df_canc, params["drug_col_name"], params["canc_col_name"])
+        xd, xc, y = compose_data_arrays(ydf, smi, df_canc, params["drug_col_name"], params["canc_col_name"])
         print(stage.upper(), "data --> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
+        # ------------------------
 
         # -----------------------
-        # [Req] Create data and save in processed_outdir/stage + "_" + params["data_suffix"]
-        # The execution of this step, depends the model.
+        # [Req] Create data file and save in params["ml_data_outdir"]/stage + "_" + params["data_suffix"]
+        # The implementation of this step, depends the model.
         # -----------------------
-        # Save the processed data as PyTorch dataset. Note:
-        # 1. We ignore data_format because TestbedDataset() appends the file
-        #    name automatically with .pt
-        # 2. TestbedDataset() which inherits from torch_geometric.data.InMemoryDataset
-        #    automatically creates dir called "processed" inside root and saves the file
-        #    inside. This results in: [root]/processed/[data_fname],
-        #    e.g., ml_data/processed/train_data.pt
-        # import ipdb; ipdb.set_trace()
-        data_fname = frm.build_ml_data_name(params, stage, data_format=None)  # e.g., data_fname = train_data.pt
-        TestbedDataset(root=processed_outdir,
+        data_fname = frm.build_ml_data_name(params, stage, data_format=params["data_format"])  # [Req]
+
+        # Revmoe data_format because TestbedDataset() appends '.pt' to the
+        # file name automatically
+        data_fname = data_fname.split(params["data_format"])[0]
+
+        # TestbedDataset() which inherits from torch_geometric.data.InMemoryDataset
+        # automatically creates dir called "processed" inside root and saves the file
+        # inside. This results in: [root]/processed/[dataset],
+        # e.g., ml_data/processed/train_data.pt
+        TestbedDataset(root=params["ml_data_outdir"],
                        dataset=data_fname,
                        xd=xd,
                        xt=xc,
@@ -758,11 +763,12 @@ def run(params):
                        smile_graph=smiles_graphs)
 
         # [Req] Save y data dataframe for the current stage
-        # rs_tr.to_csv(Path(root)/"train_response.csv", index=False) # That's what we originally used
-        y_data_fname = f"{stage}_{params['y_data_suffix']}.csv"
-        df_y.to_csv(processed_outdir / y_data_fname, index=False)
+        # y_df_fname = f"{stage}_{params['y_data_suffix']}.csv"  
+        # y_df_fpath = params["ml_data_outdir"] / y_df_fname
+        # df_y.to_csv(y_df_fpath, index=False)
+        frm.save_stage_ydf(ydf, params, stage)  # [Req]
 
-    return processed_outdir
+    return params["ml_data_outdir"]
 
 
 def main():
