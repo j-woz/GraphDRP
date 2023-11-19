@@ -1,4 +1,4 @@
-"""Functionality for Infering on a Trained GraphDRP Model."""
+""" Functionality for Infering on a Trained GraphDRP Model. """
 
 from pathlib import Path
 import os
@@ -35,7 +35,7 @@ from graphdrp_train_improve import (
 filepath = Path(__file__).resolve().parent
 
 gdrp_test_conf = [
-    {"name": "test_data_df",
+    {"name": "test_data_df",  # TODO: app or frm level?
      "default": frm.SUPPRESS,
      "type": str,
      "help": "Data frame with original test response data."
@@ -129,13 +129,12 @@ def run(params):
     # Prepare PyTorch dataloaders
     # Note! Don't shuffle the test_loader or results will be corrupted
     test_loader = build_PT_data_loader(params["test_ml_data_dir"],
-                                        params["test_data_processed"],
-                                        params["test_batch"],
-                                        shuffle=False)
+                                       params["test_data_processed"],
+                                       params["test_batch"],
+                                       shuffle=False)
 
     # -----------------------------
-    # Load the saved model
-    # Compute predictions
+    # Load the saved model and compute predictions
     # (groud truth), (predictions)
     test_true, test_pred = evaluate_model(params["model_arch"], device, indtd["model"], test_loader)
 
@@ -153,12 +152,13 @@ def run(params):
 
 
 def main():
+    additional_definitions = gdrp_model_conf + gdrp_data_conf + gdrp_test_conf
     params = frm.initialize_parameters(filepath,
                                        default_model="graphdrp_default_model.txt",
-                                       additional_definitions = gdrp_model_conf + gdrp_data_conf + gdrp_test_conf,
+                                       additional_definitions = additional_definitions,
                                        required = req_infer_args,
                                       )
-    run(params)
+    test_scores = run(params)
     print("\nFinished inference of GraphDRP model.")
 
 
