@@ -2,13 +2,14 @@
 model_name = "GraphDRP"
 
 [Preprocess]
-ml_data_outdir = "./ml_data/gCSI-gCSI/split_0"
-x_data_canc_files = [["cancer_gene_expression.tsv", ["Gene_Symbol"]]]
-x_data_drug_files = [["drug_SMILES.tsv"]]
-y_data_files = [["response.tsv"]]
 train_split_file = "gCSI_split_0_train.txt"
 val_split_file = "gCSI_split_0_val.txt"
 test_split_file = "gCSI_split_0_test.txt"
+ml_data_outdir = "./ml_data/gCSI-gCSI/split_0"
+data_format = ".pt"
+y_data_files = [["response.tsv"]]
+x_data_canc_files = [["cancer_gene_expression.tsv", ["Gene_Symbol"]]]
+x_data_drug_files = [["drug_SMILES.tsv"]]
 use_lincs = True
 scaling = "std"
 
@@ -18,19 +19,18 @@ model_params = "model.pt"
 model_file_format = ".pt"
 train_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
 val_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
-data_format = ".pt"
 model_arch = "GINConvNet"
 batch_size = 256
 val_batch = 256
 optimizer = "adam"
 learning_rate = 0.0001
 loss = "mse"
-epochs = 2
+epochs = 150
 patience = 20
 early_stop_metric = "mse"
 log_interval = 20
 ckpt_save_interval = 5
-cuda_name = "cuda:7"
+cuda_name = "cuda:5"
 
 [Test]
 test_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"

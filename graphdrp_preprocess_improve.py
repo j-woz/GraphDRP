@@ -19,8 +19,43 @@ from model_utils.torch_utils import TestbedDataset
 
 filepath = Path(__file__).resolve().parent
 
-# [Req] Model-specific params (Model: GraphDRP)
-# model_conf_params = [
+# [Req] App-specific params (App: monotherapy drug response prediction)
+# TODO: consider moving this list to drug_resp_pred.py module
+app_preproc_params = [
+    # These arg should be specified in the [modelname]_default_model.txt:
+    # y_data_files, x_data_canc_files, x_data_drug_files
+    {"name": "y_data_files",
+     "type": str,
+     "help": "List of files that contain the y (prediction variable) data. \
+             Example: [['response.tsv']]",
+    },
+    {"name": "x_data_canc_files",
+     "type": str,
+     "help": "List of feature files including gene_system_identifer. Examples: \n\
+             1) [['cancer_gene_expression.tsv', ['Gene_Symbol']]] \n\
+             2) [['cancer_copy_number.tsv', ['Ensembl', 'Entrez']]].",
+    },
+    {"name": "x_data_drug_files",
+     "type": str,
+     "help": "List of feature files. Examples: \n\
+             1) [['drug_SMILES.tsv']] \n\
+             2) [['drug_SMILES.tsv'], ['drug_ecfp4_nbits512.tsv']]",
+    },
+    # ---------------------------------------
+    {"name": "canc_col_name",
+     "default": "improve_sample_id",
+     "type": str,
+     "help": "Column name in the y (response) data file that contains the cancer sample ids.",
+    },
+    {"name": "drug_col_name",
+     "default": "improve_chem_id",
+     "type": str,
+     "help": "Column name in the y (response) data file that contains the drug ids.",
+    },
+
+]
+
+# [GraphDRP] Model-specific params (Model: GraphDRP)
 model_preproc_params = [
     {"name": "use_lincs",
      "type": frm.str2bool,
@@ -40,46 +75,9 @@ model_preproc_params = [
     },
 ]
 
-# [Req] App-specific params (App: monotherapy drug response prediction)
-# TODO: consider moving this list to drug_resp_pred.py module
-# drp_conf_params = [
-app_preproc_params = [
-    {"name": "x_data_canc_files",
-     # "nargs": "+",
-     "type": str,
-     "help": "List of feature files including gene_system_identifer. Examples: \n\
-             1) [['cancer_gene_expression.tsv', ['Gene_Symbol']]] \n\
-             2) [['cancer_copy_number.tsv', ['Ensembl', 'Entrez']]].",
-    },
-    {"name": "x_data_drug_files",
-     # "nargs": "+",
-     "type": str,
-     "help": "List of feature files. Examples: \n\
-             1) [['drug_SMILES.tsv']] \n\
-             2) [['drug_SMILES.tsv'], ['drug_ecfp4_nbits512.tsv']]",
-    },
-    {"name": "y_data_files",
-     # "nargs": "+",
-     "type": str,
-     "help": "List of files that contain the y (prediction variable) data. \
-             Example: [['response.tsv']]",
-    },
-    {"name": "canc_col_name",
-     "default": "improve_sample_id",
-     "type": str,
-     "help": "Column name in the y (response) data file that contains the cancer sample ids.",
-    },
-    {"name": "drug_col_name",
-     "default": "improve_chem_id",
-     "type": str,
-     "help": "Column name in the y (response) data file that contains the drug ids.",
-    },
-
-]
-
 # gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
 # preprocess_params = model_conf_params + drp_conf_params
-preprocess_params = model_preproc_params + app_preproc_params
+preprocess_params = app_preproc_params + model_preproc_params
 req_preprocess_args = [ll["name"] for ll in preprocess_params]
 # req_preprocess_args.extend(["y_col_name", "model_outdir"])
 
