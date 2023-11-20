@@ -155,7 +155,6 @@ def gene_selection(df, genes_fpath, canc_col_name):
     """ Takes a dataframe omics data (e.g., gene expression) and retains only
     the genes specified in genes_fpath.
     """
-    # TODO. (Yitan, Priyanka) For which data files does the lincs apply?
     with open(genes_fpath) as f:
         genes = [str(line.rstrip()) for line in f]
     # genes = ["ge_" + str(g) for g in genes]  # This is for our legacy data
@@ -224,6 +223,7 @@ def scale_df(df, scaler_name: str="std", scaler=None, verbose: bool=False):
 # ------------------------------------------------------------
 
 
+# TODO. Remove (not used)
 def check_parameter_consistency(params: Dict):
     """Minimal validation over parameter set.
 
@@ -240,6 +240,7 @@ def check_parameter_consistency(params: Dict):
     #     warnings.warn(message, RuntimeWarning)
 
 
+# TODO. Remove (not used)
 def raw_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected raw data folder and check that files needed for cross-study analysis (CSA) are available.
@@ -269,6 +270,7 @@ def raw_data_available(params: Dict) -> frm.DataPathDict:
     return {"x_data_path": xpath, "y_data_path": ypath, "splits_path": spath}
 
 
+# TODO. Remove (not used)
 def check_data_available(params: Dict) -> frm.DataPathDict:
     """
     Sweep the expected input paths and check that raw data files needed for preprocessing are available.
@@ -364,8 +366,6 @@ def compose_data_arrays(df_response: pd.DataFrame,
     # df_cell = df_cell.reset_index()
 
     return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
-
-
 
 
 def run(params):
