@@ -15,26 +15,26 @@ from torch_geometric.data import DataLoader
 
 # IMPROVE/CANDLE imports
 from improve import framework as frm
-from improve.metrics import compute_metrics
 from improve import drug_resp_pred as drp
-from candle import build_pytorch_optimizer, get_pytorch_function, keras_default_config, CandleCkptPyTorch
+from improve.metrics import compute_metrics
+# from candle import build_pytorch_optimizer, get_pytorch_function, keras_default_config, CandleCkptPyTorch
+from candle import CandleCkptPyTorch
 
 # Model-specific imports
-# from improve.torch_utils import TestbedDataset  # ap
 from model_utils.torch_utils import TestbedDataset  # ap
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 
-from model_utils.classlogger import Logger, get_print_func
+# from model_utils.classlogger import Logger, get_print_func
 
 # from graphdrp_preprocess_improve import gdrp_data_conf  # ap
-from graphdrp_preprocess_improve import model_preproc_params, drp_preproc_params, preprocess_params  # ap
+from graphdrp_preprocess_improve import model_preproc_params, app_preproc_params, preprocess_params  # ap
 
 filepath = Path(__file__).resolve().parent
 
-# Params that are specific to graphDRP model
+# [Req] Model-specific params (Model: GraphDRP)
 # gdrp_model_conf = [
 model_train_params = [
     {"name": "model_arch",
@@ -52,8 +52,9 @@ model_train_params = [
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
 ]
 
+# [Req] App-specific params (App: monotherapy drug response prediction)
 # gdrp_train_conf = [
-drp_train_params = [
+app_train_params = [
     {"name": "val_data_df",  # TODO: app or frm level?
      "default": frm.SUPPRESS,
      "type": str,
@@ -61,7 +62,7 @@ drp_train_params = [
     },
 ]
 
-# train_params = model_train_params + drp_train_params  # ap
+# train_params = model_train_params + app_train_params  # ap
 
 req_train_args = ["model_arch", "model_outdir",
                   "train_ml_data_dir", "val_ml_data_dir",
@@ -285,10 +286,8 @@ def train_tmp(model, device, train_loader, optimizer, epoch, log_interval):
     return sum(avg_loss) / len(avg_loss)
 
 
-
-def train_epoch(model, device, train_loader, optimizer, loss_fn, epoch,
-                log_interval, verbose=True):
-# def train_epoch(train_loader, epoch):
+def train_epoch(model, device, train_loader, optimizer, loss_fn, epoch: int,
+                log_interval: int, verbose=True):
     """Execute a training epoch (i.e. one pass through training set).
 
     :params DataLoader train_loader: PyTorch data loader with training data.
@@ -412,9 +411,6 @@ def train_graphdrp(params: Dict):
     return model
 
 
-
-# TODO. Should each model implement this class? What about keras or TF models?
-# TODO. Consider moving this to ./model_utils
 class Trainer:
     """Class to define a PyTorch interface for training models."""
     def __init__(self, params, device, modelpath, metrics=None):
@@ -563,46 +559,6 @@ class Trainer:
                 continue
 
 
-# TODO. Consider moving this to ./improve/drug_resp_pred
-def save_preds(df: pd.DataFrame,
-               # canc_col_name: str,
-               # drug_col_name: str,
-               y_col_name: str,
-               pred_col_name_suffix: str,
-               outpath: Union[str, Path],
-               round_decimals: int=4) -> None:
-    """ Save model predictions.
-
-    This function throws errors if the dataframe does not include the expected
-    columns: canc_col_name, drug_col_name, y_col_name, y_col_name + "_pred"
-
-    :params pd.DataFrame df: Pandas data frame with model predictions
-    :params str canc_col_name: Column name that contains the cancer sample ids.
-    :params str drug_col_name: Column name that contains the drug ids.
-    :params str y_col_name: drug response col name (e.g., IC50, AUC)
-    :params str pred_col_name_suffix: Suffix to identoy column of predictions made by model.
-    :params str or PosixPath outpath: outdir to save the model predictions df.
-    :params int round: round response values.
-
-    :return: ?.
-    :rtype: None
-    """
-    # Check that the 4 columns exist
-    # assert canc_col_name in df.columns, f"{canc_col_name} was not found in columns."
-    # assert drug_col_name in df.columns, f"{drug_col_name} was not found in columns."
-    assert y_col_name in df.columns, f"{y_col_name} was not found in columns."
-    pred_col_name = y_col_name + f"{pred_col_name_suffix}"
-    assert pred_col_name in df.columns, f"{pred_col_name} was not found in columns."
-
-    # Round
-    df = df.round({y_col_name: round_decimals, pred_col_name: round_decimals})
-
-    # Save preds df
-    df.to_csv(outpath, index=False)
-    return None
-
-
-# TODO. model;
 def determine_device(cuda_name_from_params):
     """Determine device to run PyTorch functions.
 
@@ -635,39 +591,12 @@ def determine_device(cuda_name_from_params):
     return device
 
 
-# TODO. model-specific?
-def build_PT_data_loader(
-        datadir: str,
-        datafname: str,
-        batch: int,
-        shuffle: bool):
-    """ Build a PyTorch data loader.
-
-    :params str datadir: Directory where `processed` folder containing
-            processed data can be found.
-    :params str datafname: Name of PyTorch processed data to read.
-    :params int batch: Batch size for data loader.
-    :params bool shuffle: Flag to specify if data is to be shuffled when
-            applying data loader.
-
-    :return: PyTorch data loader constructed.
-    :rtype: DataLoader
-    """
-    data_file_name = datafname
-    if data_file_name.endswith(".pt"):
-        data_file_name = data_file_name[:-3] # TestbedDataset() appends this string with ".pt"
-    dataset = TestbedDataset(root=datadir, dataset=data_file_name) # TestbedDataset() requires strings
-    loader = DataLoader(dataset, batch_size=batch, shuffle=shuffle) # PyTorch dataloader
-    return loader
-
-
-# TODO. model-specific?
 def build_GraphDRP_dataloader(
         data_dir: str,
         data_fname: str,
         batch_size: int,
         shuffle: bool):
-    """ Build a PyTorch data loader.
+    """ Build a PyTorch data loader for GraphDRP.
 
     :params str datadir: Directory where `processed` folder containing
             processed data can be found.
@@ -686,9 +615,6 @@ def build_GraphDRP_dataloader(
     return loader
 
 
-# TODO. model-specific?
-# TODO. Should each model implement this class? What about keras or TF models?
-# TODO. Consider moving this to ./model_utils
 # def evaluate_model(model_arch, device, modelpath, data_loader):
 def evaluate_model(params, device, modelpath, data_loader):
     """Load the model and perform predictions using given model.
@@ -716,7 +642,6 @@ def evaluate_model(params, device, modelpath, data_loader):
     return val_true, val_pred
 
 
-# TODO. Consider moving this to ./improve/drug_resp_pred
 # def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
 def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
     """Store predictions with accompanying data frame.
@@ -775,7 +700,8 @@ def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
 
 
 # def store_preds_df(params, y_true, y_pred):
-def store_preds_df(params: Dict, y_true, y_pred, stage: str):
+def store_preds_df(params: Dict, y_true, y_pred, stage: str,
+                   round_decimals: int=4):
     """Store predictions with accompanying data frame.
 
     This allows to trace original data evaluated (e.g. drug and cell
@@ -815,22 +741,23 @@ def store_preds_df(params: Dict, y_true, y_pred, stage: str):
     ydf_fname = f"{stage}_{params['y_data_suffix']}.csv"  # TODO. f"{stage}_{params['y_data_stage_fname_suffix']}.csv"  
     ydf_fpath = Path(params["ml_data_outdir"]) / ydf_fname
 
+    # output df fname
+    ydf_out_fname = ydf_fname.split(".")[0] + "_" + params["y_data_preds_suffix"] + ".csv"
+    ydf_out_fpath = Path(params["ml_data_outdir"]) / ydf_out_fname
+
     # if indtd["df"] is not None:
-    if ydf_fpath.exists() is not None:
+    if ydf_fpath.exists():
         # rsp_df = pd.read_csv(indtd["df"])
         rsp_df = pd.read_csv(ydf_fpath)
-        print(rsp_df.shape)
 
         # Check dimensions
         assert len(y_true) == rsp_df.shape[0], f"length of y_true ({len(y_true)}) and the loaded file ({ydf_fpath} --> {rsp_df.shape[0]}) don't match"
 
-        import ipdb; ipdb.set_trace()
         pred_df = pd.DataFrame(y_pred, columns=[pred_col_name])  # This includes only predicted values
-
         mm = pd.concat([rsp_df, pred_df], axis=1)
         mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
 
-        # Save the raw predictions
+        # Save predictions dataframe
         # TODO. check comment below!
         # Note that there is no guarantee that the results effectively correspond
         # to this pre-processing parameters or the specified data frame since the
@@ -842,21 +769,27 @@ def store_preds_df(params: Dict, y_true, y_pred, stage: str):
         #        params["pred_col_name_suffix"],
         #        outdtd["pred"],
         # )
-        save_preds(mm,
-                   # params["canc_col_name"],
-                   # params["drug_col_name"],
-                   y_col_name=params["y_col_name"],
-                   pred_col_name_suffix=params["pred_col_name_suffix"],
-                   # outdtd["pred"],
-                   outpath=ydf_fpath)
+        # ----
+        # save_preds(mm,
+        #            y_col_name=params["y_col_name"],
+        #            pred_col_name_suffix=params["pred_col_name_suffix"],
+        #            outpath=ydf_fpath)
+        # ----
+        df = mm.round({params["y_col_name"]: round_decimals,
+                       pred_col_name: round_decimals})
+        df.to_csv(ydf_out_fpath, index=False)
+
         y_true_return = rsp_df[params["y_col_name"]].values # Read from data frame
-        print("Stored orig drug, cell and evaluation in: ", outdtd["pred"])
-    else: # Save only ground truth and predictions since cancer and drug ids are not available
+        # print("Stored orig drug, cell and evaluation in: ", outdtd["pred"])
+
+    else:
+        # Save only ground truth and predictions since cancer and drug ids are not available
         df_ = pd.DataFrame({true_col_name: y_true, pred_col_name: y_pred})  # This includes true and predicted values
         # Save preds df
-        df_.to_csv(outdtd["pred"], index=False)
+        # df_.to_csv(outdtd["pred"], index=False)
+        df_.to_csv(ydf_out_fpath, index=False)
         y_true_return = y_true
-        print("Stored only evaluation in: ", outdtd["pred"])
+        # print("Stored only evaluation in: ", outdtd["pred"])
 
     return y_true_return
 
@@ -885,6 +818,45 @@ def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
         json.dump(scores, f, ensure_ascii=False, indent=4)
 
     # Performance scores for Supervisor HPO
+    if stage == "val":
+        print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["mse"]))
+        print("Validation scores:\n\t{}".format(scores))
+    elif stage == "test":
+        print("Inference scores:\n\t{}".format(scores))
+    return scores
+
+
+# TODO. Consider moving this to ./improve/...
+# def compute_perf_scores(y_true, y_pred, metrics, outdtd, stage):
+def compute_perf_scores(params, y_true, y_pred, metrics, stage):
+    """Evaluate predictions according to specified metrics.
+
+    Metrics are evaluated. Scores are stored in specified path and returned.
+
+    :params array y_true: Array with ground truth values.
+    :params array y_pred: Array with model predictions.
+    :params listr metrics: List of strings with metrics to evaluate.
+    :params Dict outdtd: Dictionary with path to store scores.
+    :params str stage: String specified if evaluation is with respect to
+            validation or testing set.
+
+    :return: Python dictionary with metrics evaluated and corresponding scores.
+    :rtype: dict
+    """
+    scores = compute_metrics(y_true, y_pred, metrics)
+    key = f"{stage}_loss"
+    # scores[key] = scores["mse"]
+    scores[key] = scores[params["loss"]]
+
+    # fname = f"val_{params['json_scores_suffix']}.json"
+    scores_fname = f"{stage}_{params['json_scores_suffix']}.json"
+    scorespath = Path(params["ml_data_outdir"]) / scores_fname
+
+    with open(scorespath, "w", encoding="utf-8") as f:
+        json.dump(scores, f, ensure_ascii=False, indent=4)
+
+    # Performance scores for Supervisor HPO
+    # TODO. do we still need to print IMPROVE_RESULT?
     if stage == "val":
         print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["mse"]))
         print("Validation scores:\n\t{}".format(scores))
@@ -941,22 +913,25 @@ def run(params):
     """
     # import pdb; pdb.set_trace()
 
-    # [Req] Create output dir. TODO. frm.create_dir(params)?
+    # ------------------------------------------------------
+    # [Req] Create output dir for the model. 
+    # ------------------------------------------------------
+    # TODO. frm.create_model_outdir(params) similar to frm.create_ml_data_outdir(params) ?
+    # def create_model_outdir(params):
+    #     opath = Path(params["model_outdir"])
+    #     os.makedirs(opath, exist_ok=True)
+    #     modelpath = opath / params["model_params"]
+    #     # modelpath = opath / params["model_file_name"]
+    #     return modelpath
+    # modelpath = frm.create_model_outdir(params)
+
     opath = Path(params["model_outdir"])
     os.makedirs(opath, exist_ok=True)
     modelpath = opath / params["model_params"]
-    # modelpath = opath / params["model_file_name"]
-
-    # lg = Logger(opath/'train_improve.log')
-    # print_fn = get_print_func(lg.logger)
-    # print_fn(f'File path: {filepath}')
-    # print_fn(f'\n{pformat(params)}')
-    print_fn = print
 
     # ------------------------------------------------------
     # Check data availability and create output directory
     # ------------------------------------------------------
-    # [Req]
     # import pdb; pdb.set_trace()
     # indtd, outdtd = check_data_available(params)
     # indtd is dictionary with input_description: path components
@@ -965,9 +940,8 @@ def run(params):
     # indtd, outdtd = check_train_data_available(params)
 
     # ------------------------------------------------------
-    # [Req] Build paths
+    # [Req] Create data names for train and val
     # -----------------
-    # import pdb; pdb.set_trace()
     train_data_fname = frm.build_ml_data_name(params, stage="train",
                                               data_format=params["data_format"])
     val_data_fname = frm.build_ml_data_name(params, stage="val",
@@ -984,44 +958,43 @@ def run(params):
     # Create outdir for ML data (to save preprocessed data)
     # preprocess_outdir = frm.create_ml_data_outdir(params)
     # preprocess_outdir = params["ml_data_outdir"]  # ml_data_dir
-    # print_fn(f"preprocess_outdir {preprocess_outdir}")
+    # print(f"preprocess_outdir {preprocess_outdir}")
     # -----------------
 
-    # -----------------------------
-    # Prepare PyTorch dataloaders
-    # -----------------------------
-    print_fn("\nTraining data:")
-    print_fn(f"train_ml_data_dir: {params['train_ml_data_dir']}")
-    # print_fn(f"train_data_processed: {params['train_data_processed']}")
-    # print_fn(f"train_ml_data_fname: {params['train_ml_data_fname']}")
-    print_fn(f"batch_size: {params['batch_size']}")
-    # import pdb; pdb.set_trace()
+    # ------------------------------
+    # [GraphDRP] Prepare dataloaders
+    # ------------------------------
+    print("\nTraining data:")
+    print(f"train_ml_data_dir: {params['train_ml_data_dir']}")
+    # print(f"train_data_processed: {params['train_data_processed']}")
+    # print(f"train_ml_data_fname: {params['train_ml_data_fname']}")
+    print(f"batch_size: {params['batch_size']}")
     train_loader = build_GraphDRP_dataloader(params["train_ml_data_dir"],
                                              # params["train_data_processed"],
                                              train_data_fname,
                                              params["batch_size"],
                                              shuffle=True)
 
-    # Note! Don't shuffle the val_loader or results will be corrupted
-    print_fn("\nVal data:")
-    print_fn(f"val_ml_data_dir: {params['val_ml_data_dir']}")
-    # print_fn(f"val_data_processed: {params['val_data_processed']}")
-    # print_fn(f"val_ml_data_fname: {params['val_ml_data_fname']}")
-    print_fn(f"val_batch: {params['val_batch']}")
-    # import pdb; pdb.set_trace()
+    # Don't shuffle the val_loader, otherwise results will be corrupted
+    print("\nVal data:")
+    print(f"val_ml_data_dir: {params['val_ml_data_dir']}")
+    # print(f"val_data_processed: {params['val_data_processed']}")
+    # print(f"val_ml_data_fname: {params['val_ml_data_fname']}")
+    print(f"val_batch: {params['val_batch']}")
     val_loader = build_GraphDRP_dataloader(params["val_ml_data_dir"],
                                            val_data_fname,
                                            params["val_batch"],
                                            shuffle=False)
 
     # -----------------------------
-    # Determine CUDA/CPU device and configure CUDA device if available
+    # [GraphDRP] CUDA/CPU device
     # -----------------------------
-    # import pdb; pdb.set_trace()
+    # Determine CUDA/CPU device and configure CUDA device if available
+    # TODO. how this should be configured in Singularity workflows?
     device = determine_device(params["cuda_name"])
 
     # -------------------------------------
-    # Prepare GraphDRP (PyTorch) model
+    # [GraphDRP] Prepare model
     # -------------------------------------
     # Model, Loss, Optimizer
     model_arch = params["model_arch"]
@@ -1030,7 +1003,7 @@ def run(params):
     loss_fn = torch.nn.MSELoss()
 
     # -----------------------------
-    # Train. Prep settings.
+    # [GraphDRP] Train settings
     # -----------------------------
     # [Req] Set checkpointing
     # import pdb; pdb.set_trace()
@@ -1052,17 +1025,14 @@ def run(params):
     best_score = np.inf
     best_epoch = -1
     early_stop_counter = 0  # define early-stop counter
-    early_stop_metric = "mse"  # metric for early stop
+    early_stop_metric = params["early_stop_metric"]  # mse; metric to monitor for early stop
 
     # -----------------------------
-    # Train. Iterate over epochs.
+    # [GraphDRP] Train. Iterate over epochs.
     # -----------------------------
-    # import pdb; pdb.set_trace()
-    # this is from check_data_available()
-
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
 
-    print_fn(f"Epochs: {initial_epoch} to {num_epoch}")
+    print(f"Epochs: {initial_epoch} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
         # import ipdb; ipdb.set_trace()
         # Train epoch and ckechpoint model
@@ -1074,67 +1044,27 @@ def run(params):
         val_scores = compute_metrics(val_true, val_pred, metrics)
 
         # For early stop
-        print_fn(f"{early_stop_metric}, {val_scores[early_stop_metric]}")
+        print(f"{early_stop_metric}, {val_scores[early_stop_metric]}")
         if val_scores[early_stop_metric] < best_score:
             torch.save(model.state_dict(), modelpath)
             best_epoch = epoch + 1
             best_score = val_scores[early_stop_metric]
-            print_fn(f"{early_stop_metric} improved at epoch {best_epoch};  \
+            print(f"{early_stop_metric} improved at epoch {best_epoch};  \
                      Best {early_stop_metric}: {best_score};  Model: {model_arch}")
             early_stop_counter = 0  # zero the early-stop counter if the model improved after the epoch
         else:
-            print_fn(f"No improvement since epoch {best_epoch};  \
+            print(f"No improvement since epoch {best_epoch};  \
                      Best {early_stop_metric}: {best_score};  Model: {model_arch}")
             early_stop_counter += 1  # increment the counter if the model was not improved after the epoch
 
         if early_stop_counter == patience:
-            print_fn(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
-            print_fn(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
+            print(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
+            print(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
             break
 
-    # -------------------------------------
-    # Create Trainer object and setup train
-    # -------------------------------------
-
-    # # import pdb; pdb.set_trace()
-    # # this is from check_data_available()
-    # opath = Path(params["model_outdir"])
-    # os.makedirs(opath, exist_ok=True)
-    # modelpath = opath / params["model_params"]
-
-    # # trobj = Trainer(params=params, device=device, modelpath=outdtd["model"])
-    # trobj = Trainer(params=params, device=device, modelpath=modelpath)
-    # trobj.setup_train()
-
-
-    # # -----------------------------
-    # # [Req] Set checkpointing
-    # # -----------------------------
-    # if params["ckpt_directory"] is None:
-    #     params["ckpt_directory"] = params["model_outdir"]
-    # import ipdb; ipdb.set_trace()
-    # initial_epoch = trobj.config_checkpointing(params["ckpt_directory"])
-
     # -----------------------------
-    # Prepare PyTorch dataloaders
-    # train_loader = build_PT_data_loader(params["train_ml_data_dir"],
-    #                                     params["train_data_processed"],
-    #                                     params["batch_size"],
-    #                                     shuffle=True)
-
-    # # Note! Don't shuffle the val_loader or results will be corrupted
-    # val_loader = build_PT_data_loader(params["val_ml_data_dir"],
-    #                                   params["val_data_processed"],
-    #                                   params["val_batch"],
-    #                                   shuffle=False)
-
-    # # -----------------------------
-    # # Train
-    # # -----------------------------
-    # import ipdb; ipdb.set_trace()
-    # trobj.execute_train(train_loader, val_loader, initial_epoch)
-
-    # -----------------------------
+    # [GraphDRP] Load best model and cal preds
+    #   or
     # [Req] Load best model and cal preds
     # -----------------------------
     # Load the (best) saved model (as determined based on val data)
@@ -1159,14 +1089,15 @@ def run(params):
     # Otherwise, only a partial data frame is stored (with val_true and val_pred)
     # and y_true is equal to pytorch loaded val_true
     # y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
-    # y_true = store_preds_df(params, val_true, val_pred, stage="val")
     y_true = store_preds_df(params, y_true=val_true, y_pred=val_pred, stage="val")
 
     # -----------------------------
-    # Compute performance scores
+    # [Req] Compute performance scores
     # -----------------------------
+    # import ipdb; ipdb.set_trace()
     metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    val_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd, "val")
+    # val_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd, "val")
+    val_scores = compute_perf_scores(params, y_true, val_pred, metrics, stage="val")
 
     return val_scores
 
@@ -1175,7 +1106,7 @@ def main():
     # additional_definitions = gdrp_model_conf + gdrp_data_conf + gdrp_train_conf
     additional_definitions = model_train_params + \
                              model_preproc_params + \
-                             drp_train_params
+                             app_train_params
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
@@ -1183,7 +1114,7 @@ def main():
         required=req_train_args,
     )
     val_scores = run(params)
-    print_fn("\nFinished training GraphDRP model.")
+    print("\nFinished training GraphDRP model.")
 
 
 if __name__ == "__main__":
