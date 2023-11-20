@@ -70,6 +70,11 @@ model_train_params = [
      "action": "store",
      "type": str,
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
+    {"name": "learning_rate",
+     "type": float,
+     "default": 0.0001,
+     "help": "Learning rate for the optimizer."
+    },
 ]
 
 # train_params = model_train_params + app_train_params  # ap

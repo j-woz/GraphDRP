@@ -19,21 +19,18 @@ val_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
 model_outdir = "./out_models/gCSI/split_0"
 model_file_name = "model"
 model_file_format = ".pt"
-model_arch = "GINConvNet"
 epochs = 150
 batch_size = 256
 val_batch = 256
-patience = 20
-optimizer = "adam"
-learning_rate = 0.0001
 loss = "mse"
 early_stop_metric = "mse"
-log_interval = 20
+patience = 20
 ckpt_save_interval = 5
+model_arch = "GINConvNet"
+log_interval = 20
 cuda_name = "cuda:5"
 
 [Test]
 test_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
-test_ml_data_fname = "test_data"
 test_batch = 256
 cuda_name = "cuda:6"
