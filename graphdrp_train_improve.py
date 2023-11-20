@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 import torch
-from torch_geometric.data import DataLoader
+# from torch_geometric.data import DataLoader
 
 # IMPROVE/CANDLE imports
 from improve import framework as frm
@@ -21,21 +21,29 @@ from improve.metrics import compute_metrics
 from candle import CandleCkptPyTorch
 
 # Model-specific imports
-from model_utils.torch_utils import TestbedDataset  # ap
+from model_utils.torch_utils import TestbedDataset, build_GraphDRP_dataloader, train_epoch, predicting
+# from model_utils.classlogger import Logger, get_print_func
 from models.gat import GATNet
 from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
-
-# from model_utils.classlogger import Logger, get_print_func
 
 # from graphdrp_preprocess_improve import gdrp_data_conf  # ap
 from graphdrp_preprocess_improve import model_preproc_params, app_preproc_params, preprocess_params  # ap
 
 filepath = Path(__file__).resolve().parent
 
-# [Req] Model-specific params (Model: GraphDRP)
-# gdrp_model_conf = [
+# [Req] App-specific params (App: monotherapy drug response prediction)
+# Currently, there are no app-specific args for the train script.
+app_train_params = [
+    # {"name": "val_data_df",  # TODO: app or frm level?
+    #  "default": frm.SUPPRESS,
+    #  "type": str,
+    #  "help": "Data frame with original validation response data."
+    # },
+]
+
+# [GraphDRP] Model-specific params (Model: GraphDRP)
 model_train_params = [
     {"name": "model_arch",
      "default": "GINConvNet",
@@ -46,20 +54,10 @@ model_train_params = [
      "action": "store",
      "type": int,
      "help": "Interval for saving o/p"},
-    {"name": "cuda_name",  # TODO: how we should control this?
+    {"name": "cuda_name",  # TODO. frm. How should we control this?
      "action": "store",
      "type": str,
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
-]
-
-# [Req] App-specific params (App: monotherapy drug response prediction)
-# gdrp_train_conf = [
-app_train_params = [
-    {"name": "val_data_df",  # TODO: app or frm level?
-     "default": frm.SUPPRESS,
-     "type": str,
-     "help": "Data frame with original validation response data."
-    },
 ]
 
 # train_params = model_train_params + app_train_params  # ap
@@ -71,6 +69,7 @@ req_train_args = ["model_arch", "model_outdir",
                   ]
 
 
+# TODO. consider moving to model_utils
 def str2Class(str):
     """Get model class from model name (str)."""
     return globals()[str]()
@@ -149,7 +148,6 @@ def check_data_available(params: Dict) -> frm.DataPathDict:
     # Return in DataPathDict structure
     inputdtd = {"train": itrainpath, "val": ivalpath, "df": ivaldfpath}
     outputdtd = {"model": modelpath, "pred": predpath, "scores": scorespath}
-
     return inputdtd, outputdtd
 
 
@@ -238,6 +236,39 @@ def check_train_data_available(params: Dict) -> frm.DataPathDict:
     return inputdtd, outputdtd
 
 
+# TODO. consider moving to model_utils
+def determine_device(cuda_name_from_params):
+    """Determine device to run PyTorch functions.
+
+    PyTorch functions can run on CPU or on GPU. In the latter case, it
+    also takes into account the GPU devices requested for the run.
+
+    :params str cuda_name_from_params: GPUs specified for the run.
+
+    :return: Device available for running PyTorch functionality.
+    :rtype: str
+    """
+    cuda_avail = torch.cuda.is_available()
+    print("GPU available: ", cuda_avail)
+    if cuda_avail:  # GPU available
+        # -----------------------------
+        # CUDA device from env var
+        cuda_env_visible = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_env_visible is not None:
+            # Note! When one or multiple device numbers are passed via
+            # CUDA_VISIBLE_DEVICES, the values in python script are reindexed
+            # and start from 0.
+            print("CUDA_VISIBLE_DEVICES: ", cuda_env_visible)
+            cuda_name = "cuda:0"
+        else:
+            cuda_name = cuda_name_from_params
+        device = cuda_name
+    else:
+        device = "cpu"
+
+    return device
+
+
 def config_checkpointing(params: Dict, model, optimizer):
     """Configure CANDLE checkpointing. Reads last saved state if checkpoints exist.
 
@@ -259,68 +290,7 @@ def config_checkpointing(params: Dict, model, optimizer):
     return ckpt, initial_epoch
 
 
-def train_tmp(model, device, train_loader, optimizer, epoch, log_interval):
-    """ Training of one epoch (all batches). """
-    print("Training on {} samples...".format(len(train_loader.dataset)))
-    model.train()
-    loss_fn = nn.MSELoss()
-    avg_loss = []
-    for batch_idx, data in enumerate(train_loader):
-        data = data.to(device)
-        optimizer.zero_grad()
-        output, _ = model(data)
-        loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
-        loss.backward()
-        optimizer.step()
-        avg_loss.append(loss.item())
-        if batch_idx % log_interval == 0:
-            print(
-                "Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data.x),
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
-                )
-            )
-    return sum(avg_loss) / len(avg_loss)
-
-
-def train_epoch(model, device, train_loader, optimizer, loss_fn, epoch: int,
-                log_interval: int, verbose=True):
-    """Execute a training epoch (i.e. one pass through training set).
-
-    :params DataLoader train_loader: PyTorch data loader with training data.
-    :params int epoch: Current training epoch (for display purposes only).
-
-    :return: Average loss for executed training epoch.
-    :rtype: float
-    """
-    print("Training on {} samples...".format(len(train_loader.dataset)))
-    model.train()
-    # Below is the train() from the original GraphDRP model
-    avg_loss = []
-    for batch_idx, data in enumerate(train_loader):
-        data = data.to(device)
-        optimizer.zero_grad()
-        output, _ = model(data)
-        loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
-        loss.backward()
-        optimizer.step()
-        avg_loss.append(loss.item())
-        if batch_idx % log_interval == 0:
-            print(
-            "Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                epoch,
-                batch_idx * len(data.x),
-                len(train_loader.dataset),
-                100.0 * batch_idx / len(train_loader),
-                loss.item(),
-            )
-        )
-    return sum(avg_loss) / len(avg_loss)
-
-
+# Considers Ray
 def train_graphdrp(params: Dict):
     """User-defined training function that runs on each distributed worker process.
 
@@ -559,62 +529,7 @@ class Trainer:
                 continue
 
 
-def determine_device(cuda_name_from_params):
-    """Determine device to run PyTorch functions.
-
-    PyTorch functions can run on CPU or on GPU. In the latter case, it
-    also takes into account the GPU devices requested for the run.
-
-    :params str cuda_name_from_params: GPUs specified for the run.
-
-    :return: Device available for running PyTorch functionality.
-    :rtype: str
-    """
-    cuda_avail = torch.cuda.is_available()
-    print("GPU available: ", cuda_avail)
-    if cuda_avail:  # GPU available
-        # -----------------------------
-        # CUDA device from env var
-        cuda_env_visible = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_env_visible is not None:
-            # Note! When one or multiple device numbers are passed via
-            # CUDA_VISIBLE_DEVICES, the values in python script are reindexed
-            # and start from 0.
-            print("CUDA_VISIBLE_DEVICES: ", cuda_env_visible)
-            cuda_name = "cuda:0"
-        else:
-            cuda_name = cuda_name_from_params
-        device = cuda_name
-    else:
-        device = "cpu"
-
-    return device
-
-
-def build_GraphDRP_dataloader(
-        data_dir: str,
-        data_fname: str,
-        batch_size: int,
-        shuffle: bool):
-    """ Build a PyTorch data loader for GraphDRP.
-
-    :params str datadir: Directory where `processed` folder containing
-            processed data can be found.
-    :params str datafname: Name of PyTorch processed data to read.
-    :params int batch: Batch size for data loader.
-    :params bool shuffle: Flag to specify if data is to be shuffled when
-            applying data loader.
-
-    :return: PyTorch data loader constructed.
-    :rtype: DataLoader
-    """
-    if data_fname.endswith(".pt"):
-        data_fname = data_fname[:-3] # TestbedDataset() appends this string with ".pt"
-    dataset = TestbedDataset(root=data_dir, dataset=data_fname) # TestbedDataset() requires strings
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)  # PyTorch dataloader
-    return loader
-
-
+# TODO. consider moving to model_utils
 # def evaluate_model(model_arch, device, modelpath, data_loader):
 def evaluate_model(params, device, modelpath, data_loader):
     """Load the model and perform predictions using given model.
@@ -642,132 +557,6 @@ def evaluate_model(params, device, modelpath, data_loader):
     return val_true, val_pred
 
 
-# def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
-def store_predictions_df(params, indtd, outdtd, y_true, y_pred):
-    """Store predictions with accompanying data frame.
-
-    This allows to trace original data evaluated (e.g. drug and cell
-    combinations) if corresponding data frame is available, in which case
-    the whole structure as well as the model predictions are stored. If
-    the data frame is not available, only ground truth (read from the
-    PyTorch processed data) and model predictions are stored. The ground
-    truth available (from data frame or PyTorch data) is returned for
-    further evaluations.
-
-    :params Dict params: Dictionary of CANDLE/IMPROVE parameters read.
-    :params Dict indtd: Dictionary specifying paths of input data.
-    :params Dict outdtd: Dictionary specifying paths for ouput data.
-    :params array y_true: Ground truth.
-    :params array y_pred: Model predictions.
-
-    :return: Arrays with ground truth. This may have been read from an
-             input data frame or from a processed PyTorch data file.
-    :rtype: np.array
-    """
-    pred_col_name = params["y_col_name"] + params["pred_col_name_suffix"]
-    true_col_name = params["y_col_name"] + "_true"
-    # -----------------------------
-    # Attempt to concat raw predictions with the cancer and drug ids, and the true values
-    if indtd["df"] is not None:
-        rsp_df = pd.read_csv(indtd["df"])
-
-        pred_df = pd.DataFrame(y_pred, columns=[pred_col_name])  # This includes only predicted values
-
-        mm = pd.concat([rsp_df, pred_df], axis=1)
-        mm = mm.astype({params["y_col_name"]: np.float32, pred_col_name: np.float32})
-
-        # Save the raw predictions on val data
-        # Note that there is no guarantee that the results effectively correspond to
-        # this pre-processing parameters or the specified data frame
-        # since the data is being read from a processed pt file (no from original data frame)
-        save_preds(mm,
-               params["canc_col_name"],
-               params["drug_col_name"],
-               params["y_col_name"],
-               params["pred_col_name_suffix"],
-               outdtd["pred"],
-        )
-        y_true_return = rsp_df[params["y_col_name"]].values # Read from data frame
-        print("Stored orig drug, cell and evaluation in: ", outdtd["pred"])
-    else: # Save only ground truth and predictions since cancer and drug ids are not available
-        df_ = pd.DataFrame({true_col_name: y_true, pred_col_name: y_pred})  # This includes true and predicted values
-        # Save preds df
-        df_.to_csv(outdtd["pred"], index=False)
-        y_true_return = y_true
-        print("Stored only evaluation in: ", outdtd["pred"])
-
-    return y_true_return
-
-
-# TODO. Consider moving this to ./improve/...
-def compute_performace_scores(y_true, y_pred, metrics, outdtd, stage):
-    """Evaluate predictions according to specified metrics.
-
-    Metrics are evaluated. Scores are stored in specified path and returned.
-
-    :params array y_true: Array with ground truth values.
-    :params array y_pred: Array with model predictions.
-    :params listr metrics: List of strings with metrics to evaluate.
-    :params Dict outdtd: Dictionary with path to store scores.
-    :params str stage: String specified if evaluation is with respect to
-            validation or testing set.
-
-    :return: Python dictionary with metrics evaluated and corresponding scores.
-    :rtype: dict
-    """
-    scores = compute_metrics(y_true, y_pred, metrics)
-    key = f"{stage}_loss"
-    scores[key] = scores["mse"]
-
-    with open(outdtd["scores"], "w", encoding="utf-8") as f:
-        json.dump(scores, f, ensure_ascii=False, indent=4)
-
-    # Performance scores for Supervisor HPO
-    if stage == "val":
-        print("\nIMPROVE_RESULT val_loss:\t{}\n".format(scores["mse"]))
-        print("Validation scores:\n\t{}".format(scores))
-    elif stage == "test":
-        print("Inference scores:\n\t{}".format(scores))
-    return scores
-
-
-# TODO: While the implementation of this func is model-specific, we may want
-# to require that all models have this func defined for their models. Also,
-# we need to decide where this func should be located.
-def predicting(model, device, loader):
-    """ Method to make predictions/inference.
-    This is used in *train.py and *infer.py
-
-    Parameters
-    ----------
-    model : pytorch model
-        Model to evaluate.
-    device : string
-        Identifier for hardware that will be used to evaluate model.
-    loader : pytorch data loader.
-        Object to load data to evaluate.
-
-    Returns
-    -------
-    total_labels: numpy array
-        Array with ground truth.
-    total_preds: numpy array
-        Array with inferred outputs.
-    """
-    model.eval()
-    total_preds = torch.Tensor()
-    total_labels = torch.Tensor()
-    print("Make prediction for {} samples...".format(len(loader.dataset)))
-    with torch.no_grad():
-        for data in loader:
-            data = data.to(device)
-            output, _ = model(data)
-            # Is this computationally efficient?
-            total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
-    return total_labels.numpy().flatten(), total_preds.numpy().flatten()
-
-
 def run(params):
     """ Execute specified model training.
 
@@ -782,18 +571,7 @@ def run(params):
     # ------------------------------------------------------
     # [Req] Create output dir for the model. 
     # ------------------------------------------------------
-    # TODO. frm.create_model_outdir(params) similar to frm.create_ml_data_outdir(params) ?
-    # def create_model_outdir(params):
-    #     opath = Path(params["model_outdir"])
-    #     os.makedirs(opath, exist_ok=True)
-    #     modelpath = opath / params["model_params"]
-    #     # modelpath = opath / params["model_file_name"]
-    #     return modelpath
-    # modelpath = frm.create_model_outdir(params)
-
-    opath = Path(params["model_outdir"])
-    os.makedirs(opath, exist_ok=True)
-    modelpath = opath / params["model_params"]
+    modelpath = frm.create_model_outpath(params)
 
     # ------------------------------------------------------
     # Check data availability and create output directory

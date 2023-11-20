@@ -1,7 +1,7 @@
 import os
-from torch_geometric.data import InMemoryDataset
-from torch_geometric import data as DATA
 import torch
+from torch_geometric.data import InMemoryDataset, DataLoader
+from torch_geometric import data as DATA
 
 
 class TestbedDataset(InMemoryDataset):
@@ -105,3 +105,96 @@ class TestbedDataset(InMemoryDataset):
 
     def getXD(self):
         return self.xd
+
+
+def build_GraphDRP_dataloader(
+        data_dir: str,
+        data_fname: str,
+        batch_size: int,
+        shuffle: bool):
+    """ Build a PyTorch data loader for GraphDRP.
+
+    :params str datadir: Directory where `processed` folder containing
+            processed data can be found.
+    :params str datafname: Name of PyTorch processed data to read.
+    :params int batch: Batch size for data loader.
+    :params bool shuffle: Flag to specify if data is to be shuffled when
+            applying data loader.
+
+    :return: PyTorch data loader constructed.
+    :rtype: DataLoader
+    """
+    if data_fname.endswith(".pt"):
+        data_fname = data_fname[:-3] # TestbedDataset() appends this string with ".pt"
+    dataset = TestbedDataset(root=data_dir, dataset=data_fname) # TestbedDataset() requires strings
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)  # PyTorch dataloader
+    return loader
+
+
+def train_epoch(model, device, train_loader, optimizer, loss_fn, epoch: int,
+                log_interval: int, verbose=True):
+    """Execute a training epoch (i.e. one pass through training set).
+
+    :params DataLoader train_loader: PyTorch data loader with training data.
+    :params int epoch: Current training epoch (for display purposes only).
+
+    :return: Average loss for executed training epoch.
+    :rtype: float
+    """
+    print("Training on {} samples...".format(len(train_loader.dataset)))
+    model.train()
+    # Below is the train() from the original GraphDRP model
+    avg_loss = []
+    for batch_idx, data in enumerate(train_loader):
+        data = data.to(device)
+        optimizer.zero_grad()
+        output, _ = model(data)
+        loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
+        loss.backward()
+        optimizer.step()
+        avg_loss.append(loss.item())
+        if batch_idx % log_interval == 0:
+            print(
+            "Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                epoch,
+                batch_idx * len(data.x),
+                len(train_loader.dataset),
+                100.0 * batch_idx / len(train_loader),
+                loss.item(),
+            )
+        )
+    return sum(avg_loss) / len(avg_loss)
+
+
+def predicting(model, device, loader):
+    """ Method to make predictions/inference.
+    This is used in *train.py and *infer.py
+
+    Parameters
+    ----------
+    model : pytorch model
+        Model to evaluate.
+    device : string
+        Identifier for hardware that will be used to evaluate model.
+    loader : pytorch data loader.
+        Object to load data to evaluate.
+
+    Returns
+    -------
+    total_labels: numpy array
+        Array with ground truth.
+    total_preds: numpy array
+        Array with inferred outputs.
+    """
+    model.eval()
+    total_preds = torch.Tensor()
+    total_labels = torch.Tensor()
+    print("Make prediction for {} samples...".format(len(loader.dataset)))
+    with torch.no_grad():
+        for data in loader:
+            data = data.to(device)
+            output, _ = model(data)
+            # Is this computationally efficient?
+            total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
+            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
+    return total_labels.numpy().flatten(), total_preds.numpy().flatten()
