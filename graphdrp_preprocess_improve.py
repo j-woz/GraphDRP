@@ -494,8 +494,10 @@ def run(params):
         # [Req] Save ML data files in params["ml_data_outdir"]
         # The implementation of this step, depends on the model.
         # -----------------------
+        # import ipdb; ipdb.set_trace()
         # [Req] Create data name
-        data_fname = frm.build_ml_data_name(params, stage, data_format=params["data_format"])
+        data_fname = frm.build_ml_data_name(params, stage,
+                                            file_format=params["data_format"])
 
         # Revmoe data_format because TestbedDataset() appends '.pt' to the
         # file name automatically. This is unique for GraphDRP.
