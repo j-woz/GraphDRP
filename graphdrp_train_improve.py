@@ -21,12 +21,24 @@ from improve.metrics import compute_metrics
 from candle import CandleCkptPyTorch
 
 # Model-specific imports
-from model_utils.torch_utils import TestbedDataset, build_GraphDRP_dataloader, train_epoch, predicting
-# from model_utils.classlogger import Logger, get_print_func
-from models.gat import GATNet
-from models.gat_gcn import GAT_GCN
-from models.gcn import GCNNet
-from models.ginconv import GINConvNet
+from model_utils.torch_utils import (
+    TestbedDataset,
+    build_GraphDRP_dataloader,
+    set_GraphDRP,
+    train_epoch,
+    predicting,
+    load_GraphDRP,
+    determine_device
+)
+# from models.gat import GATNet
+# from models.gat_gcn import GAT_GCN
+# from models.gcn import GCNNet
+# from models.ginconv import GINConvNet
+# ---
+# from model_utils.models.gat import GATNet
+# from model_utils.models.gat_gcn import GAT_GCN
+# from model_utils.models.gcn import GCNNet
+# from model_utils.models.ginconv import GINConvNet
 
 # from graphdrp_preprocess_improve import gdrp_data_conf  # ap
 from graphdrp_preprocess_improve import model_preproc_params, app_preproc_params, preprocess_params  # ap
@@ -36,7 +48,7 @@ filepath = Path(__file__).resolve().parent
 # [Req] App-specific params (App: monotherapy drug response prediction)
 # Currently, there are no app-specific args for the train script.
 app_train_params = [
-    # {"name": "val_data_df",  # TODO: app or frm level?
+    # {"name": "val_data_df",
     #  "default": frm.SUPPRESS,
     #  "type": str,
     #  "help": "Data frame with original validation response data."
@@ -236,39 +248,6 @@ def check_train_data_available(params: Dict) -> frm.DataPathDict:
     return inputdtd, outputdtd
 
 
-# TODO. consider moving to model_utils
-def determine_device(cuda_name_from_params):
-    """Determine device to run PyTorch functions.
-
-    PyTorch functions can run on CPU or on GPU. In the latter case, it
-    also takes into account the GPU devices requested for the run.
-
-    :params str cuda_name_from_params: GPUs specified for the run.
-
-    :return: Device available for running PyTorch functionality.
-    :rtype: str
-    """
-    cuda_avail = torch.cuda.is_available()
-    print("GPU available: ", cuda_avail)
-    if cuda_avail:  # GPU available
-        # -----------------------------
-        # CUDA device from env var
-        cuda_env_visible = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_env_visible is not None:
-            # Note! When one or multiple device numbers are passed via
-            # CUDA_VISIBLE_DEVICES, the values in python script are reindexed
-            # and start from 0.
-            print("CUDA_VISIBLE_DEVICES: ", cuda_env_visible)
-            cuda_name = "cuda:0"
-        else:
-            cuda_name = cuda_name_from_params
-        device = cuda_name
-    else:
-        device = "cpu"
-
-    return device
-
-
 def config_checkpointing(params: Dict, model, optimizer):
     """Configure CANDLE checkpointing. Reads last saved state if checkpoints exist.
 
@@ -290,7 +269,7 @@ def config_checkpointing(params: Dict, model, optimizer):
     return ckpt, initial_epoch
 
 
-# Considers Ray
+# Considers Ray (not used)
 def train_graphdrp(params: Dict):
     """User-defined training function that runs on each distributed worker process.
 
@@ -529,32 +508,30 @@ class Trainer:
                 continue
 
 
-# TODO. consider moving to model_utils
-# def evaluate_model(model_arch, device, modelpath, data_loader):
-def evaluate_model(params, device, modelpath, data_loader):
-    """Load the model and perform predictions using given model.
+# def evaluate_model(params, device, modelpath, data_loader):
+#     """Load the model and perform predictions using given model.
 
-    :params str model_arch: Name of model architecture to use.
-    :params str device: Device to use for evaluating PyTorch model.
-    :params Path modelpath: Path containing model parameters.
-    :params DataLoader data_loader: PyTorch data loader with data to
-            use for evaluation.
+#     :params str model_arch: Name of model architecture to use.
+#     :params str device: Device to use for evaluating PyTorch model.
+#     :params Path modelpath: Path containing model parameters.
+#     :params DataLoader data_loader: PyTorch data loader with data to
+#             use for evaluation.
 
-    :return: Arrays with ground truth and model predictions.
-    :rtype: np.array
-    """
-    # TODO. consider to create func load_model() or load_graphdrp()
-    # Load model
-    # model = load_model(params)
-    # model = str2Class(model_arch).to(device)
-    model = str2Class(params["model_arch"]).to(device)
-    model.load_state_dict(torch.load(modelpath))
-    model.eval()
-    # Compute predictions
-    # val_true, val_pred = predict(model, data_loader=val_loader, device=device)
-    val_true, val_pred = predicting(model, device, data_loader)  # (groud truth), (predictions)
+#     :return: Arrays with ground truth and model predictions.
+#     :rtype: np.array
+#     """
+#     # TODO. consider to create func load_model() or load_graphdrp()
+#     # Load model
+#     # model = load_model(params)
+#     # model = str2Class(model_arch).to(device)
+#     model = str2Class(params["model_arch"]).to(device)
+#     model.load_state_dict(torch.load(modelpath))
+#     model.eval()
+#     # Compute predictions
+#     # val_true, val_pred = predict(model, data_loader=val_loader, device=device)
+#     val_true, val_pred = predicting(model, device, data_loader)  # (groud truth), (predictions)
 
-    return val_true, val_pred
+#     return val_true, val_pred
 
 
 def run(params):
@@ -568,9 +545,12 @@ def run(params):
     """
     # import pdb; pdb.set_trace()
 
+    metrics = ["mse", "rmse", "pcc", "scc", "r2"]  # [Req]
+
     # ------------------------------------------------------
     # [Req] Create output dir for the model. 
     # ------------------------------------------------------
+    # import pdb; pdb.set_trace()
     modelpath = frm.create_model_outpath(params)
 
     # ------------------------------------------------------
@@ -585,11 +565,11 @@ def run(params):
 
     # ------------------------------------------------------
     # [Req] Create data names for train and val
-    # -----------------
+    # ------------------------------------------------------
     train_data_fname = frm.build_ml_data_name(params, stage="train",
-                                              data_format=params["data_format"])
+                                              file_format=params["data_format"])
     val_data_fname = frm.build_ml_data_name(params, stage="val",
-                                            data_format=params["data_format"])
+                                            file_format=params["data_format"])
     # GraphDRP -- remove data_format
     train_data_fname = train_data_fname.split(params["data_format"])[0]
     val_data_fname = val_data_fname.split(params["data_format"])[0]
@@ -634,15 +614,16 @@ def run(params):
     # [GraphDRP] CUDA/CPU device
     # -----------------------------
     # Determine CUDA/CPU device and configure CUDA device if available
-    # TODO. how this should be configured in Singularity workflows?
+    # TODO. How this should be configured with our (Singularity) workflows?
     device = determine_device(params["cuda_name"])
 
     # -------------------------------------
     # [GraphDRP] Prepare model
     # -------------------------------------
     # Model, Loss, Optimizer
-    model_arch = params["model_arch"]
-    model = str2Class(model_arch).to(device)
+    # model_arch = params["model_arch"]
+    # model = str2Class(model_arch).to(device)
+    model = set_GraphDRP(params, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
     loss_fn = torch.nn.MSELoss()
 
@@ -674,7 +655,6 @@ def run(params):
     # -----------------------------
     # [GraphDRP] Train. Iterate over epochs.
     # -----------------------------
-    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
 
     print(f"Epochs: {initial_epoch} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
@@ -694,11 +674,11 @@ def run(params):
             best_epoch = epoch + 1
             best_score = val_scores[early_stop_metric]
             print(f"{early_stop_metric} improved at epoch {best_epoch};  \
-                     Best {early_stop_metric}: {best_score};  Model: {model_arch}")
+                     Best {early_stop_metric}: {best_score};  Model: {params['model_arch']}")
             early_stop_counter = 0  # zero the early-stop counter if the model improved after the epoch
         else:
             print(f"No improvement since epoch {best_epoch};  \
-                     Best {early_stop_metric}: {best_score};  Model: {model_arch}")
+                     Best {early_stop_metric}: {best_score};  Model: {params['model_arch']}")
             early_stop_counter += 1  # increment the counter if the model was not improved after the epoch
 
         if early_stop_counter == patience:
@@ -707,40 +687,28 @@ def run(params):
             break
 
     # -----------------------------
-    # [GraphDRP] Load best model and cal preds
-    #   or
-    # [Req] Load best model and cal preds
+    # [GraphDRP] Load best model and compute preditions
     # -----------------------------
-    # Load the (best) saved model (as determined based on val data)
-    # Compute predictions
-    # (groud truth), (predictions)
-    # val_true, val_pred = evaluate_model(params["model_arch"], device, outdtd["model"], val_loader)
     # import ipdb; ipdb.set_trace()
-    # TODO. consider separate evaluate_model() into:
-    # 1) load_model() or load_graphdrp()
-    # 2) model_predict()
-    # model = load_model(params)
-    # val_true, val_pred = predict(model, device, data_loader=val_loader)
-    val_true, val_pred = evaluate_model(params, device, modelpath, val_loader)
+    # val_true, val_pred = evaluate_model(params, device, modelpath, val_loader)
+
+    # Load the (best) saved model (as determined based on val data)
+    model = load_GraphDRP(params, modelpath, device)
+    model.eval()
+
+    # Compute predictions
+    val_true, val_pred = predicting(model, device, data_loader=val_loader)  # (groud truth), (predictions)
 
     # -----------------------------
-    # [Req] Save raw preds in df
+    # [Req] Save raw predictions in dataframe
     # -----------------------------
-    # Store predictions in data frame
     # import ipdb; ipdb.set_trace()
-    # Attempt to concat predictions with the cancer and drug ids, and the true values
-    # If data frame found, then y_true is read from data frame and returned
-    # Otherwise, only a partial data frame is stored (with val_true and val_pred)
-    # and y_true is equal to pytorch loaded val_true
-    # y_true = store_predictions_df(params, indtd, outdtd, val_true, val_pred)
     frm.store_predictions_df(params, y_true=val_true, y_pred=val_pred, stage="val")
 
     # -----------------------------
     # [Req] Compute performance scores
     # -----------------------------
     # import ipdb; ipdb.set_trace()
-    metrics = ["mse", "rmse", "pcc", "scc", "r2"]
-    # val_scores = compute_performace_scores(y_true, val_pred, metrics, outdtd, "val")
     val_scores = frm.compute_performace_scores(params, val_true, val_pred, metrics, stage="val")
 
     return val_scores

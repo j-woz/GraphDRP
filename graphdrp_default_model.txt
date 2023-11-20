@@ -14,19 +14,19 @@ use_lincs = True
 scaling = "std"
 
 [Train]
-model_outdir = "./out_models/gCSI/split_0"
-model_params = "model.pt"
-model_file_format = ".pt"
 train_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
 val_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
+model_outdir = "./out_models/gCSI/split_0"
+model_file_name = "model"
+model_file_format = ".pt"
 model_arch = "GINConvNet"
+epochs = 150
 batch_size = 256
 val_batch = 256
+patience = 20
 optimizer = "adam"
 learning_rate = 0.0001
 loss = "mse"
-epochs = 150
-patience = 20
 early_stop_metric = "mse"
 log_interval = 20
 ckpt_save_interval = 5

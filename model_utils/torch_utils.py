@@ -3,6 +3,16 @@ import torch
 from torch_geometric.data import InMemoryDataset, DataLoader
 from torch_geometric import data as DATA
 
+# from models.gat import GATNet
+# from models.gat_gcn import GAT_GCN
+# from models.gcn import GCNNet
+# from models.ginconv import GINConvNet
+
+from .models.gat import GATNet
+from .models.gat_gcn import GAT_GCN
+from .models.gcn import GCNNet
+from .models.ginconv import GINConvNet
+
 
 class TestbedDataset(InMemoryDataset):
     def __init__(self,
@@ -127,8 +137,8 @@ def build_GraphDRP_dataloader(
     if data_fname.endswith(".pt"):
         data_fname = data_fname[:-3] # TestbedDataset() appends this string with ".pt"
     dataset = TestbedDataset(root=data_dir, dataset=data_fname) # TestbedDataset() requires strings
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)  # PyTorch dataloader
-    return loader
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)  # PyTorch dataloader
+    return data_loader
 
 
 def train_epoch(model, device, train_loader, optimizer, loss_fn, epoch: int,
@@ -166,7 +176,7 @@ def train_epoch(model, device, train_loader, optimizer, loss_fn, epoch: int,
     return sum(avg_loss) / len(avg_loss)
 
 
-def predicting(model, device, loader):
+def predicting(model, device, data_loader):
     """ Method to make predictions/inference.
     This is used in *train.py and *infer.py
 
@@ -176,7 +186,7 @@ def predicting(model, device, loader):
         Model to evaluate.
     device : string
         Identifier for hardware that will be used to evaluate model.
-    loader : pytorch data loader.
+    data_loader : pytorch data loader.
         Object to load data to evaluate.
 
     Returns
@@ -189,12 +199,63 @@ def predicting(model, device, loader):
     model.eval()
     total_preds = torch.Tensor()
     total_labels = torch.Tensor()
-    print("Make prediction for {} samples...".format(len(loader.dataset)))
+    print("Make prediction for {} samples...".format(len(data_loader.dataset)))
     with torch.no_grad():
-        for data in loader:
+        for data in data_loader:
             data = data.to(device)
             output, _ = model(data)
             # Is this computationally efficient?
             total_preds = torch.cat((total_preds, output.cpu()), 0)  # preds to tensor
             total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)  # labels to tensor
     return total_labels.numpy().flatten(), total_preds.numpy().flatten()
+
+
+def str2Class(str):
+    """ Get model class from model name (str) """
+    return globals()[str]()
+
+
+def set_GraphDRP(params, device):
+    """ Chooses the specific GraphDRP architecture and moves it to device """
+    model = str2Class(params["model_arch"]).to(device)
+    return model
+
+
+def load_GraphDRP(params, modelpath, device):
+    """ Load GraphDRP """
+    model = str2Class(params["model_arch"]).to(device)
+    model.load_state_dict(torch.load(modelpath))
+    model.eval()
+    return model
+
+
+def determine_device(cuda_name_from_params):
+    """Determine device to run PyTorch functions.
+
+    PyTorch functions can run on CPU or on GPU. In the latter case, it
+    also takes into account the GPU devices requested for the run.
+
+    :params str cuda_name_from_params: GPUs specified for the run.
+
+    :return: Device available for running PyTorch functionality.
+    :rtype: str
+    """
+    cuda_avail = torch.cuda.is_available()
+    print("GPU available: ", cuda_avail)
+    if cuda_avail:  # GPU available
+        # -----------------------------
+        # CUDA device from env var
+        cuda_env_visible = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_env_visible is not None:
+            # Note! When one or multiple device numbers are passed via
+            # CUDA_VISIBLE_DEVICES, the values in python script are reindexed
+            # and start from 0.
+            print("CUDA_VISIBLE_DEVICES: ", cuda_env_visible)
+            cuda_name = "cuda:0"
+        else:
+            cuda_name = cuda_name_from_params
+        device = cuda_name
+    else:
+        device = "cpu"
+
+    return device
