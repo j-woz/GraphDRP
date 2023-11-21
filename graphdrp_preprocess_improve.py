@@ -24,18 +24,18 @@ filepath = Path(__file__).resolve().parent
 app_preproc_params = [
     # These arg should be specified in the [modelname]_default_model.txt:
     # y_data_files, x_data_canc_files, x_data_drug_files
-    {"name": "y_data_files",
+    {"name": "y_data_files", # default
      "type": str,
      "help": "List of files that contain the y (prediction variable) data. \
              Example: [['response.tsv']]",
     },
-    {"name": "x_data_canc_files",
+    {"name": "x_data_canc_files", # [Req]
      "type": str,
      "help": "List of feature files including gene_system_identifer. Examples: \n\
              1) [['cancer_gene_expression.tsv', ['Gene_Symbol']]] \n\
              2) [['cancer_copy_number.tsv', ['Ensembl', 'Entrez']]].",
     },
-    {"name": "x_data_drug_files",
+    {"name": "x_data_drug_files", # [Req]
      "type": str,
      "help": "List of feature files. Examples: \n\
              1) [['drug_SMILES.tsv']] \n\
@@ -43,11 +43,11 @@ app_preproc_params = [
     },
     # ---------------------------------------
     {"name": "canc_col_name",
-     "default": "improve_sample_id",
+     "default": "improve_sample_id", # default
      "type": str,
      "help": "Column name in the y (response) data file that contains the cancer sample ids.",
     },
-    {"name": "drug_col_name",
+    {"name": "drug_col_name", # default
      "default": "improve_chem_id",
      "type": str,
      "help": "Column name in the y (response) data file that contains the drug ids.",
@@ -75,12 +75,9 @@ model_preproc_params = [
     },
 ]
 
-# gdrp_data_conf = []  # replaced with model_conf_params + drp_conf_params
-# preprocess_params = model_conf_params + drp_conf_params
+# [Req]
 preprocess_params = app_preproc_params + model_preproc_params
 req_preprocess_args = [ll["name"] for ll in preprocess_params]
-# req_preprocess_args.extend(["y_col_name", "model_outdir"])
-
 
 # ------------------------------------------------------------
 # Utils to generate molecular graphs from SMILES
@@ -373,6 +370,8 @@ def run(params):
 
     :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
     """
+    # import pdb; pdb.set_trace()
+
     # --------------------------------------------
     # Check consistency of parameter specification
     # --------------------------------------------
@@ -392,7 +391,8 @@ def run(params):
     params = frm.build_paths(params)  
 
     # Create outdir for ML data (to save preprocessed data)
-    processed_outdir = frm.create_ml_data_outdir(params)  # creates params["ml_data_outdir"]
+    # processed_outdir = frm.create_ml_data_outdir(params)  # creates params["ml_data_outdir"]
+    frm.create_outdir(outdir=params["ml_data_outdir"])
     # ----------------------------------------
 
     # ------------------------------------------------------
@@ -496,8 +496,9 @@ def run(params):
         # -----------------------
         # import ipdb; ipdb.set_trace()
         # [Req] Create data name
-        data_fname = frm.build_ml_data_name(params, stage,
-                                            file_format=params["data_format"])
+        # data_fname = frm.build_ml_data_name(params, stage,
+        #                                     file_format=params["data_format"])
+        data_fname = frm.build_ml_data_name(params, stage)
 
         # Revmoe data_format because TestbedDataset() appends '.pt' to the
         # file name automatically. This is unique for GraphDRP.
@@ -533,7 +534,8 @@ def main():
         additional_definitions=preprocess_params,
         required=req_preprocess_args,
     )
-    processed_outdir = run(params)
+    # processed_outdir = run(params)
+    ml_data_outdir = run(params)
     print("\nFinished GraphDRP pre-processing (transformed raw DRP data to model input ML data).")
 
 
