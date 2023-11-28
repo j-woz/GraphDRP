@@ -28,11 +28,11 @@ patience = 20
 ckpt_save_interval = 5
 model_arch = "GINConvNet"
 log_interval = 20
-cuda_name = "cuda:5"
+cuda_name = "cuda:7"
 
-[Test]
+[Infer]
 test_ml_data_dir = "./ml_data/gCSI-gCSI/split_0"
 model_dir = "./out_models/gCSI/split_0"
 infer_outdir = "./out_infer/gCSI-gCSI/split_0"
 test_batch = 256
-cuda_name = "cuda:6"
+cuda_name = "cuda:7"

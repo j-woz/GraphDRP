@@ -2,6 +2,7 @@
 
 import os
 import json
+import sys
 import warnings
 from pathlib import Path
 
@@ -57,12 +58,11 @@ from graphdrp_train_improve import (
 filepath = Path(__file__).resolve().parent
 
 # [Req] App-specific params (App: monotherapy drug response prediction)
-app_infer_params = [
-] # TODO
+app_infer_params = []
 
 # [GraphDRP] Model-specific params (Model: GraphDRP)
 model_infer_params = [
-    # {"name": "test_data_df",  # TODO: app or frm level?
+    # {"name": "test_data_df",
     #  "default": frm.SUPPRESS,
     #  "type": str,
     #  "help": "Data frame with original test response data."
@@ -70,13 +70,13 @@ model_infer_params = [
 
 ]
 
-req_infer_args = ["model_arch",
-                  # "model_outdir",
-                  "test_ml_data_dir",
-                  "model_dir",
-                  # "test_data_processed"
-                  "infer_outdir"
-                  ]
+# req_infer_args = ["model_arch",
+#                   # "model_outdir",
+#                   "test_ml_data_dir",
+#                   "model_dir",
+#                   # "test_data_processed"
+#                   "infer_outdir"
+#                   ]
 
 
 # def check_data_available(params: Dict) -> frm.DataPathDict:
@@ -224,18 +224,25 @@ def run(params):
     return test_scores
 
 
-def main():
+# def main():
+def main(args):
+    # import ipdb; ipdb.set_trace()
     additional_definitions = model_preproc_params + \
                              model_train_params + \
-                             model_infer_params
-    params = frm.initialize_parameters(filepath,
-                                       default_model="graphdrp_default_model.txt",
-                                       additional_definitions = additional_definitions,
-                                       required = req_infer_args,
-                                      )
+                             model_infer_params + \
+                             app_infer_params
+    params = frm.initialize_parameters(
+        filepath,
+        default_model="graphdrp_default_model.txt",
+        # default_model="graphdrp_csa_params.txt",
+        additional_definitions=additional_definitions,
+        # required=req_infer_args,
+        required=None,
+    )
     test_scores = run(params)
     print("\nFinished inference of GraphDRP model.")
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    main(sys.argv[1:])

@@ -2,6 +2,7 @@
 
 import os
 import json
+import sys
 import warnings
 from pathlib import Path
 from pprint import pformat
@@ -49,16 +50,15 @@ metrics_list = ["mse", "rmse", "pcc", "scc", "r2"]
 
 # [Req] App-specific params (App: monotherapy drug response prediction)
 # Currently, there are no app-specific args for the train script.
-app_train_params = [
+app_train_params = []
+
+# [GraphDRP] Model-specific params (Model: GraphDRP)
+model_train_params = [
     # {"name": "val_data_df",
     #  "default": frm.SUPPRESS,
     #  "type": str,
     #  "help": "Data frame with original validation response data."
     # },
-]
-
-# [GraphDRP] Model-specific params (Model: GraphDRP)
-model_train_params = [
     {"name": "model_arch",
      "default": "GINConvNet",
      "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
@@ -79,11 +79,11 @@ model_train_params = [
     },
 ]
 
-req_train_args = ["model_arch", "model_outdir",
-                  "train_ml_data_dir", "val_ml_data_dir",
-                  # "train_data_processed", "val_data_processed"]
-                  # "train_ml_data_fname", "val_ml_data_fname"]
-                  ]
+# req_train_args = ["model_arch", "model_outdir",
+#                   "train_ml_data_dir", "val_ml_data_dir",
+#                   # "train_data_processed", "val_data_processed"]
+#                   # "train_ml_data_fname", "val_ml_data_fname"]
+#                   ]
 
 
 # TODO. consider moving to model_utils
@@ -704,20 +704,24 @@ def run(params):
     return val_scores
 
 
-def main():
-    # additional_definitions = gdrp_model_conf + gdrp_data_conf + gdrp_train_conf
-    additional_definitions = model_train_params + \
-                             model_preproc_params + \
+# def main():
+def main(args):
+    # import ipdb; ipdb.set_trace()
+    additional_definitions = model_preproc_params + \
+                             model_train_params + \
                              app_train_params
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
+        # default_model="graphdrp_csa_params.txt",
         additional_definitions=additional_definitions,
-        required=req_train_args,
+        # required=req_train_args,
+        required=None,
     )
     val_scores = run(params)
     print("\nFinished training GraphDRP model.")
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    main(sys.argv[1:])

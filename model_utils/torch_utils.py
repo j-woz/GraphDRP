@@ -224,7 +224,7 @@ def set_GraphDRP(params, device):
 def load_GraphDRP(params, modelpath, device):
     """ Load GraphDRP """
     if modelpath.exists() == False:
-        raise Exception(f"ERROR ! modelpath not found {path}\n")
+        raise Exception(f"ERROR ! modelpath not found {modelpath}\n")
     model = str2Class(params["model_arch"]).to(device)
     model.load_state_dict(torch.load(modelpath))
     model.eval()

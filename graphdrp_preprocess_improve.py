@@ -1,6 +1,7 @@
 """ Preprocessing of raw data to generate datasets for GraphDRP Model. """
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -41,7 +42,6 @@ app_preproc_params = [
              1) [['drug_SMILES.tsv']] \n\
              2) [['drug_SMILES.tsv'], ['drug_ecfp4_nbits512.tsv']]",
     },
-    # ---------------------------------------
     {"name": "canc_col_name",
      "default": "improve_sample_id", # default
      "type": str,
@@ -527,17 +527,19 @@ def run(params):
     return params["ml_data_outdir"]
 
 
-def main():
+# def main():
+def main(args):
+    # import ipdb; ipdb.set_trace()
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
         additional_definitions=preprocess_params,
         required=req_preprocess_args,
     )
-    # processed_outdir = run(params)
     ml_data_outdir = run(params)
     print("\nFinished GraphDRP pre-processing (transformed raw DRP data to model input ML data).")
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    main(sys.argv[1:])
