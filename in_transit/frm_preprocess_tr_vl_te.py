@@ -483,18 +483,18 @@ def parse_args(args):
         type=str,
         required=True,
         help="Output dir to store the generated ML data files (e.g., 'split_0_tr').")
-    parser.add_argument(
-        "--receipt",
-        type=str,
-        required=False,
-        help="...")
+    # parser.add_argument(
+    #     "--receipt",
+    #     type=str,
+    #     required=False,
+    #     help="...")
 
     args = parser.parse_args(args)
     return args
 
 
 def main(args):
-    import ipdb; ipdb.set_trace()
+    # import ipdb; ipdb.set_trace()
     args = parse_args(args)
     ml_data_path = raw_data_to_ml_data(args)
     print(f"\nML data path:\t\n{ml_data_path}")

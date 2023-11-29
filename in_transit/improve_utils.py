@@ -107,7 +107,7 @@ improve_globals.mordred_file_path = Path(improve_globals.x_data_dir / improve_gl
 improve_globals.ecfp4_512bit_file_path = Path(improve_globals.x_data_dir / improve_globals.ecfp4_512bit_file_name)  #
 
 
-print(improve_globals)
+# print(improve_globals)
 # -----------------------------------------------------------------------------
 
 
@@ -185,6 +185,7 @@ def load_single_drug_response_data_v2(
         pd.Dataframe: dataframe that contains drug response values
     """
     # TODO: currently, this func implements loading a single data source (CCLE or CTRPv2 or ...)
+    # import ipdb; ipdb.set_trace()
     df = pd.read_csv(improve_globals.y_file_path, sep=sep)
 
     # Get a subset of samples
@@ -221,6 +222,7 @@ def load_split_ids(split_file_name: Union[str, List[str]]) -> List[int]:
     Returns:
         list: list of integers representing the ids
     """
+    # import ipdb; ipdb.set_trace()
     ids = []
     for fname in split_file_name:
         fpath = improve_globals.splits_dir / fname

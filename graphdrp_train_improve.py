@@ -425,7 +425,7 @@ class Trainer:
         self.params["ckpt_directory"] = ckpt_directory
         initial_epoch = 0
         # TODO. This creates directory self.params["ckpt_directory"]
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         self.ckpt = CandleCkptPyTorch(self.params)
         self.ckpt.set_model({"model": self.model, "optimizer": self.optimizer})
         J = self.ckpt.restart(self.model)
@@ -616,7 +616,7 @@ def run(params):
     # -----------------------------
     # [Req] Set checkpointing
     # import pdb; pdb.set_trace()
-    print(f"model_outdir {params['model_outdir']}")
+    print(f"model_outdir:   {params['model_outdir']}")
     print(f"ckpt_directory: {params['ckpt_directory']}")
     # TODO: why nested dirs are created: params["ckpt_directory"]/params["ckpt_directory"]
     # params["output_dir"] = params["model_outdir"]
@@ -688,7 +688,8 @@ def run(params):
     # -----------------------------
     # import ipdb; ipdb.set_trace()
     frm.store_predictions_df(
-        params, y_true=val_true, y_pred=val_pred, stage="val",
+        params,
+        y_true=val_true, y_pred=val_pred, stage="val",
         outdir=params["model_outdir"]
     )
 
@@ -697,7 +698,8 @@ def run(params):
     # -----------------------------
     # import ipdb; ipdb.set_trace()
     val_scores = frm.compute_performace_scores(
-        params, y_true=val_true, y_pred=val_pred, stage="val",
+        params,
+        y_true=val_true, y_pred=val_pred, stage="val",
         outdir=params["model_outdir"], metrics=metrics_list
     )
 
@@ -713,6 +715,8 @@ def main(args):
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
+        # default_model="params_ws.txt",
+        # default_model="params_cs.txt",
         # default_model="graphdrp_csa_params.txt",
         additional_definitions=additional_definitions,
         # required=req_train_args,

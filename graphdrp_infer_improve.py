@@ -174,12 +174,12 @@ def run(params):
     # [GraphDRP] Prepare dataloaders
     # ------------------------------------------------------
     print("\nTest data:")
-    print(f"train_ml_data_dir: {params['train_ml_data_dir']}")
+    print(f"test_ml_data_dir: {params['test_ml_data_dir']}")
     print(f"test_batch: {params['test_batch']}")
     test_loader = build_GraphDRP_dataloader(params["test_ml_data_dir"],
-                                             test_data_fname,
-                                             params["test_batch"],
-                                             shuffle=False)
+                                            test_data_fname,
+                                            params["test_batch"],
+                                            shuffle=False)
 
     # ------------------------------------------------------
     # [Req]
@@ -208,7 +208,8 @@ def run(params):
     # -----------------------------
     # import ipdb; ipdb.set_trace()
     frm.store_predictions_df(
-        params, y_true=test_true, y_pred=test_pred, stage="test",
+        params,
+        y_true=test_true, y_pred=test_pred, stage="test",
         outdir=params["infer_outdir"]
     )
 
@@ -217,7 +218,8 @@ def run(params):
     # -----------------------------
     # import ipdb; ipdb.set_trace()
     test_scores = frm.compute_performace_scores(
-        params, y_true=test_true, y_pred=test_pred, stage="test",
+        params,
+        y_true=test_true, y_pred=test_pred, stage="test",
         outdir=params["infer_outdir"], metrics=metrics_list
     )
 
@@ -234,11 +236,17 @@ def main(args):
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
+        # default_model="params_ws.txt",
+        # default_model="params_cs.txt",
         # default_model="graphdrp_csa_params.txt",
         additional_definitions=additional_definitions,
         # required=req_infer_args,
         required=None,
     )
+    # print("test_ml_data_dir:", params["test_ml_data_dir"])
+    # print("model_dir:", params["model_dir"])
+    # print("infer_outdir:", params["infer_outdir"])
+    # import ipdb; ipdb.set_trace()
     test_scores = run(params)
     print("\nFinished inference of GraphDRP model.")
 

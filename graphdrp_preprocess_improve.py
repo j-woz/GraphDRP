@@ -451,6 +451,33 @@ def run(params):
               "test": params["test_split_file"]}
     scaler = None
 
+    # %%%%%%%%%%%%%%%
+    # Create scaler
+    # import ipdb; ipdb.set_trace()
+    # split_file_dev = params["train_split_file"] + \
+    #                  params["val_split_file"] # + \
+                     # params["test_split_file"]
+    rs_tr = drp.DrugResponseLoader(params,
+                                   split_file=params["train_split_file"],
+                                   verbose=True).dfs["response.tsv"]
+    rs_vl = drp.DrugResponseLoader(params,
+                                   split_file=params["val_split_file"],
+                                   verbose=True).dfs["response.tsv"]
+    rs_dev = pd.concat([rs_tr, rs_vl], axis=0)
+    # print(rs_tr.shape) 
+    # print(rs_vl.shape) 
+    # print("rs_dev", rs_dev.shape) 
+    # print("ge", ,ge.shape) 
+    ydf, df_canc = drp.get_common_samples(df1=rs_dev, df2=ge,
+                                          ref_col=params["canc_col_name"])
+    # print("ydf", ydf.shape) 
+    # print("df_canc", df_canc.shape) 
+    df_canc, scaler = scale_df(df_canc, scaler_name=params["scaling"])
+    scaler_fpath = Path(params["ml_data_outdir"]) / params["scaler_fname"]
+    joblib.dump(scaler, scaler_fpath)
+    print("Scaler object created and stored in: ", scaler_fpath)
+    # %%%%%%%%%%%%%%%
+
     for stage, split_file in stages.items():
 
         # ------------------------
@@ -469,24 +496,27 @@ def run(params):
                                               ref_col=params["canc_col_name"])
         print(ydf[[params["canc_col_name"], params["drug_col_name"]]].nunique())
 
-        # Scale features using training data
-        if stage == "train":
-            # Scale data
-            df_canc, scaler = scale_df(df_canc, scaler_name=params["scaling"])
-            # Store scaler object
-            if params["scaling"] is not None and params["scaling"] != "none":
-                scaler_fpath = Path(params["ml_data_outdir"]) / params["scaler_fname"]
-                joblib.dump(scaler, scaler_fpath)
-                print("Scaler object created and stored in: ", scaler_fpath)
-        else:
-            # Use passed scikit scaler object
-            df_canc, _ = scale_df(df_canc, scaler=scaler)
+        df_canc, _ = scale_df(df_canc, scaler=scaler)  # Use dev scaler!
+
+        # # Scale features using training data
+        # if stage == "train":
+        #     # Scale data
+        #     df_canc, scaler = scale_df(df_canc, scaler_name=params["scaling"])
+        #     # Store scaler object
+        #     if params["scaling"] is not None and params["scaling"] != "none":
+        #         scaler_fpath = Path(params["ml_data_outdir"]) / params["scaler_fname"]
+        #         joblib.dump(scaler, scaler_fpath)
+        #         print("Scaler object created and stored in: ", scaler_fpath)
+        # else:
+        #     # Use passed scikit scaler object
+        #     df_canc, _ = scale_df(df_canc, scaler=scaler)
 
         # Sub-select desired response column (y_col_name)
         # And reduce response dataframe to 3 columns: drug_id, cell_id and selected drug_response
-        ydf = ydf[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
+        # ydf = ydf[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]]
+        ydf_cut = ydf[[params["drug_col_name"], params["canc_col_name"], params["y_col_name"]]].copy()
         # Further prepare data (model-specific)
-        xd, xc, y = compose_data_arrays(ydf, smi, df_canc, params["drug_col_name"], params["canc_col_name"])
+        xd, xc, y = compose_data_arrays(ydf_cut, smi, df_canc, params["drug_col_name"], params["canc_col_name"])
         print(stage.upper(), "data --> xd ", xd.shape, "xc ", xc.shape, "y ", y.shape)
         # ------------------------
 
@@ -495,6 +525,9 @@ def run(params):
         # The implementation of this step, depends on the model.
         # -----------------------
         # import ipdb; ipdb.set_trace()
+        # [Req] Save y dataframe for the current stage
+        frm.save_stage_ydf(ydf, params, stage)
+
         # [Req] Create data name
         # data_fname = frm.build_ml_data_name(params, stage,
         #                                     file_format=params["data_format"])
@@ -521,8 +554,8 @@ def run(params):
                        y=y,
                        smile_graph=smiles_graphs)
 
-        # [Req] Save y dataframe for the current stage
-        frm.save_stage_ydf(ydf, params, stage)
+        # # [Req] Save y dataframe for the current stage
+        # frm.save_stage_ydf(ydf, params, stage)
 
     return params["ml_data_outdir"]
 
@@ -533,6 +566,8 @@ def main(args):
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
+        # default_model="params_ws.txt",
+        # default_model="params_cs.txt",
         additional_definitions=preprocess_params,
         required=req_preprocess_args,
     )
