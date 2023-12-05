@@ -1,4 +1,7 @@
 """ Python implementation of cross-study analysis workflow """
+cuda_name = "cuda:6"
+# cuda_name = "cuda:7"
+
 import os
 import warnings
 import subprocess
@@ -21,12 +24,12 @@ from ap_utils.utils import get_print_func, Timer
 fdir = Path(__file__).resolve().parent
 
 # ML_DATA_DIR = Path("./ml_data")
-MAIN_ML_DATA_DIR = Path("./ml.data")
-MAIN_MODEL_DIR = Path("./models")
-MAIN_INFER_OUTDIR = Path("./infer")
-# MAIN_ML_DATA_DIR = Path("./md")
-# MAIN_MODEL_DIR = Path("./om")
-# MAIN_INFER_OUTDIR = Path("./oi")
+y_col_name = "auc"
+# y_col_name = "auc1"
+maindir = Path(f"./{y_col_name}")
+MAIN_ML_DATA_DIR = Path(f"./{maindir}/ml.data")
+MAIN_MODEL_DIR = Path(f"./{maindir}/models")
+MAIN_INFER_OUTDIR = Path(f"./{maindir}/infer")
 
 # Check that environment variable "IMPROVE_DATA_DIR" has been specified
 if os.getenv("IMPROVE_DATA_DIR") is None:
@@ -53,37 +56,41 @@ print_fn(f"File path: {fdir}")
 
 ### Source and target data sources
 ## Set 1 - full analysis
-# source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 2 - smaller datasets
 # source_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+# target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+# source_datasets = ["GDSCv1"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - full analysis for a single source
 # source_datasets = ["CCLE"]
 # target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv2"]
+# target_datasets = ["GDSCv1"]
 ## Set 4 - same source and target
 # source_datasets = ["CCLE"]
 # target_datasets = ["CCLE"]
 ## Set 5 - single source and target
-source_datasets = ["CCLE"]
-target_datasets = ["GDSCv1"]
+# source_datasets = ["CCLE"]
+# target_datasets = ["GDSCv1"]
+
+only_cross_study = False
 
 ## Splits
-split_nums = []  # all splits
-# split_nums = [0]
+# split_nums = []  # all splits
+split_nums = [0]
 # split_nums = [4, 7]
+# split_nums = [1, 4, 7]
 # split_nums = [1, 3, 5, 7, 9]
 
 ## Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
 # epochs = 2
-epochs = 100
+epochs = 70
+# epochs = 100
 # epochs = 150
-# y_col_name = "auc"
-y_col_name = "auc1"
-cuda_name = "cuda:1"
 # config_file_name = "csa_params.txt"
 # config_file_path = fdir/config_file_name
 
@@ -101,7 +108,7 @@ timer = Timer()
 print_fn(f"\nsource_datasets: {source_datasets}")
 print_fn(f"target_datasets: {target_datasets}")
 print_fn(f"split_nums:      {split_nums}")
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 for source_data_name in source_datasets:
 
     # Get the split file paths
@@ -139,6 +146,8 @@ for source_data_name in source_datasets:
 
         # import pdb; pdb.set_trace()
         for target_data_name in target_datasets:
+            if only_cross_study and (source_data_name == target_data_name):
+                continue # only cross-study
             print_fn(f"\nSource data: {source_data_name}")
             print_fn(f"Target data: {target_data_name}")
 

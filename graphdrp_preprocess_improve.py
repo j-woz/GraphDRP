@@ -11,14 +11,14 @@ import joblib
 
 from sklearn.preprocessing import StandardScaler, MaxAbsScaler, MinMaxScaler, RobustScaler
 
-# IMPROVE imports
+# [Req] IMPROVE imports
 from improve import framework as frm
 from improve import drug_resp_pred as drp
 
 # Model-specific imports
 from model_utils.torch_utils import TestbedDataset
 
-filepath = Path(__file__).resolve().parent
+filepath = Path(__file__).resolve().parent # [Req]
 
 # [Req] App-specific params (App: monotherapy drug response prediction)
 # TODO: consider moving this list to drug_resp_pred.py module
@@ -55,7 +55,7 @@ app_preproc_params = [
 
 ]
 
-# [GraphDRP] Model-specific params (Model: GraphDRP)
+# [Req] Model-specific params (Model: GraphDRP)
 model_preproc_params = [
     {"name": "use_lincs",
      "type": frm.str2bool,
@@ -365,7 +365,8 @@ def compose_data_arrays(df_response: pd.DataFrame,
     return np.asarray(xd).squeeze(), np.asarray(xc), np.asarray(y)
 
 
-def run(params):
+# [Req]
+def run(params: Dict):
     """ Execute data pre-processing for GraphDRP model.
 
     :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
@@ -459,11 +460,14 @@ def run(params):
                      # params["test_split_file"]
     rs_tr = drp.DrugResponseLoader(params,
                                    split_file=params["train_split_file"],
-                                   verbose=True).dfs["response.tsv"]
+                                   verbose=False).dfs["response.tsv"]
     rs_vl = drp.DrugResponseLoader(params,
                                    split_file=params["val_split_file"],
-                                   verbose=True).dfs["response.tsv"]
-    rs_dev = pd.concat([rs_tr, rs_vl], axis=0)
+                                   verbose=False).dfs["response.tsv"]
+    rs_te = drp.DrugResponseLoader(params,
+                                   split_file=params["test_split_file"],
+                                   verbose=False).dfs["response.tsv"]
+    rs_dev = pd.concat([rs_tr, rs_vl, rs_te], axis=0)
     # print(rs_tr.shape) 
     # print(rs_vl.shape) 
     # print("rs_dev", rs_dev.shape) 
@@ -483,7 +487,9 @@ def run(params):
         # ------------------------
         # [Req] Load response data
         # ------------------------
-        rr = drp.DrugResponseLoader(params, split_file=split_file, verbose=True)
+        rr = drp.DrugResponseLoader(params,
+                                    split_file=split_file,
+                                    verbose=False)
         # print(rr)
         df_response = rr.dfs["response.tsv"]
         # ------------------------
@@ -563,16 +569,18 @@ def run(params):
 # def main():
 def main(args):
     # import ipdb; ipdb.set_trace()
+    # [Req]
+    additional_definitions=preprocess_params
     params = frm.initialize_parameters(
         filepath,
         default_model="graphdrp_default_model.txt",
         # default_model="params_ws.txt",
         # default_model="params_cs.txt",
-        additional_definitions=preprocess_params,
+        additional_definitions=additional_definitions,
         required=req_preprocess_args,
     )
     ml_data_outdir = run(params)
-    print("\nFinished GraphDRP pre-processing (transformed raw DRP data to model input ML data).")
+    print("\nFinished GraphDRP data preprocessing (transformed raw DRP data to model input ML data).")
 
 
 if __name__ == "__main__":
