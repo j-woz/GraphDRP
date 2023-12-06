@@ -566,13 +566,10 @@ def run(params):
     # ------------------------------------------------------
     # [Req] Create data names for train and val
     # ------------------------------------------------------
-    # train_data_fname = frm.build_ml_data_name(params, stage="train",
-    #                                           file_format=params["data_format"])
-    # val_data_fname = frm.build_ml_data_name(params, stage="val",
-    #                                         file_format=params["data_format"])
-    train_data_fname = frm.build_ml_data_name(params, stage="train")
-    val_data_fname = frm.build_ml_data_name(params, stage="val")
-    # GraphDRP -- remove data_format
+    train_data_fname = frm.build_ml_data_name(params, stage="train")  # [Req]
+    val_data_fname = frm.build_ml_data_name(params, stage="val")  # [Req]
+
+    # GraphDRP-specific -- remove data_format
     train_data_fname = train_data_fname.split(params["data_format"])[0]
     val_data_fname = val_data_fname.split(params["data_format"])[0]
 

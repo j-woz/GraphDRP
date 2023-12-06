@@ -464,10 +464,7 @@ def run(params: Dict):
     rs_vl = drp.DrugResponseLoader(params,
                                    split_file=params["val_split_file"],
                                    verbose=False).dfs["response.tsv"]
-    rs_te = drp.DrugResponseLoader(params,
-                                   split_file=params["test_split_file"],
-                                   verbose=False).dfs["response.tsv"]
-    rs_dev = pd.concat([rs_tr, rs_vl, rs_te], axis=0)
+    rs_dev = pd.concat([rs_tr, rs_vl], axis=0)
     # print(rs_tr.shape) 
     # print(rs_vl.shape) 
     # print("rs_dev", rs_dev.shape) 
