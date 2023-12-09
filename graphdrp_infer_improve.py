@@ -34,6 +34,10 @@ from model_utils.torch_utils import (
     determine_device
 )
 
+# [Req] Imports from preprocess and train scripts
+from graphdrp_preprocess_improve import preprocess_params
+from graphdrp_train_improve import metrics_list, train_params
+
 # from graphdrp_train_improve import (
 #     gdrp_data_conf,
 #     gdrp_model_conf,
@@ -44,39 +48,44 @@ from model_utils.torch_utils import (
 #     compute_performace_scores,
 # )
 
-from graphdrp_train_improve import (
-    metrics_list,
-    model_preproc_params,
-    model_train_params,
-    # determine_device,
-    # build_PT_data_loader,
-    # evaluate_model,
-    # store_predictions_df,
-    # compute_performace_scores,
-)
+# from graphdrp_train_improve import (
+#     metrics_list,
+#     model_preproc_params,
+#     model_train_params,
+#     # determine_device,
+#     # build_PT_data_loader,
+#     # evaluate_model,
+#     # store_predictions_df,
+#     # compute_performace_scores,
+# )
 
 filepath = Path(__file__).resolve().parent
 
-# [Req] App-specific params (App: monotherapy drug response prediction)
+# ---------------------
+# [Req] Parameter lists
+# ---------------------
+# Two parameter lists are required:
+# 1. app_infer_params
+# 2. model_infer_params
+# 
+# The values for the parameters in both lists should be specified in a
+# parameter file that is passed as default_model arg in
+# frm.initialize_parameters().
+
+# 1. App-specific params (App: monotherapy drug response prediction)
+# Currently, there are no app-specific params in this script.
 app_infer_params = []
 
-# [GraphDRP] Model-specific params (Model: GraphDRP)
-model_infer_params = [
-    # {"name": "test_data_df",
-    #  "default": frm.SUPPRESS,
-    #  "type": str,
-    #  "help": "Data frame with original test response data."
-    # },
+# 2. Model-specific params (Model: GraphDRP)
+# All params in model_infer_params are optional.
+# If no params are required by the model, then it should be an empty list.
+model_infer_params = []
 
-]
-
-# req_infer_args = ["model_arch",
-#                   # "model_outdir",
-#                   "test_ml_data_dir",
-#                   "model_dir",
-#                   # "test_data_processed"
-#                   "infer_outdir"
-#                   ]
+# [Req] Combine the two lists (the combined parameter list will be passed to
+# frm.initialize_parameters() in the main().
+infer_params = app_infer_params + model_infer_params
+# req_infer_params = []
+# ---------------------
 
 
 # def check_data_available(params: Dict) -> frm.DataPathDict:
@@ -137,20 +146,20 @@ model_infer_params = [
 
 
 def run(params):
-    """Execute specified model inference.
+    """ Run model inference.
 
-    :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
+    Args:
+        params (dict): dict of CANDLE/IMPROVE parameters and parsed values.
 
-    :return: List of floats evaluating model predictions according to
-             specified metrics.
-    :rtype: float list
+    Returns:
+        dict: prediction performance scores computed on test data according
+            to the metrics_list.
     """
     # import ipdb; ipdb.set_trace()
 
     # ------------------------------------------------------
     # [Req] Create output dir for the model. 
     # ------------------------------------------------------
-    # import pdb; pdb.set_trace()
     frm.create_outdir(outdir=params["infer_outdir"])
 
     # ------------------------------------------------------
@@ -185,38 +194,31 @@ def run(params):
     # [Req]
     # ------------------------------------------------------
     # Determine CUDA/CPU device and configure CUDA device if available
-    # TODO. How this should be configured with our (Singularity) workflows?
     device = determine_device(params["cuda_name"])
 
     # -----------------------------
-    # [GraphDRP] Load best model and compute preditions
+    # Load best model and compute preditions
     # -----------------------------
-    # import ipdb; ipdb.set_trace()
-    # test_true, test_pred = evaluate_model(params["model_arch"], device, indtd["model"], test_loader)
-    # test_true, test_pred = evaluate_model(params, device, modelpath, test_loader)
-
     # Load the (best) saved model (as determined based on val data)
     modelpath = frm.build_model_path(params, model_dir=params["model_dir"]) # [Req]
     model = load_GraphDRP(params, modelpath, device)
     model.eval()
 
     # Compute predictions
-    test_true, test_pred = predicting(model, device, data_loader=test_loader) # (groud truth), (predictions)
+    test_true, test_pred = predicting(model, device, data_loader=test_loader)
 
-    # -----------------------------
+    # ------------------------------------------------------
     # [Req] Save raw predictions in dataframe
-    # -----------------------------
-    # import ipdb; ipdb.set_trace()
+    # ------------------------------------------------------
     frm.store_predictions_df(
         params,
         y_true=test_true, y_pred=test_pred, stage="test",
         outdir=params["infer_outdir"]
     )
 
-    # -----------------------------
+    # ------------------------------------------------------
     # [Req] Compute performance scores
-    # -----------------------------
-    # import ipdb; ipdb.set_trace()
+    # ------------------------------------------------------
     test_scores = frm.compute_performace_scores(
         params,
         y_true=test_true, y_pred=test_pred, stage="test",
@@ -226,31 +228,24 @@ def run(params):
     return test_scores
 
 
-# def main():
+# [Req]
 def main(args):
-    # import ipdb; ipdb.set_trace()
-    additional_definitions = model_preproc_params + \
-                             model_train_params + \
-                             model_infer_params + \
-                             app_infer_params
+    # [Req]
+    additional_definitions = preprocess_params + train_params + infer_params
     params = frm.initialize_parameters(
         filepath,
-        default_model="graphdrp_default_model.txt",
+        # default_model="graphdrp_default_model.txt",
+        # default_model="graphdrp_params.txt",
         # default_model="params_ws.txt",
-        # default_model="params_cs.txt",
-        # default_model="graphdrp_csa_params.txt",
+        default_model="params_cs.txt",
         additional_definitions=additional_definitions,
         # required=req_infer_args,
         required=None,
     )
-    # print("test_ml_data_dir:", params["test_ml_data_dir"])
-    # print("model_dir:", params["model_dir"])
-    # print("infer_outdir:", params["infer_outdir"])
-    # import ipdb; ipdb.set_trace()
     test_scores = run(params)
-    print("\nFinished inference of GraphDRP model.")
+    print("\nFinished model inference.")
 
 
+# [Req]
 if __name__ == "__main__":
-    # main()
     main(sys.argv[1:])

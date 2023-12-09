@@ -1,6 +1,6 @@
 """ Python implementation of cross-study analysis workflow """
-cuda_name = "cuda:6"
-# cuda_name = "cuda:7"
+# cuda_name = "cuda:6"
+cuda_name = "cuda:7"
 
 import os
 import warnings
@@ -14,16 +14,16 @@ from improve import framework as frm
 # from improve_utils import improve_globals as ig
 
 # GraphDRP imports
+# TODO: change this for your model
 import graphdrp_preprocess_improve
 import graphdrp_train_improve
 import graphdrp_infer_improve
 
-from ap_utils.classlogger import Logger
+# from ap_utils.classlogger import Logger
 from ap_utils.utils import get_print_func, Timer
 
 fdir = Path(__file__).resolve().parent
 
-# ML_DATA_DIR = Path("./ml_data")
 y_col_name = "auc"
 # y_col_name = "auc1"
 maindir = Path(f"./{y_col_name}")
@@ -48,10 +48,9 @@ x_datadir = raw_datadir / params["x_data_dir"]
 y_datadir = raw_datadir / params["y_data_dir"]
 splits_dir = raw_datadir / params["splits_dir"]
 
-# AP
-lg = Logger(main_datadir/"csa.log")
-# print_fn = print
-print_fn = get_print_func(lg.logger)
+# lg = Logger(main_datadir/"csa.log")
+print_fn = print
+# print_fn = get_print_func(lg.logger)
 print_fn(f"File path: {fdir}")
 
 ### Source and target data sources
@@ -61,23 +60,24 @@ print_fn(f"File path: {fdir}")
 ## Set 2 - smaller datasets
 # source_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
-# source_datasets = ["GDSCv1"]
+# source_datasets = ["CCLE", "GDSCv1"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - full analysis for a single source
 # source_datasets = ["CCLE"]
-source_datasets = ["CTRPv2"]
-target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+# source_datasets = ["CTRPv2"]
+# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv2"]
-# target_datasets = ["GDSCv1"]
 ## Set 4 - same source and target
 # source_datasets = ["CCLE"]
 # target_datasets = ["CCLE"]
 ## Set 5 - single source and target
-# source_datasets = ["CCLE"]
-# target_datasets = ["GDSCv1"]
+source_datasets = ["GDSCv1"]
+target_datasets = ["CCLE"]
 
-only_cross_study = False
+# only_cross_study = False
+only_cross_study = True
+
 
 ## Splits
 # split_nums = []  # all splits
@@ -89,7 +89,8 @@ split_nums = [0]
 ## Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
 # epochs = 2
-epochs = 70
+epochs = 50
+# epochs = 70
 # epochs = 100
 # epochs = 150
 # config_file_name = "csa_params.txt"
@@ -356,7 +357,5 @@ for source_data_name in source_datasets:
     #         ])
     #         timer_infer.display_timer(print_fn)
 
-
-# timer.display_timer(print)
 timer.display_timer(print_fn)
 print_fn("Finished a full cross-study run.")

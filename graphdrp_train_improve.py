@@ -1,12 +1,29 @@
-""" Functionality for Training a GraphDRP Model. """
+""" Train GraphDRP for drug response prediction.
 
-import os
-import json
+Required outputs
+----------------
+All the outputs from this train script are saved in params["model_outdir"].
+
+1. Trained model.
+   The model is trained with train data and validated with val data. The model
+   file name and file format are specified, respectively by
+   params["model_file_name"] and params["model_file_format"].
+   For LightGBM, the saved model:
+        model.txt
+
+2. Predictions on val data. 
+   Raw model predictions calcualted using the trained model on val data. The
+   predictions are saved in val_y_data_predicted.csv
+
+3. Prediction performance scores on val data.
+   The performance scores are calculated using the raw model predictions and
+   the true values for performance metrics specified in the metrics_list. The
+   scores are saved as json in val_scores.json
+"""
+
 import sys
-import warnings
 from pathlib import Path
-from pprint import pformat
-from typing import Dict, Union
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -14,51 +31,45 @@ import pandas as pd
 import torch
 # from torch_geometric.data import DataLoader
 
-# IMPROVE/CANDLE imports
+# [Req] IMPROVE/CANDLE imports
 from improve import framework as frm
 from improve.metrics import compute_metrics
-# from candle import build_pytorch_optimizer, get_pytorch_function, keras_default_config, CandleCkptPyTorch
 from candle import CandleCkptPyTorch
 
 # Model-specific imports
 from model_utils.torch_utils import (
-    TestbedDataset,
     build_GraphDRP_dataloader,
+    determine_device,
+    load_GraphDRP,
+    predicting,
     set_GraphDRP,
     train_epoch,
-    predicting,
-    load_GraphDRP,
-    determine_device
 )
-# from models.gat import GATNet
-# from models.gat_gcn import GAT_GCN
-# from models.gcn import GCNNet
-# from models.ginconv import GINConvNet
-# ---
-# from model_utils.models.gat import GATNet
-# from model_utils.models.gat_gcn import GAT_GCN
-# from model_utils.models.gcn import GCNNet
-# from model_utils.models.ginconv import GINConvNet
 
-# from graphdrp_preprocess_improve import gdrp_data_conf  # ap
-from graphdrp_preprocess_improve import model_preproc_params, app_preproc_params, preprocess_params  # ap
+# [Req] Imports from preprocess script
+from graphdrp_preprocess_improve import  preprocess_params
 
-filepath = Path(__file__).resolve().parent
+filepath = Path(__file__).resolve().parent # [Req]
 
-# [Req] List of metrics names to be compute performance scores
-metrics_list = ["mse", "rmse", "pcc", "scc", "r2"]  
+# ---------------------
+# [Req] Parameter lists
+# ---------------------
+# Two parameter lists are required:
+# 1. app_train_params
+# 2. model_train_params
+# 
+# The values for the parameters in both lists should be specified in a
+# parameter file that is passed as default_model arg in
+# frm.initialize_parameters().
 
-# [Req] App-specific params (App: monotherapy drug response prediction)
-# Currently, there are no app-specific args for the train script.
+# 1. App-specific params (App: monotherapy drug response prediction)
+# Currently, there are no app-specific params for this script.
 app_train_params = []
 
-# [GraphDRP] Model-specific params (Model: GraphDRP)
+# 2. Model-specific params (Model: GraphDRP)
+# All params in model_train_params are optional.
+# If no params are required by the model, then it should be an empty list.
 model_train_params = [
-    # {"name": "val_data_df",
-    #  "default": frm.SUPPRESS,
-    #  "type": str,
-    #  "help": "Data frame with original validation response data."
-    # },
     {"name": "model_arch",
      "default": "GINConvNet",
      "choices": ["GINConvNet", "GATNet", "GAT_GCN", "GCNNet"],
@@ -68,7 +79,7 @@ model_train_params = [
      "action": "store",
      "type": int,
      "help": "Interval for saving o/p"},
-    {"name": "cuda_name",  # TODO. frm. How should we control this?
+    {"name": "cuda_name",
      "action": "store",
      "type": str,
      "help": "Cuda device (e.g.: cuda:0, cuda:1."},
@@ -79,17 +90,14 @@ model_train_params = [
     },
 ]
 
-# req_train_args = ["model_arch", "model_outdir",
-#                   "train_ml_data_dir", "val_ml_data_dir",
-#                   # "train_data_processed", "val_data_processed"]
-#                   # "train_ml_data_fname", "val_ml_data_fname"]
-#                   ]
+# Combine the two lists (the combined parameter list will be passed to
+# frm.initialize_parameters() in the main().
+train_params = app_train_params + model_train_params
+# req_train_params = ["model_outdir", "train_ml_data_dir", "val_ml_data_dir"]
+# ---------------------
 
-
-# TODO. consider moving to model_utils
-def str2Class(str):
-    """Get model class from model name (str)."""
-    return globals()[str]()
+# [Req] List of metrics names to compute prediction performance scores
+metrics_list = ["mse", "rmse", "pcc", "scc", "r2"]  
 
 
 # def check_data_available(params: Dict) -> frm.DataPathDict:
@@ -534,23 +542,27 @@ class Trainer:
 #     return val_true, val_pred
 
 
+# [Req]
 def run(params):
-    """ Execute specified model training.
+    """ Run model training.
 
-    :params: Dict params: A dictionary of CANDLE/IMPROVE keywords and parsed values.
+    Args:
+        params (dict): dict of CANDLE/IMPROVE parameters and parsed values.
 
-    :return: List of floats evaluating model predictions according to
-             specified metrics_list.
-    :rtype: float list
+    Returns:
+        dict: prediction performance scores computed on validation data
+            according to the metrics_list.
     """
     # import pdb; pdb.set_trace()
 
     # ------------------------------------------------------
-    # [Req] Create output dir for the model. 
+    # [Req] Create output dir and build model path
     # ------------------------------------------------------
-    # import pdb; pdb.set_trace()
-    # modelpath = frm.create_model_outpath(params)
+    # Create output dir for trained model, val set predictions, val set
+    # performance scores
     frm.create_outdir(outdir=params["model_outdir"])
+
+    # Build model path
     modelpath = frm.build_model_path(params, model_dir=params["model_outdir"])
 
     # ------------------------------------------------------
@@ -564,7 +576,7 @@ def run(params):
     # indtd, outdtd = check_train_data_available(params)
 
     # ------------------------------------------------------
-    # [Req] Create data names for train and val
+    # [Req] Create data names for train and val sets
     # ------------------------------------------------------
     train_data_fname = frm.build_ml_data_name(params, stage="train")  # [Req]
     val_data_fname = frm.build_ml_data_name(params, stage="val")  # [Req]
@@ -574,9 +586,9 @@ def run(params):
     val_data_fname = val_data_fname.split(params["data_format"])[0]
 
     # ------------------------------------------------------
-    # [GraphDRP] Prepare dataloaders
+    # Prepare dataloaders
     # ------------------------------------------------------
-    print("\nTraining data:")
+    print("\nTrain data:")
     print(f"train_ml_data_dir: {params['train_ml_data_dir']}")
     print(f"batch_size: {params['batch_size']}")
     train_loader = build_GraphDRP_dataloader(params["train_ml_data_dir"],
@@ -594,14 +606,13 @@ def run(params):
                                            shuffle=False)
 
     # ------------------------------------------------------
-    # [GraphDRP] CUDA/CPU device
+    # CUDA/CPU device
     # ------------------------------------------------------
     # Determine CUDA/CPU device and configure CUDA device if available
-    # TODO. How this should be configured with our (Singularity) workflows?
     device = determine_device(params["cuda_name"])
 
     # ------------------------------------------------------
-    # [GraphDRP] Prepare model
+    # Prepare model
     # ------------------------------------------------------
     # Model, Loss, Optimizer
     model = set_GraphDRP(params, device)
@@ -609,10 +620,9 @@ def run(params):
     loss_fn = torch.nn.MSELoss()
 
     # -----------------------------
-    # [GraphDRP] Train settings
+    # Train settings
     # -----------------------------
     # [Req] Set checkpointing
-    # import pdb; pdb.set_trace()
     print(f"model_outdir:   {params['model_outdir']}")
     print(f"ckpt_directory: {params['ckpt_directory']}")
     # TODO: why nested dirs are created: params["ckpt_directory"]/params["ckpt_directory"]
@@ -634,9 +644,8 @@ def run(params):
     early_stop_metric = params["early_stop_metric"]  # mse; metric to monitor for early stop
 
     # -----------------------------
-    # [GraphDRP] Train. Iterate over epochs.
+    # Train. Iterate over epochs.
     # -----------------------------
-
     print(f"Epochs: {initial_epoch} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
         # import ipdb; ipdb.set_trace()
@@ -645,7 +654,7 @@ def run(params):
         ckpt_obj.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
 
         # Predict with val data
-        val_true, val_pred = predicting(model, device, val_loader)  # val_true (groud truth), val_pred (predictions)
+        val_true, val_pred = predicting(model, device, val_loader)
         val_scores = compute_metrics(val_true, val_pred, metrics_list)
 
         # For early stop
@@ -667,9 +676,9 @@ def run(params):
             print(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
             break
 
-    # -----------------------------
-    # [GraphDRP] Load best model and compute preditions
-    # -----------------------------
+    # ------------------------------------------------------
+    # Load best model and compute predictions
+    # ------------------------------------------------------
     # import ipdb; ipdb.set_trace()
     # val_true, val_pred = evaluate_model(params, device, modelpath, val_loader)
 
@@ -678,22 +687,20 @@ def run(params):
     model.eval()
 
     # Compute predictions
-    val_true, val_pred = predicting(model, device, data_loader=val_loader) # (groud truth), (predictions)
+    val_true, val_pred = predicting(model, device, data_loader=val_loader)
 
-    # -----------------------------
+    # ------------------------------------------------------
     # [Req] Save raw predictions in dataframe
-    # -----------------------------
-    # import ipdb; ipdb.set_trace()
+    # ------------------------------------------------------
     frm.store_predictions_df(
         params,
         y_true=val_true, y_pred=val_pred, stage="val",
         outdir=params["model_outdir"]
     )
 
-    # -----------------------------
+    # ------------------------------------------------------
     # [Req] Compute performance scores
-    # -----------------------------
-    # import ipdb; ipdb.set_trace()
+    # ------------------------------------------------------
     val_scores = frm.compute_performace_scores(
         params,
         y_true=val_true, y_pred=val_pred, stage="val",
@@ -703,18 +710,16 @@ def run(params):
     return val_scores
 
 
-# def main():
+# [Req]
 def main(args):
-    # import ipdb; ipdb.set_trace()
-    additional_definitions = model_preproc_params + \
-                             model_train_params + \
-                             app_train_params
+# [Req]
+    additional_definitions = preprocess_params + train_params
     params = frm.initialize_parameters(
         filepath,
-        default_model="graphdrp_default_model.txt",
+        # default_model="graphdrp_default_model.txt",
+        # default_model="graphdrp_params.txt",
         # default_model="params_ws.txt",
-        # default_model="params_cs.txt",
-        # default_model="graphdrp_csa_params.txt",
+        default_model="params_cs.txt",
         additional_definitions=additional_definitions,
         # required=req_train_args,
         required=None,
@@ -723,6 +728,6 @@ def main(args):
     print("\nFinished training GraphDRP model.")
 
 
+# [Req]
 if __name__ == "__main__":
-    # main()
     main(sys.argv[1:])
