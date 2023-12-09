@@ -60,8 +60,8 @@ print_fn(f"File path: {fdir}")
 ## Set 2 - smaller datasets
 # source_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
-# source_datasets = ["CCLE", "GDSCv1"]
-# target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+source_datasets = ["GDSCv1", "GDSCv2"]
+target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - full analysis for a single source
 # source_datasets = ["CCLE"]
 # source_datasets = ["CTRPv2"]
@@ -72,8 +72,8 @@ print_fn(f"File path: {fdir}")
 # source_datasets = ["CCLE"]
 # target_datasets = ["CCLE"]
 ## Set 5 - single source and target
-source_datasets = ["GDSCv1"]
-target_datasets = ["CCLE"]
+# source_datasets = ["GDSCv1"]
+# target_datasets = ["CCLE"]
 
 # only_cross_study = False
 only_cross_study = True
@@ -81,8 +81,8 @@ only_cross_study = True
 
 ## Splits
 # split_nums = []  # all splits
-split_nums = [0]
-# split_nums = [4, 7]
+# split_nums = [0]
+split_nums = [4, 7]
 # split_nums = [1, 4, 7]
 # split_nums = [1, 3, 5, 7, 9]
 

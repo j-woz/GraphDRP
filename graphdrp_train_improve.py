@@ -566,16 +566,6 @@ def run(params):
     modelpath = frm.build_model_path(params, model_dir=params["model_outdir"])
 
     # ------------------------------------------------------
-    # Check data availability and create output directory
-    # ------------------------------------------------------
-    # import pdb; pdb.set_trace()
-    # indtd, outdtd = check_data_available(params)
-    # indtd is dictionary with input_description: path components
-    # outdtd is dictionary with output_description: path components
-
-    # indtd, outdtd = check_train_data_available(params)
-
-    # ------------------------------------------------------
     # [Req] Create data names for train and val sets
     # ------------------------------------------------------
     train_data_fname = frm.build_ml_data_name(params, stage="train")  # [Req]
@@ -586,7 +576,7 @@ def run(params):
     val_data_fname = val_data_fname.split(params["data_format"])[0]
 
     # ------------------------------------------------------
-    # Prepare dataloaders
+    # Prepare dataloaders to load model input data (ML data)
     # ------------------------------------------------------
     print("\nTrain data:")
     print(f"train_ml_data_dir: {params['train_ml_data_dir']}")
@@ -617,11 +607,11 @@ def run(params):
     # Model, Loss, Optimizer
     model = set_GraphDRP(params, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.MSELoss() # mse loss func
 
-    # -----------------------------
+    # ------------------------------------------------------
     # Train settings
-    # -----------------------------
+    # ------------------------------------------------------
     # [Req] Set checkpointing
     print(f"model_outdir:   {params['model_outdir']}")
     print(f"ckpt_directory: {params['ckpt_directory']}")
@@ -641,14 +631,13 @@ def run(params):
     best_score = np.inf
     best_epoch = -1
     early_stop_counter = 0  # define early-stop counter
-    early_stop_metric = params["early_stop_metric"]  # mse; metric to monitor for early stop
+    early_stop_metric = params["early_stop_metric"]  # metric to monitor for early stop
 
     # -----------------------------
     # Train. Iterate over epochs.
     # -----------------------------
     print(f"Epochs: {initial_epoch} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
-        # import ipdb; ipdb.set_trace()
         # Train epoch and ckechpoint model
         train_loss = train_epoch(model, device, train_loader, optimizer, loss_fn, epoch + 1, log_interval)
         ckpt_obj.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
@@ -679,10 +668,7 @@ def run(params):
     # ------------------------------------------------------
     # Load best model and compute predictions
     # ------------------------------------------------------
-    # import ipdb; ipdb.set_trace()
-    # val_true, val_pred = evaluate_model(params, device, modelpath, val_loader)
-
-    # Load the (best) saved model (as determined based on val data)
+    # Load the best saved model (as determined based on val data)
     model = load_GraphDRP(params, modelpath, device)
     model.eval()
 
