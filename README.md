@@ -1,3 +1,5 @@
+GraphDRP model for drug response prediction (DRP).
+
 # Install computational environment
 The installation instructions can be found in `conda_env_py37.sh`.<br>
 Step 1. Create conda env.
