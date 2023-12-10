@@ -53,6 +53,8 @@ csa_data/raw_data/
     └── response.tsv
 ```
 
+Note: `./data` contains the original data that was used in the GraphDRP paper.
+
 # Step-by-step running
 
 ## 1. Set the required computational environment
