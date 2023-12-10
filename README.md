@@ -1,8 +1,8 @@
 GraphDRP model for drug response prediction (DRP).
 
 # Dependencies
-Check `conda_env.sh`
-+ [Candle-lib](https://github.com/ECP-CANDLE/candle_lib) -- improve lib dependency
+Check `conda_env_py37.sh`
++ [candle_lib](https://github.com/ECP-CANDLE/candle_lib) -- improve lib dependency
 + [Torch](https://pytorch.org/)
 + [Pytorch_geometric](https://github.com/rusty1s/pytorch_geometric) -- graph neural network (GNN)
 + [Matplotlib](https://matplotlib.org/)
@@ -53,21 +53,29 @@ csa_data/raw_data/
     └── response.tsv
 ```
 
-Note: `./data` contains the original data that was used in the GraphDRP paper.
+Note! `./data` contains data files that were used to train and evaluate the GraphDRP for the original paper.
 
 # Step-by-step running
 
-## 1. Set the required computational environment
-* Download benchmark data
+## 1. Clone the repo
+```
+git clone https://github.com/JDACS4C-IMPROVE/GraphDRP/tree/develop
+cd GraphDRP
+```
+
+## 2. Download data
+TODO!
 ```
 sh ./download_csa.sh
 ```
+
+## 3. Set the required computational environment
 * Install dependencies (check `conda_env_py37.sh`) TODO!
 * Set the required environment variables to point towards the data folder and improve lib.
 Follow this repo to set up the env variables for `IMPROVE_DATA_DIR` and improve lib.
 https://github.com/JDACS4C-IMPROVE/IMPROVE
 
-## 2. Preprocess raw benchmark data to construct model input data
+## 4. Preprocess raw benchmark data to construct model input data
 ```bash
 python graphdrp_preprocess_improve.py
 ```
@@ -77,34 +85,34 @@ sh preprocess_example.sh
 ```
 This generates:
 * three model input data files: `train_data.pt`, `val_data.pt`, `infer_data.pt`
-* three data files, each containing y data (responses) and metadata: `train_y_data.csv`, `val_y_data.csv`, `infer_y_data.csv`
+* three tabular data files, each containing y data (responses) and metadata: `train_y_data.csv`, `val_y_data.csv`, `infer_y_data.csv`
 
 ```
 TODO!
 ```
 
-## 3. Train the GraphDRP model
+## 5. Train the GraphDRP model
 ```bash
 python graphdrp_train_improve.py
 ```
 
-This trains GraphDRP using the processed data: `train_data.pt` (training), `val_data.pt` (early stopping).
+This trains GraphDRP using the processed data: `train_data.pt` (training), `val_data.pt` (for early stopping).
 
 This generates:
 * trained model: `model.pt`
-* predictions on val data: `val_y_data_predicted.csv`
+* predictions on val data (tabular data): `val_y_data_predicted.csv`
 * prediction performance scores on val data: `val_scores.json`
 ```
-TODO
+TODO!
 ```
 
-## 4. Run the trained model in inference on test data
+## 6. Run the trained model in inference on test data
 ```python graphdrp_infer_improve.py```
 
-The script uses processed data and the trained model to evaluate performance.
+This script uses the processed data and the trained model to evaluate performance.
 
 This generates:
-* predictions on test data: `test_y_data_predicted.csv`
+* predictions on test data (tabular data): `test_y_data_predicted.csv`
 * prediction performance scores on test data: `test_scores.json`
 ```
 TODO!
