@@ -250,7 +250,7 @@ def raw_data_to_ml_data(args):
     xtr = ge_tr.iloc[:, 1:]
     xvl = ge_vl.iloc[:, 1:]
     xte = ge_te.iloc[:, 1:]
-    xx = pd.concat([xtr, xvl], axis=0)
+    xx = pd.concat([xtr, xvl], axis=0)  # Only train and val are create the scaler
     scaler = StandardScaler()
     fea_cols = xx.columns
     scaler.fit(xx)
@@ -304,6 +304,8 @@ def raw_data_to_ml_data(args):
     """
     rs.to_csv(Path(root)/"response_subset.csv", index=False) ###
     """
+    # TODO: consider creating args:
+    #   train_y_data_name, val_y_data_name, test_y_data_name
     rs_tr.to_csv(Path(root)/"train_response.csv", index=False) ###
     rs_vl.to_csv(Path(root)/"val_response.csv", index=False) ###
     rs_te.to_csv(Path(root)/"test_response.csv", index=False) ###
@@ -381,12 +383,17 @@ def raw_data_to_ml_data(args):
     # -------------------
     # Create and save PyTorch data
     # TODO: should DATA_FILE_NAME be global?
-    DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
+    # DATA_FILE_NAME = "data"  # TestbedDataset() appends this string with ".pt"
+    # TODO: should these names be global?
+    # TestbedDataset() appends this string with ".pt"
+    train_file_name = "train_data"
+    val_file_name = "val_data"
+    test_file_name = "test_data"
 
     # Train data
     pt_data = TestbedDataset(
         root=root,
-        dataset="train_" + DATA_FILE_NAME,
+        dataset=train_file_name,
         xd=xd_tr,
         xt=xc_tr,
         y=y_tr,
@@ -395,7 +402,7 @@ def raw_data_to_ml_data(args):
     # Val data
     pt_data = TestbedDataset(
         root=root,
-        dataset="val_" + DATA_FILE_NAME,
+        dataset=val_file_name,
         xd=xd_vl,
         xt=xc_vl,
         y=y_vl,
@@ -404,7 +411,7 @@ def raw_data_to_ml_data(args):
     # Test data
     pt_data = TestbedDataset(
         root=root,
-        dataset="test_" + DATA_FILE_NAME,
+        dataset=test_file_name,
         xd=xd_te,
         xt=xc_te,
         y=y_te,
@@ -468,18 +475,19 @@ def parse_args(args):
     parser.add_argument(
         "--y_col_name",
         type=str,
-        required=True,
+        required=False,
+        default="auc",
         help="Drug sensitivity score to use as the target variable (e.g., IC50, AUC).")
     parser.add_argument(
         "--outdir",
         type=str,
         required=True,
         help="Output dir to store the generated ML data files (e.g., 'split_0_tr').")
-    parser.add_argument(
-        "--receipt",
-        type=str,
-        required=False,
-        help="...")
+    # parser.add_argument(
+    #     "--receipt",
+    #     type=str,
+    #     required=False,
+    #     help="...")
 
     args = parser.parse_args(args)
     return args

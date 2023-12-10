@@ -36,6 +36,16 @@ print_fn(f"File path: {fdir}")
 source_datasets = ["GDSCv2"]
 target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+## Set 2 - full analysis for CCLE as source
+# source_datasets = ["CCLE"]
+# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+# target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+## Set 2 - full analysis for CCLE as source
+# source_datasets = ["CCLE"]
+# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+# target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+# target_datasets = ["CCLE", "GDSCv1"]
+# target_datasets = ["GDSCv1"]
 # target_datasets = ["gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - only a single and source and target
 # source_datasets = ["CCLE"]
@@ -44,24 +54,25 @@ target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["gCSI"]
 
 split_nums = []  # all splits
-# split_nums = [4, 7]
 # split_nums = [0]
-fea_list = ["ge", "mordred"]
-fea_sep = "."
-seed = 0
+# split_nums = [4, 7]
+# fea_list = ["ge", "mordred"]
+# fea_sep = "."
+# seed = 0
 
 ## Parameters of the experiment/run/workflow
 # TODO: this should be stored as the experiment metadata that we can go back check
 # epochs = 1
 epochs = 2
 # epochs = 10
-# epochs = 50
+epochs = 70
 # epochs = 100
 # epochs = 200
 y_col_name = "auc"
 # y_col_name = "auc1"
-config_file_name = "csa_params.txt"
-config_file_path = fdir/config_file_name
+cuda_name = "cuda:0"
+# config_file_name = "csa_params.txt"
+# config_file_path = fdir/config_file_name
 model_arch = 0  # GraphDRP-specific param (0-3: different model architectures)
 cuda_name = "cuda:4"
 
@@ -74,6 +85,8 @@ timer = Timer()
 # import pdb; pdb.set_trace()
 # Iterate over source datasets
 # Note! The "source_data_name" iterations are independent of each other
+print(f"source_datasets: {source_datasets}")
+print(f"target_datasets: {target_datasets}")
 for source_data_name in source_datasets:
 
     # Get the split file paths
@@ -159,7 +172,7 @@ for source_data_name in source_datasets:
                 "--model_outdir", str(MODEL_OUTDIR),
                 "--model_arch", str(model_arch),  # specific to GraphDRP
                 "--y_col_name", y_col_name,
-                "--cuda_name", str(cuda_name)
+                "--cuda_name", cuda_name
             ])
             timer_train.display_timer(print_fn)
 
@@ -175,7 +188,7 @@ for source_data_name in source_datasets:
                 "--infer_outdir", str(infer_outdir),
                 "--model_arch", str(model_arch),  # specific to GraphDRP
                 "--y_col_name", y_col_name,
-                "--cuda_name", str(cuda_name)
+                "--cuda_name", cuda_name
             ])
             timer_infer.display_timer(print_fn)
 
