@@ -44,7 +44,7 @@ def one_of_k_encoding(x, allowable_set):
 
 
 def one_of_k_encoding_unk(x, allowable_set):
-    """Maps inputs not in the allowable set to the last element."""
+    """ Maps inputs not in the allowable set to the last element. """
     if x not in allowable_set:
         x = allowable_set[-1]
     return list(map(lambda s: x == s, allowable_set))
@@ -73,8 +73,12 @@ def smile_to_graph(smile):
 
 
 def build_graph_dict_from_smiles_collection(smlist):
-    graphdict = {}  # dict of smile graphs
-    for sm in smlist:
-        graphdict[sm] = smile_to_graph(sm)
-    return graphdict
+    """ Build dict of {smile: molecular graph} pairs. """
+    # dict of molecular graphs converted from smiles {smiles: graph}
+    graphdict = {}
 
+    # Iterate over smiles and build molecular graph for each smile string
+    for smile in smlist:
+        g = smile_to_graph(smile) # g: [c_size, features, edge_index]
+        graphdict[smile] = g
+    return graphdict
