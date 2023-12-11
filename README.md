@@ -88,7 +88,17 @@ This generates:
 * three tabular data files, each containing y data (responses) and metadata: `train_y_data.csv`, `val_y_data.csv`, `infer_y_data.csv`
 
 ```
-TODO!
+ml_data
+└── GDSCv1-CCLE
+    └── split_0
+        ├── processed
+        │   ├── test_data.pt
+        │   ├── train_data.pt
+        │   └── val_data.pt
+        ├── test_y_data.csv
+        ├── train_y_data.csv
+        ├── val_y_data.csv
+        └── x_data_gene_expression_scaler.gz
 ```
 
 ## 5. Train the GraphDRP model
@@ -103,7 +113,25 @@ This generates:
 * predictions on val data (tabular data): `val_y_data_predicted.csv`
 * prediction performance scores on val data: `val_scores.json`
 ```
-TODO!
+out_models
+└── GDSCv1
+    └── split_0
+        ├── best -> /lambda_stor/data/apartin/projects/IMPROVE/pan-models/GraphDRP/out_models/GDSCv1/split_0/epochs/002
+        ├── epochs
+        │   ├── 001
+        │   │   ├── ckpt-info.json
+        │   │   └── model.h5
+        │   └── 002
+        │       ├── ckpt-info.json
+        │       └── model.h5
+        ├── last -> /lambda_stor/data/apartin/projects/IMPROVE/pan-models/GraphDRP/out_models/GDSCv1/split_0/epochs/002
+        ├── model.pt
+        ├── out_models
+        │   └── GDSCv1
+        │       └── split_0
+        │           └── ckpt.log
+        ├── val_scores.json
+        └── val_y_data_predicted.csv
 ```
 
 ## 6. Run the trained model in inference on test data
@@ -115,5 +143,9 @@ This generates:
 * predictions on test data (tabular data): `test_y_data_predicted.csv`
 * prediction performance scores on test data: `test_scores.json`
 ```
-TODO!
+out_infer
+└── GDSCv1-CCLE
+    └── split_0
+        ├── test_scores.json
+        └── test_y_data_predicted.csv
 ```
