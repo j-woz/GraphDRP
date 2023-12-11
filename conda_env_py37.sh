@@ -19,11 +19,10 @@ conda install -c conda-forge pyarrow=10.0 --yes
 
 conda install -c pyston psutil --yes
 
-# CANDLE
-pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
-# pip install git+https://github.com/ECP-CANDLE/candle_lib@candle_data_dir
+# IMPROVE
+pip install git+https://github.com/ECP-CANDLE/candle_lib@develop # CANDLE
 
-# My packages
+# Other
 # conda install -c conda-forge ipdb=0.13.9 --yes
 # conda install -c conda-forge jupyterlab=3.2.0 --yes
 # conda install -c conda-forge python-lsp-server=1.2.4 --yes
@@ -37,23 +36,3 @@ pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
 # python -c "import h5py; print(h5py.version.info)"
 # python -c "import pubchempy; print(pubchempy.__version__)"
 # python -c "import rdkit; print(rdkit.__version__)"
-
-
-# ----------------------------------------
-# Some help from here:
-# https://www.youtube.com/watch?v=lu2DzaqBeDg
-# https://github.com/kaust-rccl/conda-environment-examples/tree/pytorch-geometric-and-friends
-
-# # creates the conda environment
-# PROJECT_DIR=$PWD
-# conda env create --prefix $PROJECT_DIR/env --file $PROJECT_DIR/environment.yml --force
-
-# # activate the conda env before installing PyTorch Geometric via pip
-# conda activate $PROJECT_DIR/env
-# TORCH=1.6.0
-# CUDA=cu102
-# python -m pip install torch-scatter --no-cache-dir --no-index --find-links https://pytorch-geometric.com/whl/torch-${TORCH}+${CUDA}.html
-# python -m pip install torch-sparse --no-cache-dir --no-index --find-links https://pytorch-geometric.com/whl/torch-${TORCH}+${CUDA}.html
-# python -m pip install torch-cluster --no-cache-dir --no-index --find-links https://pytorch-geometric.com/whl/torch-${TORCH}+${CUDA}.html
-# python -m pip install torch-spline-conv --no-cache-dir --no-index --find-links https://pytorch-geometric.com/whl/torch-${TORCH}+${CUDA}.html
-# python -m pip install torch-geometric --no-cache-dir
