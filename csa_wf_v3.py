@@ -20,7 +20,25 @@ import graphdrp_train_improve
 import graphdrp_infer_improve
 
 # from ap_utils.classlogger import Logger
-from ap_utils.utils import get_print_func, Timer
+# from ap_utils.utils import get_print_func, Timer
+
+
+class Timer:
+  """ Measure time. """
+  def __init__(self):
+    self.start = time()
+
+  def timer_end(self):
+    self.end = time()
+    return self.end - self.start
+
+  def display_timer(self, print_fn=print):
+    time_diff = self.timer_end()
+    if time_diff // 3600 > 0:
+        print_fn("Runtime: {:.1f} hrs".format( (time_diff)/3600) )
+    else:
+        print_fn("Runtime: {:.1f} mins".format( (time_diff)/60) )
+
 
 fdir = Path(__file__).resolve().parent
 
