@@ -47,7 +47,7 @@ from model_utils.torch_utils import (
 )
 
 # [Req] Imports from preprocess script
-from graphdrp_preprocess_improve import  preprocess_params
+from graphdrp_preprocess_improve import preprocess_params
 
 filepath = Path(__file__).resolve().parent # [Req]
 
