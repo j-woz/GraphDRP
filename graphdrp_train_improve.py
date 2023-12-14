@@ -8,8 +8,8 @@ All the outputs from this train script are saved in params["model_outdir"].
    The model is trained with train data and validated with val data. The model
    file name and file format are specified, respectively by
    params["model_file_name"] and params["model_file_format"].
-   For LightGBM, the saved model:
-        model.txt
+   For GraphDRP, the saved model:
+        model.pt
 
 2. Predictions on val data. 
    Raw model predictions calcualted using the trained model on val data. The

@@ -169,7 +169,6 @@ def run(params: Dict):
     # ------------------------------------------------------
     # Gene selection (based on LINCS landmark genes)
     if params["use_lincs"]:
-        # genes_fpath = filepath/"landmark_genes"
         genes_fpath = filepath/"model_utils/landmark_genes.txt"
         ge = gene_selection(ge, genes_fpath, canc_col_name=params["canc_col_name"])
 
