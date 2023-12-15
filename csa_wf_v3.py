@@ -3,9 +3,11 @@
 cuda_name = "cuda:7"
 
 import os
-import warnings
 import subprocess
+import warnings
+from time import time
 from pathlib import Path
+
 import pandas as pd
 
 # IMPROVE imports
@@ -79,12 +81,13 @@ print_fn(f"File path: {fdir}")
 ## Set 2 - smaller datasets
 # source_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
-source_datasets = ["GDSCv1", "CTRPv2"]
-target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
+# source_datasets = ["GDSCv1", "CTRPv2"]
+# target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 3 - full analysis for a single source
 # source_datasets = ["CCLE"]
 # source_datasets = ["CTRPv2"]
-# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+source_datasets = ["GDSCv1"]
+target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv2"]
 ## Set 4 - same source and target
@@ -100,9 +103,9 @@ only_cross_study = True
 
 ## Splits
 # split_nums = []  # all splits
-split_nums = [0]
+# split_nums = [0]
 # split_nums = [4, 7]
-# split_nums = [1, 4, 7]
+split_nums = [1, 4, 7]
 # split_nums = [1, 3, 5, 7, 9]
 
 ## Parameters of the experiment/run/workflow
