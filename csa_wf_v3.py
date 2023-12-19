@@ -10,10 +10,8 @@ from pathlib import Path
 
 import pandas as pd
 
-# IMPROVE imports
+# IMPROVE/CANDLE imports
 from improve import framework as frm
-# import improve_utils
-# from improve_utils import improve_globals as ig
 
 # GraphDRP imports
 # TODO: change this for your model
@@ -76,8 +74,8 @@ print_fn(f"File path: {fdir}")
 
 ### Source and target data sources
 ## Set 1 - full analysis
-# source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
-# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+source_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 ## Set 2 - smaller datasets
 # source_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
@@ -86,20 +84,19 @@ print_fn(f"File path: {fdir}")
 ## Set 3 - full analysis for a single source
 # source_datasets = ["CCLE"]
 # source_datasets = ["CTRPv2"]
-source_datasets = ["GDSCv1"]
-target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
+# source_datasets = ["GDSCv1"]
+# target_datasets = ["CCLE", "CTRPv2", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv1", "GDSCv2"]
 # target_datasets = ["CCLE", "gCSI", "GDSCv2"]
 ## Set 4 - same source and target
-# source_datasets = ["CCLE"]
-# target_datasets = ["CCLE"]
+# source_datasets = ["CCLE"]; target_datasets = source_datasets
+# source_datasets = ["GDSCv1"]; target_datasets = source_datasets
 ## Set 5 - single source and target
 # source_datasets = ["GDSCv1"]
 # target_datasets = ["CCLE"]
 
-# only_cross_study = False
-only_cross_study = True
-
+only_cross_study = False
+# only_cross_study = True
 
 ## Splits
 # split_nums = []  # all splits
@@ -113,11 +110,9 @@ split_nums = [1, 4, 7]
 # epochs = 2
 # epochs = 30
 # epochs = 50
-epochs = 70
-# epochs = 100
+# epochs = 70
+epochs = 100
 # epochs = 150
-# config_file_name = "csa_params.txt"
-# config_file_path = fdir/config_file_name
 
 def build_split_fname(source, split, phasea):
     """ Build split file name. If file does not exist continue """
@@ -155,7 +150,6 @@ for source_data_name in source_datasets:
     # --------------------
     # Preprocess and Train
     # --------------------
-    # import pdb; pdb.set_trace()
     for split in split_nums:
         print_fn(f"Split id {split} out of {len(split_nums)} splits.")
         # Check that train, val, and test are available. Otherwise, continue to the next split.
@@ -169,14 +163,12 @@ for source_data_name in source_datasets:
                 warnings.warn(f"\nThe {phase} split file {fname} is missing (continue to next split)")
                 continue
 
-        # import pdb; pdb.set_trace()
         for target_data_name in target_datasets:
             if only_cross_study and (source_data_name == target_data_name):
                 continue # only cross-study
             print_fn(f"\nSource data: {source_data_name}")
             print_fn(f"Target data: {target_data_name}")
 
-            # EXP_ML_DATA_DIR = ig.ml_data_dir/f"{source_data_name}-{target_data_name}"/f"split_{split}"
             ml_data_outdir = MAIN_ML_DATA_DIR/f"{source_data_name}-{target_data_name}"/f"split_{split}"
 
             if source_data_name == target_data_name:
@@ -188,7 +180,6 @@ for source_data_name in source_datasets:
 
             # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             # p1 (none): Preprocess train data
-            # import pdb; pdb.set_trace()
             # train_split_files = list((ig.splits_dir).glob(f"{source_data_name}_split_0_train*.txt"))  # TODO: placeholder for lc analysis
             timer_preprocess = Timer()
             # ml_data_path = graphdrp_preprocess_improve.main([
@@ -201,12 +192,10 @@ for source_data_name in source_datasets:
             print_fn("\nPreprocessing")
             train_split_file = f"{source_data_name}_split_{split}_train.txt"
             val_split_file = f"{source_data_name}_split_{split}_val.txt"
-            # test_split_file = f"{source_data_name}_split_{split}_test.txt"
             print_fn(f"train_split_file: {train_split_file}")
             print_fn(f"val_split_file:   {val_split_file}")
             print_fn(f"test_split_file:  {test_split_file}")
             print_fn(f"ml_data_outdir:   {ml_data_outdir}")
-            # import pdb; pdb.set_trace()
             preprocess_run = ["python",
                   "graphdrp_preprocess_improve.py",
                   "--train_split_file", str(train_split_file),
@@ -224,7 +213,6 @@ for source_data_name in source_datasets:
             # p2 (p1): Train model
             # Train a single model for a given [source, split] pair
             # Train using train samples and early stop using val samples
-            # import pdb; pdb.set_trace()
             model_outdir = MAIN_MODEL_DIR/f"{source_data_name}"/f"split_{split}"
             if model_outdir.exists() is False:
                 train_ml_data_dir = ml_data_outdir
@@ -242,7 +230,6 @@ for source_data_name in source_datasets:
                 print_fn(f"train_ml_data_dir: {train_ml_data_dir}")
                 print_fn(f"val_ml_data_dir:   {val_ml_data_dir}")
                 print_fn(f"model_outdir:      {model_outdir}")
-                # import pdb; pdb.set_trace()
                 train_run = ["python",
                       "graphdrp_train_improve.py",
                       "--train_ml_data_dir", str(train_ml_data_dir),
@@ -260,7 +247,6 @@ for source_data_name in source_datasets:
 
             # Infer
             # p3 (p1, p2): Inference
-            # import pdb; pdb.set_trace()
             test_ml_data_dir = ml_data_outdir
             model_dir = model_outdir
             infer_outdir = MAIN_INFER_OUTDIR/f"{source_data_name}-{target_data_name}"/f"split_{split}"
@@ -273,9 +259,7 @@ for source_data_name in source_datasets:
             # ])
             print_fn("\nInfer")
             print_fn(f"test_ml_data_dir: {test_ml_data_dir}")
-            print_fn(f"val_ml_data_dir:  {val_ml_data_dir}")
             print_fn(f"infer_outdir:     {infer_outdir}")
-            # import pdb; pdb.set_trace()
             infer_run = ["python",
                   "graphdrp_infer_improve.py",
                   "--test_ml_data_dir", str(test_ml_data_dir),
@@ -287,6 +271,8 @@ for source_data_name in source_datasets:
             result = subprocess.run(infer_run, capture_output=True,
                                     text=True, check=True)
             timer_infer.display_timer(print_fn)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 timer.display_timer(print_fn)
 print_fn("Finished a full cross-study run.")
