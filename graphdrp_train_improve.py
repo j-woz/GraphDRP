@@ -101,10 +101,13 @@ metrics_list = ["mse", "rmse", "pcc", "scc", "r2"]
 def config_checkpointing(params: Dict, model, optimizer):
     """Configure CANDLE checkpointing. Reads last saved state if checkpoints exist.
 
-    :params str ckpt_directory: String with path to directory for storing the CANDLE checkpointing for the model being trained.
+    Args:
+        ckpt_directory (str): String with path to directory for storing the
+            CANDLE checkpointing for the model being trained.
 
-    :return: Number of training iterations already run (this may be > 0 if reading from checkpointing).
-    :rtype: int
+    Returns:
+        Number of training iterations already run (this may be > 0 if reading
+            from checkpointing).
     """
     # params["ckpt_directory"] = ckpt_directory
     initial_epoch = 0
