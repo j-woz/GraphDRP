@@ -8,6 +8,7 @@ import json
 from sklearn.metrics import r2_score, mean_absolute_error
 from scipy.stats import pearsonr, spearmanr, sem
 
+from model_utils.utils import Timer
 from improve.metrics import compute_metrics
 
 fdir = Path(__file__).resolve().parent
@@ -20,8 +21,9 @@ parser.add_argument('--y_col_name', required=False, default='auc', type=str,
 args = parser.parse_args()
 
 y_col_name = args.y_col_name
+model_name = args.model_name
 
-main_dir_path = Path("/lambda_stor/data/apartin/projects/IMPROVE/pan-models/GraphDRP")
+main_dir_path = Path(f"/lambda_stor/data/apartin/projects/IMPROVE/pan-models/{model_name}")
 infer_dir_name = "infer"
 infer_dir_path = main_dir_path/y_col_name/infer_dir_name
 dirs = list(infer_dir_path.glob("*-*")); print(dirs)
@@ -36,6 +38,8 @@ dirs = list(infer_dir_path.glob("*-*")); print(dirs)
 # outdir = fdir/f"scores.{model_name}"
 # os.makedirs(outdir, exist_ok=True)
 
+outdir = fdir/f"../res.csa.{model_name}"
+os.makedirs(outdir, exist_ok=True)
 
 data_sources = ["ccle", "ctrp", "gcsi", "gdsc1", "gdsc2"]
 trg_name = "AUC"
@@ -62,161 +66,217 @@ scores_names = {"mae": calc_mae,
 # Aggregate raw scores
 # ====================
 
-scores_file_name = "test_scores.json"
 preds_file_name = "test_y_data_predicted.csv"
+# scores_file_name = "test_scores.json"
 metrics_list = ["mse", "rmse", "pcc", "scc", "r2"]  
 
-dct = {}
+sep = ','
+scores_fpath = outdir/"all_scores.csv"
+timer = Timer()
+if scores_fpath.exists():
+    print("Load scores")
+    scores = pd.read_csv(scores_fpath, sep=sep)
+else:
+    print("Calc scores")
+    dfs = []
+    for dir_path in dirs:
+        print("Experiment:", dir_path)
+        src = str(dir_path.name).split("-")[0]
+        trg = str(dir_path.name).split("-")[1]
+        split_dirs = list((dir_path).glob(f"split_*"))
 
-for dir_path in dirs:
-    print("\nExperiment:", dir_path)
-    # import ipdb; ipdb. set_trace()
-    src = str(dir_path.name).split("-")[0]
-    trg = str(dir_path.name).split("-")[1]
-    split_dirs = list((dir_path).glob(f"split_*"))
+        jj = {}  # dict (key: split id, value: dict of scores)
 
-    import ipdb; ipdb. set_trace()
-    for split_dir in split_dirs:
-        # # Load scores
-        # scores_file_path = split_dir/scores_file_name
-        # with open(scores_file_path) as json_file:
-        #     scores = json.load(json_file)
-
-        split = int(split_dir.name.split("split_")[1])
-
-        # Load predictions
-        preds_file_path = split_dir/preds_file_name
-        df = pd.read_csv(preds_file_path, sep=",")
-        # df = pd.read_csv(resdir/fname, sep="\t")
-
-        # for sc_name, sc_func in scores_names.items():
-        y_true = df[f"{y_col_name}_true"].values
-        y_pred = df[f"{y_col_name}_pred"].values
-        # ---
-        scores = compute_metrics(y_true, y_pred, metrics_list)
-
-        dct[split] = scores
-        df = pd.DataFrame(dct)
-        df = df.T.reset_index().rename(columns={"index": "split"})
-
-        # TODO. continue
-
-        # sc_value = sc_func(y_true=y_true, y_pred=y_pred)
-        # # scores[trg][sc_name].append(sc_value)
         # import ipdb; ipdb. set_trace()
-        # scores[trg].append(sc_value)
-        
-    import ipdb; ipdb. set_trace()
-    kk = pd.DataFrame(dct)
+        for split_dir in split_dirs:
+            # Load preds
+            preds_file_path = split_dir/preds_file_name
+            preds = pd.read_csv(preds_file_path, sep=sep)
 
-# ---------------------
-# Data source study
-for sc_name, sc_func in scores_names.items():
-    print("\nMetric:", sc_name)
-    for src in data_sources:
-        print("\n\tSource study:", src)
-        # resdir = fdir/f"results.csa.{src}"
-        # resdir = datadir/f"results.csa.{src}"
-        resdir = datadir
-        scores = {}
+            # Compute scores
+            y_true = preds[f"{y_col_name}_true"].values
+            y_pred = preds[f"{y_col_name}_pred"].values
+            sc = compute_metrics(y_true, y_pred, metrics_list)
 
-        # Data test study
-        for trg in data_sources:
-            print("\tTraget study:", trg)
-            if trg not in scores:
-                # scores[trg] = {sc: [] for sc in scores_names}
-                scores[trg] = []
+            split = int(split_dir.name.split("split_")[1])
+            jj[split] = sc
+            # df = pd.DataFrame(jj)
+            # df = df.T.reset_index().rename(columns={"index": "split"})
 
-            # Data split
-            for split in range(10):
-                fname = f"{src}_{trg}_split_{split}.csv"
-                df = pd.read_csv(resdir/fname, sep=",")
-                # df = pd.read_csv(resdir/fname, sep="\t")
+        # Convert dict to df, and aggregate dfs
+        df = pd.DataFrame(jj)
+        df = df.stack().reset_index()
+        df.columns = ['met', 'split', 'value']
+        df['src'] = src
+        df['trg'] = trg
+        dfs.append(df)
 
-                # for sc_name, sc_func in scores_names.items():
-                y_true = df["True"].values
-                y_pred = df["Pred"].values
-                sc_value = sc_func(y_true=y_true, y_pred=y_pred)
-                # scores[trg][sc_name].append(sc_value)
-                scores[trg].append(sc_value)
+    # Concat dfs and save
+    scores = pd.concat(dfs, axis=0)
+    scores.to_csv(outdir/"all_scores.csv", index=False)
 
-        with open(outdir/f"{sc_name}_{src}_scores_raw.json", "w") as json_file:
-            json.dump(scores, json_file)
-del scores
-# ---------------------
+timer.display_timer()
+
+# Average across splits
+sc_mean = scores.groupby(["met", "src", "trg"])["value"].mean().reset_index()
+sc_std = scores.groupby(["met", "src", "trg"])["value"].std().reset_index()
+
+# Generate csa table
+# TODO
+breakpoint()
+mean_tb = {}
+std_tb = {}
+for met in scores.met.unique():
+    df = scores[scores.met == met]
+    # Mean
+    mean = df.groupby(["src", "trg"])["value"].mean()
+    mean = mean.unstack()
+    mean.to_csv(outdir/f"{met}_mean_csa_table.csv", index=True)
+    print(f"{met} mean:\n{mean}")
+    mean_tb[met] = mean
+    # Std
+    std = df.groupby(["src", "trg"])["value"].std()
+    std = std.unstack()
+    std.to_csv(outdir/f"{met}_std_csa_table.csv", index=True)
+    print(f"{met} std:\n{std}")
+    std_tb[met] = std
+
+# Quick test
+# met="mse"; src="CCLE"; trg="GDSCv1" 
+# print(f"src: {src}; trg: {trg}; met: {met}; mean: {scores[(scores.met==met) & (scores.src==src) & (scores.trg==trg)].value.mean()}")
+# print(f"src: {src}; trg: {trg}; met: {met}; std:  {scores[(scores.met==met) & (scores.src==src) & (scores.trg==trg)].value.std()}")
+# met="mse"; src="CCLE"; trg="GDSCv2" 
+# print(f"src: {src}; trg: {trg}; met: {met}; mean: {scores[(scores.met==met) & (scores.src==src) & (scores.trg==trg)].value.mean()}")
+# print(f"src: {src}; trg: {trg}; met: {met}; std:  {scores[(scores.met==met) & (scores.src==src) & (scores.trg==trg)].value.std()}")
+
+# Generate densed csa table
+breakpoint()
+df_on = scores[scores.src == scores.trg].reset_index()
+on_mean = df_on.groupby(["met"])["value"].mean().reset_index().rename(columns={"value": "mean"})
+on_std = df_on.groupby(["met"])["value"].std().reset_index().rename(columns={"value": "std"})
+on = on_mean.merge(on_std, on="met", how="inner")
+on["summary"] = "within"
+
+df_off = scores[scores.src != scores.trg]
+off_mean = df_off.groupby(["met"])["value"].mean().reset_index().rename(columns={"value": "mean"})
+off_std = df_off.groupby(["met"])["value"].std().reset_index().rename(columns={"value": "std"})
+off = off_mean.merge(off_std, on="met", how="inner")
+off["summary"] = "cross"
+
+print(f"On-diag mean:\n{on_mean}")
+print(f"On-diag std: \n{on_std}")
+
+print(f"Off-diag mean:\n{off_mean}")
+print(f"Off-diag std: \n{off_std}")
+
+# Combine dfs
+breakpoint()
+df = pd.concat([on, off], axis=0).sort_values("met")
+df.to_csv(outdir/"densed_csa_table.csv", index=False)
+print(f"Densed CSA table:\n{df}")
 
 
+# # ---------------------
+# # Data source study
+# for sc_name, sc_func in scores_names.items():
+#     print("\nMetric:", sc_name)
+#     for src in data_sources:
+#         print("\n\tSource study:", src)
+#         # resdir = fdir/f"results.csa.{src}"
+#         # resdir = datadir/f"results.csa.{src}"
+#         resdir = datadir
+#         scores = {}
 
-# ====================
-# Generate tables
-# ====================
-# import ipdb; ipdb.set_trace(context=5)
-# Data source study
-for sc_name in scores_names.keys():
-    print("\nMetric:", sc_name)
+#         # Data test study
+#         for trg in data_sources:
+#             print("\tTraget study:", trg)
+#             if trg not in scores:
+#                 # scores[trg] = {sc: [] for sc in scores_names}
+#                 scores[trg] = []
 
-    mean_df = {}
-    err_df = {}
-    for src in data_sources:
-        print("\tSource study:", src)
+#             # Data split
+#             for split in range(10):
+#                 fname = f"{src}_{trg}_split_{split}.csv"
+#                 df = pd.read_csv(resdir/fname, sep=",")
+#                 # df = pd.read_csv(resdir/fname, sep="\t")
 
-        with open(outdir/f"{sc_name}_{src}_scores_raw.json") as json_file:
-            mean_scores = json.load(json_file)
-        err_scores = mean_scores.copy()
+#                 # for sc_name, sc_func in scores_names.items():
+#                 y_true = df["True"].values
+#                 y_pred = df["Pred"].values
+#                 sc_value = sc_func(y_true=y_true, y_pred=y_pred)
+#                 # scores[trg][sc_name].append(sc_value)
+#                 scores[trg].append(sc_value)
 
-        # print(scores)
-
-        for trg in data_sources:
-            mean_scores[trg] = round(np.mean(mean_scores[trg]), round_digits)
-            err_scores[trg] = round(sem(err_scores[trg]), round_digits)
-
-        # import ipdb; ipdb.set_trace(context=5)
-        mean_df[src] = mean_scores
-        err_df[src] = err_scores
-
-    # import ipdb; ipdb.set_trace(context=5)
-    mean_df = pd.DataFrame(mean_df)
-    err_df = pd.DataFrame(err_df)
-    mean_df.to_csv(outdir/f"{sc_name}_mean_table.csv", index=True)
-    err_df.to_csv(outdir/f"{sc_name}_err_table.csv", index=True)
+#         with open(outdir/f"{sc_name}_{src}_scores_raw.json", "w") as json_file:
+#             json.dump(scores, json_file)
+# del scores
+# # ---------------------
 
 
-# ====================
-# Summary table
-# ====================
-# import ipdb; ipdb.set_trace(context=5)
-# Data source study
-sc_df = []
-cols = ["Metric", "Diag", "Off-diag", "Diag_std", "Off-diag_std"]
-for i, sc_name in enumerate(scores_names):
-    # print("\nMetric:", sc_name)
-    sc_item = {}
-    sc_item["Metric"] = sc_name.upper()
+# # ====================
+# # Generate tables
+# # ====================
+# # Data source study
+# for sc_name in scores_names.keys():
+#     print("\nMetric:", sc_name)
 
-    mean_df = pd.read_csv(outdir/f"{sc_name}_mean_table.csv")
-    n = mean_df.shape[0]
+#     mean_df = {}
+#     err_df = {}
+#     for src in data_sources:
+#         print("\tSource study:", src)
 
-    # Diag
-    vv = np.diag(mean_df.iloc[:, 1:].values)
-    sc_item["Diag"] = np.round(sum(vv)/n, 3)
-    sc_item["Diag_std"] = np.round(np.std(vv), 3)
+#         with open(outdir/f"{sc_name}_{src}_scores_raw.json") as json_file:
+#             mean_scores = json.load(json_file)
+#         err_scores = mean_scores.copy()
 
-    # Off-diag
-    vv = mean_df.iloc[:, 1:].values
-    np.fill_diagonal(vv, 0)
-    sc_item["Off-diag"] = np.round(sum(np.ravel(vv)) / (n*n - n), 3)
-    sc_item["Off-diag_std"] = np.round(np.std(np.ravel(vv)), 3)
+#         for trg in data_sources:
+#             mean_scores[trg] = round(np.mean(mean_scores[trg]), round_digits)
+#             err_scores[trg] = round(sem(err_scores[trg]), round_digits)
 
-    for ii, dname in enumerate(mean_df.iloc[:, 0].values):
-        dname = dname.upper()
-        sc_item[dname] = np.round(sum(vv[ii, :] / (n - 1)), 3)
-        if i == 0:
-            cols.append(dname)
+#         mean_df[src] = mean_scores
+#         err_df[src] = err_scores
 
-    sc_df.append(sc_item)
+#     mean_df = pd.DataFrame(mean_df)
+#     err_df = pd.DataFrame(err_df)
+#     mean_df.to_csv(outdir/f"{sc_name}_mean_table.csv", index=True)
+#     err_df.to_csv(outdir/f"{sc_name}_err_table.csv", index=True)
 
-sc_df = pd.DataFrame(sc_df, columns=cols)
-sc_df.to_csv(outdir/f"summary_table.csv", index=False)
-print(sc_df)
+
+# # ====================
+# # Summary table
+# # ====================
+# # Data source study
+# sc_df = []
+# cols = ["Metric", "Diag", "Off-diag", "Diag_std", "Off-diag_std"]
+# for i, sc_name in enumerate(scores_names):
+#     # print("\nMetric:", sc_name)
+#     sc_item = {}
+#     sc_item["Metric"] = sc_name.upper()
+
+#     mean_df = pd.read_csv(outdir/f"{sc_name}_mean_table.csv")
+#     n = mean_df.shape[0]
+
+#     # Diag
+#     vv = np.diag(mean_df.iloc[:, 1:].values)
+#     sc_item["Diag"] = np.round(sum(vv)/n, 3)
+#     sc_item["Diag_std"] = np.round(np.std(vv), 3)
+
+#     # Off-diag
+#     vv = mean_df.iloc[:, 1:].values
+#     np.fill_diagonal(vv, 0)
+#     sc_item["Off-diag"] = np.round(sum(np.ravel(vv)) / (n*n - n), 3)
+#     sc_item["Off-diag_std"] = np.round(np.std(np.ravel(vv)), 3)
+
+#     for ii, dname in enumerate(mean_df.iloc[:, 0].values):
+#         dname = dname.upper()
+#         sc_item[dname] = np.round(sum(vv[ii, :] / (n - 1)), 3)
+#         if i == 0:
+#             cols.append(dname)
+
+#     sc_df.append(sc_item)
+
+# sc_df = pd.DataFrame(sc_df, columns=cols)
+# sc_df.to_csv(outdir/f"summary_table.csv", index=False)
+# print(sc_df)
 
 print("Finished all")
