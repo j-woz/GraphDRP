@@ -1,6 +1,7 @@
 # GraphDRP
 GraphDRP model for drug response prediction (DRP).
 
+
 # Dependencies
 Check [conda_env_py37.sh](./conda_env_py37.sh)
 
@@ -12,12 +13,6 @@ IMPROVE lib:
 + [improve_lib](https://github.com/JDACS4C-IMPROVE/IMPROVE)
 + [candle_lib](https://github.com/ECP-CANDLE/candle_lib) -- improve lib dependency
 
-
-## Source codes
-+ `graphdrp_preprocess_improve.py`: creates data files for drug resposne prediction (DRP)
-+ `graphdrp_train_improve.py`: trains the GraphDRP model
-+ `graphdrp_infer_improve.py`: runs inference with the trained GraphDRP model
-+ `graphdrp_params.txt`: parameter file
 
 # Dataset
 Benchmark data for cross-study analysis (CSA) can be downloaded from this [site](https://web.cels.anl.gov/projects/IMPROVE_FTP/candle/public/improve/benchmarks/single_drug_drp/benchmark-data-pilot1/csa_data/).
@@ -57,6 +52,14 @@ csa_data/raw_data/
 
 Note! `./data` contains data files that were used to train and evaluate the GraphDRP for the original paper.
 
+
+## Source codes
++ `graphdrp_preprocess_improve.py`: creates data files for drug resposne prediction (DRP)
++ `graphdrp_train_improve.py`: trains the GraphDRP model
++ `graphdrp_infer_improve.py`: runs inference with the trained GraphDRP model
++ `graphdrp_params.txt`: parameter file
+
+
 # Step-by-step running
 
 ### 1. Clone the repo
@@ -72,7 +75,7 @@ sh ./download_csa.sh
 This will download the cross-study benchmark data into `./csa_data/`.
 
 ### 3. Set computational environment
-* Install dependencies (check `conda_env_py37.sh`)
+* Install dependencies (check [conda_env_py37.sh](./conda_env_py37.sh))
 * Set the required environment variables to point towards the data folder and improve lib. You need to download the improve lib repo (follow this repo for more info `https://github.com/JDACS4C-IMPROVE/IMPROVE`).
 ```bash
 export IMPROVE_DATA_DIR="./csa_data/"
