@@ -200,8 +200,8 @@ def run(params):
     if params["ckpt_directory"] is None:
         params["ckpt_directory"] = params["model_outdir"]
         # params["ckpt_directory"] = "ckpt_graphdrp"  # TODO: why nested dirs are created: params["ckpt_directory"]/params["ckpt_directory"]
-    # initial_epoch = trobj.config_checkpointing(params["ckpt_directory"])
-    ckpt_obj, initial_epoch = config_checkpointing(params, model, optimizer)
+    # ckpt_obj, initial_epoch = config_checkpointing(params, model, optimizer)
+    initial_epoch = 0
 
     num_epoch = params["epochs"]
     log_interval = params["log_interval"]
@@ -216,11 +216,11 @@ def run(params):
     # -----------------------------
     # Train. Iterate over epochs.
     # -----------------------------
-    print(f"Epochs: {initial_epoch} to {num_epoch}")
+    print(f"Epochs: {initial_epoch + 1} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
         # Train epoch and ckechpoint model
         train_loss = train_epoch(model, device, train_loader, optimizer, loss_fn, epoch + 1, log_interval)
-        ckpt_obj.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
+        # ckpt_obj.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
 
         # Predict with val data
         val_true, val_pred = predicting(model, device, val_loader)
