@@ -8,20 +8,23 @@
 # CSA (cross-study analysis) exmple
 # ----------------------------------------
 
-# # Within-study
-# python graphdrp_preprocess_improve.py \
-#     --train_split_file CCLE_split_0_train.txt \
-#     --val_split_file CCLE_split_0_val.txt \
-#     --test_split_file CCLE_split_0_test.txt \
-#     --ml_data_outdir ml_data/CCLE-CCLE/split_0
-
-# Cross-study
+# Within-study
+SOURCE=CCLE
+TARGET=CCLE
 python graphdrp_preprocess_improve.py \
-    --train_split_file GDSCv1_split_0_train.txt \
-    --val_split_file GDSCv1_split_0_val.txt \
-    --test_split_file CCLE_all.txt \
-    --ml_data_outdir ml_data/GDSCv1-CCLE/split_0
+    --train_split_file ${SOURCE}_split_0_train.txt \
+    --val_split_file ${SOURCE}_split_0_val.txt \
+    --test_split_file ${TARGET}_split_0_test.txt \
+    --ml_data_outdir ml_data/${SOURCE}-${TARGET}/split_0
 
+# # Cross-study
+# SOURCE=GDSCv1
+# TARGET=CCLE
+# python graphdrp_preprocess_improve.py \
+#     --train_split_file ${SOURCE}_split_0_train.txt \
+#     --val_split_file ${SOURCE}_split_0_val.txt \
+#     --test_split_file ${TARGET}_all.txt \
+#     --ml_data_outdir ml_data/${SOURCE}-${TARGET}/split_0
 
 # ----------------------------------------
 # LCA (learning curve analysis) exmple
