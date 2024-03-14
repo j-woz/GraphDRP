@@ -14,18 +14,22 @@ from improve.metrics import compute_metrics
 fdir = Path(__file__).resolve().parent
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--res_dir', required=False, default='auc', type=str,
+                    help='Dir containing the results.')
 parser.add_argument('--model_name', required=False, default='LGBM', type=str,
                     help='Name of the model.')
 parser.add_argument('--y_col_name', required=False, default='auc', type=str,
                     help='Y col name.')
 args = parser.parse_args()
 
-y_col_name = args.y_col_name
+res_dir = args.res_dir
 model_name = args.model_name
+y_col_name = args.y_col_name
 
 main_dir_path = Path(f"/lambda_stor/data/apartin/projects/IMPROVE/pan-models/{model_name}")
 infer_dir_name = "infer"
-infer_dir_path = main_dir_path/y_col_name/infer_dir_name
+# infer_dir_path = main_dir_path/y_col_name/infer_dir_name
+infer_dir_path = main_dir_path/res_dir/infer_dir_name
 dirs = list(infer_dir_path.glob("*-*")); print(dirs)
 # print(split_files)
 
@@ -38,7 +42,8 @@ dirs = list(infer_dir_path.glob("*-*")); print(dirs)
 # outdir = fdir/f"scores.{model_name}"
 # os.makedirs(outdir, exist_ok=True)
 
-outdir = fdir/f"../res.csa.{model_name}"
+# outdir = fdir/f"../res.csa.{model_name}"
+outdir = fdir/f"../res.csa.{model_name}.{res_dir}"
 os.makedirs(outdir, exist_ok=True)
 
 data_sources = ["ccle", "ctrp", "gcsi", "gdsc1", "gdsc2"]
@@ -113,6 +118,7 @@ else:
 
     # Concat dfs and save
     scores = pd.concat(dfs, axis=0)
+    # scores = scores.sort_values(["src", "trg", "met", "split"])
     scores.to_csv(outdir/"all_scores.csv", index=False)
 
 timer.display_timer()
@@ -128,6 +134,8 @@ mean_tb = {}
 std_tb = {}
 for met in scores.met.unique():
     df = scores[scores.met == met]
+    # df = df.sort_values(["src", "trg", "met", "split"])
+    df.to_csv(outdir/f"{met}_scores.csv", index=True)
     # Mean
     mean = df.groupby(["src", "trg"])["value"].mean()
     mean = mean.unstack()

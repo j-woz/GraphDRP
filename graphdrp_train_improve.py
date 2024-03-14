@@ -216,6 +216,8 @@ def run(params):
     # -----------------------------
     # Train. Iterate over epochs.
     # -----------------------------
+    epoch_list = []
+    val_loss_list = []
     print(f"Epochs: {initial_epoch + 1} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
         # Train epoch and ckechpoint model
@@ -225,6 +227,9 @@ def run(params):
         # Predict with val data
         val_true, val_pred = predicting(model, device, val_loader)
         val_scores = compute_metrics(val_true, val_pred, metrics_list)
+
+        epoch_list.append(epoch)
+        val_loss_list.append(val_scores[early_stop_metric])
 
         # For early stop
         print(f"{early_stop_metric}, {val_scores[early_stop_metric]}")
@@ -244,6 +249,8 @@ def run(params):
             print(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
             print(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
             break
+
+    history = pd.DataFrame({"epoch": epoch_list, "val_loss": val_loss_list})
 
     # ------------------------------------------------------
     # Load best model and compute predictions
@@ -272,6 +279,8 @@ def run(params):
         y_true=val_true, y_pred=val_pred, stage="val",
         outdir=params["model_outdir"], metrics=metrics_list
     )
+
+    history.to_csv(Path(params["model_outdir"])/"history.csv", index=False)
 
     return val_scores
 
