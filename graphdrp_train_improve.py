@@ -218,6 +218,10 @@ def run(params):
     # -----------------------------
     epoch_list = []
     val_loss_list = []
+    train_loss_list = []
+    # log_interval_epoch = 1
+    log_interval_epoch = 5
+
     print(f"Epochs: {initial_epoch + 1} to {num_epoch}")
     for epoch in range(initial_epoch, num_epoch):
         # Train epoch and ckechpoint model
@@ -228,8 +232,13 @@ def run(params):
         val_true, val_pred = predicting(model, device, val_loader)
         val_scores = compute_metrics(val_true, val_pred, metrics_list)
 
-        epoch_list.append(epoch)
-        val_loss_list.append(val_scores[early_stop_metric])
+        if epoch % log_interval_epoch == 0:
+            epoch_list.append(epoch)
+            val_loss_list.append(val_scores[early_stop_metric])
+
+            train_true, train_pred = predicting(model, device, train_loader)
+            train_scores = compute_metrics(train_true, train_pred, metrics_list)
+            train_loss_list.append(train_scores[early_stop_metric])
 
         # For early stop
         print(f"{early_stop_metric}, {val_scores[early_stop_metric]}")
@@ -237,20 +246,23 @@ def run(params):
             torch.save(model.state_dict(), modelpath)
             best_epoch = epoch + 1
             best_score = val_scores[early_stop_metric]
-            print(f"{early_stop_metric} improved at epoch {best_epoch};  \
-                     Best {early_stop_metric}: {best_score};  Model: {params['model_arch']}")
+            print(f"{early_stop_metric} improved at epoch {best_epoch};  "\
+                  f"Best {early_stop_metric}: {best_score};  Model: {params['model_arch']}")
             early_stop_counter = 0  # zero the early-stop counter if the model improved after the epoch
         else:
-            print(f"No improvement since epoch {best_epoch};  \
-                     Best {early_stop_metric}: {best_score};  Model: {params['model_arch']}")
+            print(f"No improvement since epoch {best_epoch};  "\
+                  f"Best {early_stop_metric}: {best_score};  Model: {params['model_arch']}")
             early_stop_counter += 1  # increment the counter if the model was not improved after the epoch
 
         if early_stop_counter == patience:
-            print(f"Terminate training (model did not improve on val data for {params['patience']} epochs).")
+            print(f"Terminate training (model did not improve on val data for "\
+                  f"{params['patience']} epochs).")
             print(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
             break
 
-    history = pd.DataFrame({"epoch": epoch_list, "val_loss": val_loss_list})
+    history = pd.DataFrame({"epoch": epoch_list,
+                            "val_loss": val_loss_list,
+                            "train_loss": train_loss_list})
 
     # ------------------------------------------------------
     # Load best model and compute predictions
