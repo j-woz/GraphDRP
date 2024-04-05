@@ -302,9 +302,7 @@ def run(params):
     return val_scores
 
 
-# [Req]
-def main(args):
-# [Req]
+def initialize_parameters():
     additional_definitions = preprocess_params + train_params
     params = frm.initialize_parameters(
         filepath,
@@ -316,6 +314,13 @@ def main(args):
         # required=req_train_args,
         required=None,
     )
+    return params
+
+
+# [Req]
+def main(args):
+# [Req]
+    initialize_parameters()
     val_scores = run(params)
     print("\nFinished training GraphDRP model.")
 
