@@ -22,6 +22,7 @@ All the outputs from this train script are saved in params["model_outdir"].
 """
 
 import sys
+import time
 from pathlib import Path
 from typing import Dict
 
@@ -222,12 +223,15 @@ def run(params):
     val_loss_list = []
     train_loss_list = []
     # log_interval_epoch = 1
-    log_interval_epoch = 5
+    log_interval_epoch = 10
 
+    start = time.time()
     print(f"Epochs: {initial_epoch + 1} to {num_epoch}")
     sys.stdout.flush()
     for epoch in range(initial_epoch, num_epoch):
-        print(f"Start epoch: {epoch}")
+        elapsed = time.time() - start
+        print(f"Start epoch: {epoch} at {elapsed:.2f} seconds")
+        sys.stdout.flush()
         # Train epoch and checkpoint model
         train_loss = train_epoch(model, device, train_loader, optimizer, loss_fn, epoch + 1, log_interval)
         # ckpt_obj.ckpt_epoch(epoch, train_loss) # checkpoints the best model by default
@@ -265,6 +269,7 @@ def run(params):
             print(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
             break
 
+    print(f"Training stopped at {elapsed:.1f} seconds.")
     history = pd.DataFrame({"epoch": epoch_list,
                             "val_loss": val_loss_list,
                             "train_loss": train_loss_list})
@@ -298,6 +303,8 @@ def run(params):
     )
 
     history.to_csv(Path(params["model_outdir"])/"history.csv", index=False)
+
+    print(str(val_scores))
 
     return val_scores
 
