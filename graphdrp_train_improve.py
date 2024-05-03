@@ -26,6 +26,15 @@ import time
 from pathlib import Path
 from typing import Dict
 
+import torch
+print("Torch version: " + torch.__version__)
+print("CUDA: %r" % torch.cuda.is_available())
+sys.stdout.flush()
+# available_gpus = [torch.cuda.device(i) for i in range(torch.cuda.device_count())]
+num_of_gpus = torch.cuda.device_count()
+print("GPUs: %i" % num_of_gpus)
+sys.stdout.flush()
+
 import numpy as np
 import pandas as pd
 
@@ -269,7 +278,8 @@ def run(params):
             print(f"Best epoch: {best_epoch};  Best score ({early_stop_metric}): {best_score}")
             break
 
-    print(f"Training stopped at {elapsed:.1f} seconds.")
+    elapsed = time.time() - start
+    print(f"Training stopped at epoch {epoch} after {elapsed:.1f} seconds.")
     history = pd.DataFrame({"epoch": epoch_list,
                             "val_loss": val_loss_list,
                             "train_loss": train_loss_list})
